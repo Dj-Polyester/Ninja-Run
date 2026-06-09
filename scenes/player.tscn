@@ -308,20 +308,20 @@ size = Vector2(285.0001, 335.00012)
 script = ExtResource("1_d2wvv")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2103347776]
-position = Vector2(272, 334)
+position = Vector2(81.15, -5.299988)
+scale = Vector2(0.3, 0.3)
 sprite_frames = SubResource("SpriteFrames_60mlk")
 animation = &"idle"
 frame = 2
 frame_progress = 0.89491814
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1345703530]
-position = Vector2(222, 355)
-scale = Vector2(0.9999996, 0.9999996)
+position = Vector2(67.00001, 2)
+scale = Vector2(0.3, 0.3)
 shape = SubResource("RectangleShape2D_i4ail")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1600369172]
 drag_horizontal_offset = 1.0
-drag_vertical_offset = 1.0
 drag_left_margin = 1.0
 drag_top_margin = 1.0
 drag_right_margin = 1.0
