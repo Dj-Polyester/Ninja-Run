@@ -14,19 +14,23 @@ var total_frames_traveled = 0
 var last_mv_total_frames = 0
 var old_tile_coordinates: Vector2i
 var possible_ys = range(MIN_Y, MAX_Y)
-var max_num_platforms = 1
+var num_platforms = 1
 var platforms = []
 var startcoos = []
 var curr_player_frame = 0
 var curr_gen_frame = 0
 var curr_lwl = 0
+var num_platforms_ref = 0
 var lwl_probs = [1, 0, 0, 0, 0]
+var num_platforms_probs = [1, 0, 0, 0]
 
 # [1, 0, 0, 0] 0
 # [0, 1, 0, 0] 1
 # [1, 1, 0, 0]
 # [0, 0, 1, 0]
 # [1, 1, 1, 0]
+const NUM_PLATFORMS_INCREASE_THRESHOLD = 1
+const MAX_NUM_PLATFORMS = 4
 const MV_THRESHOLD = 8
 const LWL_FRAME = 1
 const MAP_WIDTH = 30
@@ -41,16 +45,17 @@ const COO_DIFF_INIT = 4
 const COO_DIFF_UPDATE_L = 2
 const COO_DIFF_UPDATE_R = 6
 
-func switch_lwl():
-	if curr_lwl % 2: # 1
-		for i in range(curr_lwl):
-			lwl_probs[i] = 1
-		curr_lwl += 1
+func switch_prob(probs, curr_sample):
+	if curr_sample % 2: # 1
+		for i in range(curr_sample):
+			probs[i] = 1
+		curr_sample += 1
 	else:
-		curr_lwl += 1
-		for i in range(curr_lwl):
-			lwl_probs[i] = 0
-		lwl_probs[curr_lwl] = 1
+		curr_sample += 1
+		for i in range(curr_sample):
+			probs[i] = 0
+		probs[curr_sample] = 1
+	return [probs, curr_sample]
 	
 
 func sample_weighted(weights: Array, population = null):
@@ -113,9 +118,7 @@ func construct_platform(coox, cooy):
 	return range(length).map(func(x): return [Vector2i(coox + x, cooy), sample_weighted(lwl_probs)])
 	
 func init_platforms(startx: int = 0):
-	var num_platforms = randi_range(1, max_num_platforms)
-	var rnd_indices = sample_unique_sorted(range(max_num_platforms), num_platforms)
-	print("num_platforms: ", num_platforms, " ", "rnd_indices: ", rnd_indices)
+	var rnd_indices = sample_unique_sorted(range(MAX_NUM_PLATFORMS), num_platforms)
 	startcoos = []
 	var last_end_x = startx
 
@@ -137,6 +140,37 @@ func init_platforms(startx: int = 0):
 		last_end_x = new_platform[-1][0].x + 1
 	paint(platforms[-1])
 
+func gen_platform_from(platform, last_end_x):
+	var coox = rnd_coo1(
+		platform[-1][0].x,
+		COO_DIFF_UPDATE_L, COO_DIFF_UPDATE_R,
+		last_end_x, MAP_WIDTH * (curr_gen_frame + 1) - 1,
+	)
+	var cooy = rnd_coo2(platform[-1][0].y, PLAYER_HEIGHT, MIN_Y, MAX_Y)
+
+	if startcoos != []:
+		var there_is_platform_closer = false
+		for startcoo in startcoos:
+			if abs(cooy - startcoo.y) < PLAYER_HEIGHT:
+				there_is_platform_closer = true
+				break
+		if there_is_platform_closer:
+			return null
+	return construct_platform(coox, cooy)
+
+func gen_sample_unique_sorted_platforms(last_end_x, _max, _num):
+	_num = min(_num, _max)
+	var rnd_indices = sample_unique_sorted(range(_max), _num)
+	var _new_platforms = []
+	for i in rnd_indices:
+		var platform = platforms[-1][i]
+		var new_platform = gen_platform_from(platform, last_end_x)
+		if new_platform == null:
+			continue
+		_new_platforms.append(new_platform)
+		last_end_x = new_platform[-1][0].x + 1
+	return [_new_platforms, last_end_x]
+
 func gen_platforms():
 	var max_x = 0
 	for platform in platforms[-1]:
@@ -148,23 +182,34 @@ func gen_platforms():
 
 	startcoos = []
 	var new_platforms = []
-	var last_end_x = MAX_X * curr_gen_frame
+	var last_end_x = max_x + 1
 
-	for platform in platforms[-1]:
-		var coox = rnd_coo1(
-			platform[-1][0].x,
-			COO_DIFF_UPDATE_L, COO_DIFF_UPDATE_R,
-			last_end_x, MAX_X * (curr_gen_frame + 1),
+	if num_platforms < len(platforms[-1]):
+		var new_platforms_last_end_x = gen_sample_unique_sorted_platforms(
+			last_end_x,
+			len(platforms[-1]),
+			num_platforms,
 		)
-		var cooy = rnd_coo2(platform[-1][0].y, PLAYER_HEIGHT, MIN_Y, MAX_Y)
-
-		if startcoos != []:
-			if abs(cooy - startcoos[-1].y) < PLAYER_HEIGHT:
+		new_platforms.append_array(new_platforms_last_end_x[0])
+		last_end_x = new_platforms_last_end_x[1]
+	else:
+		for platform in platforms[-1]:
+			var new_platform = gen_platform_from(platform, last_end_x)
+			if new_platform == null:
 				continue
-				#cooy = startcoos[-1].y + PLAYER_HEIGHT
-		var new_platform = construct_platform(coox, cooy)
-		new_platforms.append(new_platform)
-		last_end_x = new_platform[-1][0].x + 1
+			new_platforms.append(new_platform)
+			last_end_x = new_platform[-1][0].x + 1
+		
+		var surplus = num_platforms - len(platforms[-1])
+		if surplus > 0:
+			var new_platforms_last_end_x = gen_sample_unique_sorted_platforms(
+				last_end_x,
+				len(platforms[-1]),
+				surplus,
+			)
+			new_platforms.append_array(new_platforms_last_end_x[0])
+			last_end_x = new_platforms_last_end_x[1]
+		
 	platforms.append(new_platforms)
 	paint(platforms[-1])
 	return true
@@ -266,7 +311,8 @@ func find_platform(_tile_coordinates):
 func _physics_process(_delta: float) -> void:
 	if player.is_on_floor() and was_on_air:
 		var platform_set_index = find_platform(tile_coordinates)
-		clear_platforms(platform_set_index - 1)
+		if platform_set_index > 0:
+			clear_platforms(platform_set_index)
 		was_on_air = false
 	if not player.is_on_floor() and not was_on_air:
 		was_on_air = true
@@ -285,15 +331,26 @@ func mv_platforms_left(num_tiles):
 	for i in lwl_probs:
 		coos2paint.append([])
 	var coos2erase = []
+	var new_platforms = []
 	for platform_set in platforms:
+		var new_set = []
 		for platform in platform_set:
+			var new_platform = []
 			for coo_rnd_idx in platform:
 				var coo = coo_rnd_idx[0]
 				var rnd_idx = coo_rnd_idx[1]
 				coos2erase.append(coo)
 				coo.x -= num_tiles
-				coo_rnd_idx[0] = coo # update stored coordinate
-				coos2paint[rnd_idx].append(coo)
+				if coo.x >= 0:
+					coo_rnd_idx[0] = coo
+					new_platform.append(coo_rnd_idx)
+					coos2paint[rnd_idx].append(coo)
+			if new_platform != []:
+				new_set.append(new_platform)
+		if new_set != []:
+			new_platforms.append(new_set)
+	platforms = new_platforms
+
 	for coo2erase in coos2erase:
 		tile_map_layer.erase_cell(coo2erase)
 	var lwl_idx = 0
@@ -314,17 +371,30 @@ func _process(_delta: float) -> void:
 		if curr_player_frame > last_seen_player_frame:
 			total_frames_traveled += curr_player_frame - last_seen_player_frame
 		last_seen_player_frame = curr_player_frame
-
+	print(tile_coordinates.x, " ", curr_player_frame, " ", curr_gen_frame)
 	if (
 		curr_player_frame != 0 and
-		curr_player_frame != prev_player_frame and
-		curr_player_frame % LWL_FRAME == 0 and
-		curr_lwl < len(lwl_probs) - (len(lwl_probs) % 2)
+		curr_player_frame != prev_player_frame
 	):
-		print("switching lwl")
-		switch_lwl()
+		if (
+			curr_gen_frame % LWL_FRAME == 0 and
+			curr_lwl < len(lwl_probs) - (len(lwl_probs) % 2)
+		):
+			#print("switching lwl")
+			var lwl_probs_curr_lwl = switch_prob(lwl_probs, curr_lwl)
+			lwl_probs = lwl_probs_curr_lwl[0]
+			curr_lwl = lwl_probs_curr_lwl[1]
+		if (
+			curr_gen_frame % NUM_PLATFORMS_INCREASE_THRESHOLD == 0 and
+			num_platforms < len(num_platforms_probs) - (len(num_platforms_probs) % 2)
+		):
+			#print("switching num_platforms")
+			var num_platforms_probs_num_platforms_ref = switch_prob(num_platforms_probs, num_platforms_ref)
+			num_platforms_probs = num_platforms_probs_num_platforms_ref[0]
+			num_platforms_ref = num_platforms_probs_num_platforms_ref[1]
+			num_platforms = sample_weighted(num_platforms_probs, range(1, len(num_platforms_probs) + 1))
+		
 		prev_player_frame = curr_player_frame
-		print(lwl_probs)
 
 	if (
 		tile_coordinates.x % MAX_X != 0 and
@@ -337,13 +407,20 @@ func _process(_delta: float) -> void:
 		total_frames_traveled % MV_THRESHOLD == 0 and
 		total_frames_traveled != last_mv_total_frames
 	):
-		var leftmost_x = find_leftmost_coo_x()
-		if leftmost_x > 0:
-			mv_platforms_left(leftmost_x)
-			var tile_size_world = tile_map_layer.tile_set.tile_size.x * tile_map_layer.scale.x
-			player.global_position.x -= tile_size_world * leftmost_x
-			curr_gen_frame = 0
-			last_mv_total_frames = total_frames_traveled
+		var shift_amount = MAP_WIDTH * MV_THRESHOLD
+		mv_platforms_left(shift_amount)
+		var tile_size_world = tile_map_layer.tile_set.tile_size.x * tile_map_layer.scale.x
+		player.global_position.x -= tile_size_world * shift_amount
+		
+		# Adjust internal coordinate tracking to match the new shifted world
+		tile_coordinates.x -= shift_amount
+		old_tile_coordinates.x -= shift_amount
+		curr_player_frame = tile_coordinates.x / MAP_WIDTH
+		last_seen_player_frame = curr_player_frame
+		# Reset curr_gen_frame to match the new shifted coordinates
+		curr_gen_frame = max(0, curr_gen_frame - MV_THRESHOLD)
+		last_mv_total_frames = total_frames_traveled
+
 
 	if player_outside(tile_coordinates.y, MAX_Y):
 		print("Death by fall")
