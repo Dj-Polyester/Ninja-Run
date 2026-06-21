@@ -22,6 +22,10 @@ var lwl_probs = [1, 0, 0, 0, 0]
 const MAX_NUM_FRAMES = 10
 const CAM_SPEED = 5
 const PLAYER_HEIGHT = 5
+const MIN_AVAILABLE_STARTCOO = 4
+const MAX_AVAILABLE_STARTCOO = 7
+const MIN_LEN = 3
+const MAX_LEN = 10
 
 class LwlCoo:
 	var coo: Vector2i

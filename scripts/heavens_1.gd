@@ -1,16 +1,12 @@
 extends Level
 
-var num_platforms = 1
+var num_platforms = 2
 var platforms = []
 
-const MIN_LEN = 3
-const MAX_LEN = 10
 const COO_DIFF_INIT = 4
 const COO_DIFF_UPDATE_L = 2
 const COO_DIFF_UPDATE_R = 6
-const MIN_AVAILABLE_STARTCOO = 4
-const MAX_AVAILABLE_STARTCOO = 7
-const MV_THRESHOLD = 2
+const MV_THRESHOLD = 8
 
 func find_platform(_tile_coordinates_x):
 	var set_index = 0
@@ -28,6 +24,22 @@ func find_platform(_tile_coordinates_x):
 			break
 		set_index += 1
 	return set_index if found else -1
+
+func find_rightmost_platform_to_the_left_of_camera(_tile_coordinates_x):
+	var set_index = 0
+	var found = false
+	var lastcoo_x
+	for platform_set in platforms:
+		lastcoo_x = 0
+		for platform in platform_set:
+			var lastcoo = platform[-1].coo
+			if lastcoo.x > lastcoo_x:
+				lastcoo_x = lastcoo.x
+		if lastcoo_x >= _tile_coordinates_x:
+			found = true
+			break
+		set_index += 1
+	return [set_index, lastcoo_x] if found else [-1, -1]
 
 func get_tile_coo(platform_set_idx, platform_idx, tile_idx):
 	var tile_coordinates = platforms[platform_set_idx][platform_idx][tile_idx].coo
@@ -51,11 +63,11 @@ func find_rightmost_coo_x(platform_set):
 			lastcoo_x = platform[-1].coo.x
 	return lastcoo_x
 	
-func paint(platforms_):
+func paint(platform_set):
 	var coos2paint = []
 	for i in lwl_probs:
 		coos2paint.append([])
-	for platform in platforms_:
+	for platform in platform_set:
 		for coo_rnd_idx in platform:
 			var coo = coo_rnd_idx.coo
 			var rnd_idx = coo_rnd_idx.level
@@ -95,9 +107,8 @@ func add_platform(idx, new_platform_set):
 func gen_platforms():
 	"""Add num_platforms platforms"""
 	if platforms.is_empty():
-		var possible_ys = []
 		var starty_first_val = randi_range(MIN_AVAILABLE_STARTCOO, MAX_AVAILABLE_STARTCOO)
-		possible_ys = range(starty_first_val, map_height, PLAYER_HEIGHT)
+		var possible_ys = range(starty_first_val, map_height, PLAYER_HEIGHT)
 		var rnd_indices = sample_unique_sorted(range(len(possible_ys)), num_platforms)
 
 		for idx in rnd_indices:
@@ -198,7 +209,11 @@ func _process(delta: float) -> void:
 	var cam_x_left = global2tile(camera.global_position).x
 	var cam_x_right = global2tile(camera.global_position).x + map_width
 	var curr_frame = cam_x_right / map_width
-	var platform_set_until_destroy = find_platform(cam_x_left)
+	var platform_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
+	var buffer_tiles = map_width # generate one full viewport ahead
+
+	var platform_set_until_destroy = platform_set_until_destroy_lastcoo_x[0]
+	var lastcoo_x = platform_set_until_destroy_lastcoo_x[1]
 
 	print(curr_frame)
 
@@ -209,8 +224,11 @@ func _process(delta: float) -> void:
 		mv_platforms_left(shift_amount_tiles)
 		camera.global_position.x -= shift_amount_pixels
 		player.global_position.x -= shift_amount_pixels
-
-	if cam_x_right > rightmost_x:
-		print("gen platforms")
+	
+	while cam_x_right + buffer_tiles > rightmost_x:
 		gen_platforms()
+		rightmost_x = find_rightmost_coo_x(platforms[-1])
+
+	if cam_x_left > lastcoo_x:
+		print("clear platforms")
 		clear_platforms(platform_set_until_destroy)
