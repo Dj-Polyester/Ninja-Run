@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://day00jdicihty"]
 
-[ext_resource type="PackedScene" uid="uid://ba8m7lk2lylu5" path="res://scenes/player.tscn" id="1_2q6dc"]
-[ext_resource type="Script" uid="uid://cg3whixlt0gvv" path="res://scripts/level.gd" id="1_w8frs"]
+[ext_resource type="Script" uid="uid://cu411ad3vy7rc" path="res://scripts/heavens_1.gd" id="1_w8frs"]
 [ext_resource type="Texture2D" uid="uid://du3y3mnyghfdq" path="res://media/Spritesheets/spritesheet-tiles-double.png" id="2_w7c3h"]
+[ext_resource type="PackedScene" uid="uid://ba8m7lk2lylu5" path="res://scenes/player.tscn" id="3_w8frs"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_w8frs"]
 texture = ExtResource("2_w7c3h")
@@ -451,8 +451,26 @@ sources/0 = SubResource("TileSetAtlasSource_w8frs")
 script = ExtResource("1_w8frs")
 
 [node name="Platforms" type="TileMapLayer" parent="." unique_id=562647580]
-position = Vector2(9, 0)
 scale = Vector2(0.3, 0.3)
 tile_set = SubResource("TileSet_mx8sn")
 
-[node name="Player" parent="." unique_id=614182069 instance=ExtResource("1_2q6dc")]
+[node name="DebugCamera" type="Camera2D" parent="." unique_id=652690489]
+anchor_mode = 0
+enabled = false
+
+[node name="Player" parent="." unique_id=614182069 instance=ExtResource("3_w8frs")]
+
+[node name="PlayerCamera" type="Camera2D" parent="Player" unique_id=166532913]
+drag_vertical_enabled = true
+drag_horizontal_offset = 1.0
+drag_left_margin = 1.0
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1238306325]
+
+[node name="DebugModeLabel" type="TextEdit" parent="CanvasLayer" unique_id=1588863204]
+offset_left = 4.0
+offset_right = 132.0
+offset_bottom = 37.0
+text = "DEBUG MODE"
+editable = false
+wrap_mode = 1

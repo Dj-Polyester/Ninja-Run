@@ -316,13 +316,16 @@ frame = 2
 frame_progress = 0.89491814
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1345703530]
-position = Vector2(67.00001, 2)
+position = Vector2(68.00001, 2)
 scale = Vector2(0.3, 0.3)
 shape = SubResource("RectangleShape2D_i4ail")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=1600369172]
+top_level = true
+position = Vector2(1, 0)
+drag_vertical_enabled = true
 drag_horizontal_offset = 1.0
 drag_left_margin = 1.0
 drag_top_margin = 1.0
-drag_right_margin = 1.0
+drag_right_margin = 0.0
 drag_bottom_margin = 1.0
