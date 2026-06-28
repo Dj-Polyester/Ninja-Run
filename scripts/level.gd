@@ -104,6 +104,8 @@ func _ready() -> void:
 	debug_camera.enabled = false
 	player_camera.enabled = true
 	print(player_size_in_tiles)
+	var generator = get_node("Generator")
+	generator.init()
 
 func _process(delta: float) -> void:
 	debug_mode_label.visible = debug_camera.enabled

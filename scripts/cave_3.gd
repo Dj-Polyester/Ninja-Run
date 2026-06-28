@@ -1,4 +1,4 @@
-extends Level
+extends Node2D
 class_name Cave
 
 var hollows = []
@@ -9,6 +9,40 @@ var dir_stack = []
 const DIR_STACK_MAX = 4
 const HOLLOW_MARGIN = 3
 const MAX_MARGIN = 0
+
+# INIT
+var level
+var tile_map_layer 
+var player 
+var map_width 
+var map_height 
+var player_width 
+var player_height 
+var camera 
+var lwl_probs 
+var MAX_NUM_FRAMES 
+var MIN_AVAILABLE_STARTCOO 
+var MAX_AVAILABLE_STARTCOO 
+var MIN_LEN 
+var MAX_LEN 
+func init():
+	level = get_parent()
+	tile_map_layer = level.tile_map_layer
+	player = level.player
+	map_width = level.map_width
+	map_height = level.map_height
+	player_width = level.player_width
+	player_height = level.player_height
+	camera = level.camera
+	lwl_probs = level.lwl_probs
+	MAX_NUM_FRAMES = level.MAX_NUM_FRAMES
+	MIN_AVAILABLE_STARTCOO = level.MIN_AVAILABLE_STARTCOO
+	MAX_AVAILABLE_STARTCOO = level.MAX_AVAILABLE_STARTCOO
+	MIN_LEN = level.MIN_LEN
+	MAX_LEN = level.MAX_LEN
+
+	fill_frame()
+###
 
 func paint(wall):
 	var coos2paint = []
@@ -29,7 +63,9 @@ func construct_hollow(coox, cooy, length):
 
 func construct_wall_from_hollows(_hollows):
 	var coox = _hollows[0].x
-	var all_wall = range(map_height).map(func(y): return LwlCoo.new(Vector2i(coox, y), sample_weighted(lwl_probs)))
+	var all_wall = range(map_height).map(
+		func(y): return level.LwlCoo.new(Vector2i(coox, y), level.sample_weighted(lwl_probs))
+	)
 	
 	return all_wall.filter(func(lwlcoo): return lwlcoo.coo not in _hollows)
 
@@ -48,7 +84,7 @@ func add_hollow(idx, new_hollow_set):
 	elif not dir_stack.is_empty() and dir_stack[0] == "dw" and "us" not in dir_stack:
 		possible_moves.append("us")
 	
-	dir_stack.append(sample(possible_moves)[0])
+	dir_stack.append(level.sample(possible_moves)[0])
 	if len(dir_stack) > player_width:
 		dir_stack.pop_front()
 
@@ -91,7 +127,7 @@ func add_hollow(idx, new_hollow_set):
 func gen_hollows():
 	"""Add num_hollows hollows"""
 	if walls.is_empty():
-		var rnd_indices = sample_unique(range(map_height - player_height), num_hollows)
+		var rnd_indices = level.sample_unique(range(map_height - player_height), num_hollows)
 
 		var _hollowset = rnd_indices.map(
 			func(idx): return construct_hollow(0, idx, randi_range(player_height, MAX_LEN))
@@ -105,7 +141,7 @@ func gen_hollows():
 		var num_hollows_matching = min(len(hollows[-1]), num_hollows)
 		var surplus = abs(num_hollows - len(hollows[-1]))
 
-		var rnd_indices = sample_unique(range(len(hollows[-1])), num_hollows_matching)
+		var rnd_indices = level.sample_unique(range(len(hollows[-1])), num_hollows_matching)
 		var new_hollow_set = []
 		for idx in rnd_indices:
 			new_hollow_set = add_hollow(idx, new_hollow_set)
@@ -126,7 +162,3 @@ func fill_frame():
 		var lastcoo_x = hollows[-1][0][0].x
 		if lastcoo_x > map_width:
 			break
-
-func _ready():
-	super()
-	fill_frame()
