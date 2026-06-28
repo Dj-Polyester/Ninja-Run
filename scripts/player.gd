@@ -13,7 +13,7 @@ func process_camera(delta: float):
 	var viewport_size = get_viewport().get_visible_rect().size
 	
 	if outside_above():
-		#print("fly")
+		print("fly")
 		if rising():
 			camera.global_position.y = lerp(camera.global_position.y, global_position.y, 10.0 * delta)
 		elif falling():

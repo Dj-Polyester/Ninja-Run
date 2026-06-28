@@ -82,12 +82,15 @@ func construct_platform(coox, cooy):
 	var length = randi_range(MIN_LEN, MAX_LEN)
 	return range(length).map(func(x): return LwlCoo.new(Vector2i(coox + x, cooy), sample_weighted(lwl_probs)))
 
-func construct_platform_constrained_from(coox, cooy, new_platform_set):
+func construct_platform_constrained_from(coox, cooy, new_platform_sets):
 	var there_is_platform_closer = false
-	for new_platform in new_platform_set:
-		var startcoo = new_platform[0].coo
-		if abs(cooy - startcoo.y) < PLAYER_HEIGHT:
-			there_is_platform_closer = true
+	for new_platform_set in new_platform_sets:
+		for new_platform in new_platform_set:
+			var startcoo = new_platform[0].coo
+			if abs(cooy - startcoo.y) < player_height:
+				there_is_platform_closer = true
+				break
+		if there_is_platform_closer:
 			break
 	if there_is_platform_closer:
 		return null
@@ -95,21 +98,23 @@ func construct_platform_constrained_from(coox, cooy, new_platform_set):
 
 func add_platform(idx, new_platform_set):
 	var lastcoo = platforms[-1][idx][-1].coo
-	var starty = rnd_coo2(lastcoo.y, PLAYER_HEIGHT, 0, map_height - 1)
+	var starty = rnd_coo2(lastcoo.y, player_height, 0, map_height - 1)
 	var minx = 0 if starty == lastcoo.y else COO_DIFF_UPDATE_L
 	var startx = rnd_coo1(lastcoo.x + 1, minx, COO_DIFF_UPDATE_R, 0, MAX_NUM_FRAMES * map_width - 1)
 	
-	var new_platform = construct_platform_constrained_from(startx, starty, new_platform_set)
+	var last_platform_sets = [new_platform_set]
+
+	var new_platform = construct_platform_constrained_from(startx, starty, last_platform_sets)
 	if new_platform != null:
-		new_platform_set.append(construct_platform(startx, starty))
+		new_platform_set.append(new_platform)
 	return new_platform_set
 
 func gen_platforms():
 	"""Add num_platforms platforms"""
 	if platforms.is_empty():
 		var starty_first_val = randi_range(MIN_AVAILABLE_STARTCOO, MAX_AVAILABLE_STARTCOO)
-		var possible_ys = range(starty_first_val, map_height, PLAYER_HEIGHT)
-		var rnd_indices = sample_unique_sorted(range(len(possible_ys)), num_platforms)
+		var possible_ys = range(starty_first_val, map_height, player_height)
+		var rnd_indices = sample_unique(range(len(possible_ys)), num_platforms)
 
 		for idx in rnd_indices:
 			var starty = possible_ys[idx]
@@ -122,7 +127,7 @@ func gen_platforms():
 		var num_platforms_matching = min(len(platforms[-1]), num_platforms)
 		var surplus = abs(num_platforms - len(platforms[-1]))
 
-		var rnd_indices = sample_unique_sorted(range(len(platforms[-1])), num_platforms_matching)
+		var rnd_indices = sample_unique(range(len(platforms[-1])), num_platforms_matching)
 		var new_platform_set = []
 		for idx in rnd_indices:
 			new_platform_set = add_platform(idx, new_platform_set)
@@ -208,14 +213,12 @@ func _process(delta: float) -> void:
 	var rightmost_x = find_rightmost_coo_x(platforms[-1])
 	var cam_x_left = global2tile(camera.global_position).x
 	var cam_x_right = global2tile(camera.global_position).x + map_width
-	var curr_frame = cam_x_right / map_width
 	var platform_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
 	var buffer_tiles = map_width # generate one full viewport ahead
 
 	var platform_set_until_destroy = platform_set_until_destroy_lastcoo_x[0]
 	var lastcoo_x = platform_set_until_destroy_lastcoo_x[1]
 
-	print(curr_frame)
 
 	var shift_amount_tiles = map_width * (MV_THRESHOLD - 1)
 	if cam_x_left >= shift_amount_tiles:

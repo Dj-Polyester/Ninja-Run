@@ -1,3 +1,6 @@
+☐ Different level types
+    ☐ heavens
+    ☐ cave
 ✔ stacked platforms @done(26-06-08 20:19)
 ☐ block types have different properties
     ☐ tundra is falling
@@ -7,3 +10,5 @@
 ☐ spawn player/enemies
     ✔ spawn helper method @done(26-06-09 21:11)
 ☐ small obstacles on top of platforms
+☐ add rolling animation to player
+

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://day00jdicihty"]
 
-[ext_resource type="Script" uid="uid://cu411ad3vy7rc" path="res://scripts/heavens_1.gd" id="1_w8frs"]
+[ext_resource type="Script" uid="uid://31pi4lb2kvno" path="res://scripts/cave_3.gd" id="1_w8frs"]
 [ext_resource type="Texture2D" uid="uid://du3y3mnyghfdq" path="res://media/Spritesheets/spritesheet-tiles-double.png" id="2_w7c3h"]
 [ext_resource type="PackedScene" uid="uid://ba8m7lk2lylu5" path="res://scenes/player.tscn" id="3_w8frs"]
 
@@ -448,6 +448,7 @@ terrain_set_0/terrain_4/color = Color(0.71844906, 0.033438455, 0.6911891, 1)
 sources/0 = SubResource("TileSetAtlasSource_w8frs")
 
 [node name="Level" type="Node2D" unique_id=994051563]
+position = Vector2(-3, 0)
 script = ExtResource("1_w8frs")
 
 [node name="Platforms" type="TileMapLayer" parent="." unique_id=562647580]

@@ -11,7 +11,6 @@ func falling():
 
 func outside_above():
 	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
-	var viewport_size = get_viewport().get_visible_rect().size
 	return (collision_shape.global_position.y - get_collision_size(collision_shape).y / 2) < 0
 
 func outside_below():
@@ -52,3 +51,5 @@ func get_collision_size(collision_shape: CollisionShape2D) -> Vector2:
 	# If you scaled your character up to (2.0, 2.0) in the editor, 
 	# this ensures the pixel math scales up accurately too.
 	return calculated_size * collision_shape.global_scale
+
+
