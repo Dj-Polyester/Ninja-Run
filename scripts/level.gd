@@ -22,15 +22,11 @@ var camera: Camera2D:
 	get:
 		return get_viewport().get_camera_2d()
 
+var generator
 var debug_mode_enabled = false
+var cleared = false
 
-var lwl_probs = [1, 0, 0, 0, 0]
-const MAX_NUM_FRAMES = 10
 const CAM_SPEED = 5
-const MIN_AVAILABLE_STARTCOO = 4
-const MAX_AVAILABLE_STARTCOO = 7
-const MIN_LEN = 3
-const MAX_LEN = 10
 
 class LwlCoo:
 	var coo: Vector2i
@@ -104,8 +100,8 @@ func _ready() -> void:
 	debug_camera.enabled = false
 	player_camera.enabled = true
 	print(player_size_in_tiles)
-	var generator = get_node("Generator")
-	generator.init()
+	
+	generator = Cave.new(self)
 
 func _process(delta: float) -> void:
 	debug_mode_label.visible = debug_camera.enabled
@@ -119,7 +115,9 @@ func _process(delta: float) -> void:
 		camera.global_position.x += CAM_SPEED * direction
 	else:
 		player.process_camera(delta)
+	generator.process(delta)
 
 func _physics_process(delta: float) -> void:
 	if not debug_camera.enabled:
 		player.process_movement(delta)
+		cleared = player.cleared

@@ -1,49 +1,13 @@
-extends Node2D
+extends Generator
+class_name Heavens
 
-var num_platforms = 2
+var num_platforms = 1
 var platforms = []
 
 const COO_DIFF_INIT = 4
 const COO_DIFF_UPDATE_L = 2
 const COO_DIFF_UPDATE_R = 6
-const MV_THRESHOLD = 8
-
-
-# INIT
-var level
-var tile_map_layer 
-var player 
-var map_width 
-var map_height 
-var player_width 
-var player_height 
-var camera 
-var lwl_probs 
-var MAX_NUM_FRAMES 
-var MIN_AVAILABLE_STARTCOO 
-var MAX_AVAILABLE_STARTCOO 
-var MIN_LEN 
-var MAX_LEN 
-func init():
-	level = get_parent()
-	tile_map_layer = level.tile_map_layer
-	player = level.player
-	map_width = level.map_width
-	map_height = level.map_height
-	player_width = level.player_width
-	player_height = level.player_height
-	camera = level.camera
-	lwl_probs = level.lwl_probs
-	MAX_NUM_FRAMES = level.MAX_NUM_FRAMES
-	MIN_AVAILABLE_STARTCOO = level.MIN_AVAILABLE_STARTCOO
-	MAX_AVAILABLE_STARTCOO = level.MAX_AVAILABLE_STARTCOO
-	MIN_LEN = level.MIN_LEN
-	MAX_LEN = level.MAX_LEN
-
-	fill_frame()
-	spawn(player, 0, 0, 0)
-###
-
+const NUM_PLATFORMS_THRESHOLD = 2
 
 func find_platform(_tile_coordinates_x):
 	var set_index = 0
@@ -70,13 +34,15 @@ func find_rightmost_platform_to_the_left_of_camera(_tile_coordinates_x):
 		lastcoo_x = 0
 		for platform in platform_set:
 			var lastcoo = platform[-1].coo
+			if lastcoo.x >= _tile_coordinates_x:
+				found = true
+				break
 			if lastcoo.x > lastcoo_x:
 				lastcoo_x = lastcoo.x
-		if lastcoo_x >= _tile_coordinates_x:
-			found = true
+		if found:
 			break
 		set_index += 1
-	return [set_index, lastcoo_x] if found else [-1, -1]
+	return [set_index, lastcoo_x] if found else [INF, INF]
 
 func get_tile_coo(platform_set_idx, platform_idx, tile_idx):
 	var tile_coordinates = platforms[platform_set_idx][platform_idx][tile_idx].coo
@@ -115,8 +81,7 @@ func paint(platform_set):
 			tile_map_layer.set_cells_terrain_connect(coo2paint, 0, lwl_idx)
 		lwl_idx += 1
 		
-func construct_platform(coox, cooy):
-	var length = randi_range(MIN_LEN, MAX_LEN)
+func construct_platform(coox, cooy, length):
 	return range(length).map(func(x): return level.LwlCoo.new(Vector2i(coox + x, cooy), level.sample_weighted(lwl_probs)))
 
 func construct_platform_constrained_from(coox, cooy, new_platform_sets):
@@ -131,7 +96,7 @@ func construct_platform_constrained_from(coox, cooy, new_platform_sets):
 			break
 	if there_is_platform_closer:
 		return null
-	return construct_platform(coox, cooy)
+	return construct_platform(coox, cooy, randi_range(MIN_LEN, MAX_LEN))
 
 func add_platform(idx, new_platform_set):
 	var lastcoo = platforms[-1][idx][-1].coo
@@ -158,7 +123,7 @@ func gen_platforms():
 			var startx = level.rnd_coo2(0, COO_DIFF_INIT, 0, MAX_NUM_FRAMES * map_width - 1)
 			if platforms.is_empty():
 				platforms.append([])
-			platforms[-1].append(construct_platform(startx, starty))
+			platforms[-1].append(construct_platform(startx, starty, randi_range(MIN_LEN, MAX_LEN)))
 		paint(platforms[-1])
 	else:
 		var num_platforms_matching = min(len(platforms[-1]), num_platforms)
@@ -178,8 +143,8 @@ func gen_platforms():
 func clear_platforms(n = len(platforms)):
 	var coos2erase = []
 	for i in range(n):
-		var _platforms = platforms.pop_at(0)
-		for platform in _platforms:
+		var platform_set = platforms.pop_at(0)
+		for platform in platform_set:
 			for coo_rnd_idx in platform:
 				var coo = coo_rnd_idx.coo
 				coos2erase.append(coo)
@@ -240,12 +205,13 @@ func spawn(entity: Entity, platform_set_idx: int, platform_idx: int, tile_idx: i
 		tile_world_top - collision_shape.position.y * global_scale.y - size.y / 2.0
 	)
 
-func _process(_delta: float) -> void:
+func spawn_player():
+	spawn(player, 0, 0, 0)
+
+func process(_delta: float) -> void:
+	super(_delta)
 	var rightmost_x = find_rightmost_coo_x(platforms[-1])
-	var cam_x_left = level.global2tile(camera.global_position).x
-	var cam_x_right = level.global2tile(camera.global_position).x + map_width
 	var platform_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
-	var buffer_tiles = map_width # generate one full viewport ahead
 
 	var platform_set_until_destroy = platform_set_until_destroy_lastcoo_x[0]
 	var lastcoo_x = platform_set_until_destroy_lastcoo_x[1]
@@ -259,10 +225,16 @@ func _process(_delta: float) -> void:
 		camera.global_position.x -= shift_amount_pixels
 		player.global_position.x -= shift_amount_pixels
 	
-	while cam_x_right + buffer_tiles > rightmost_x:
+	if cam_x_right + map_width > rightmost_x:# generate one full viewport ahead
 		gen_platforms()
-		rightmost_x = find_rightmost_coo_x(platforms[-1])
 
-	if cam_x_left > lastcoo_x:
+	if not cleared and cam_x_left > lastcoo_x:
 		print("clear platforms")
 		clear_platforms(platform_set_until_destroy)
+	
+	var num_platforms_threshold_tiles = map_width * NUM_PLATFORMS_THRESHOLD
+	if cam_x_right % num_platforms_threshold_tiles == 0 and cam_x_right != cam_x_right_prev:
+		print("switch_num_platforms ", curr_lwl)
+		num_platforms = level.sample_weighted([.75, .25], range(1,3))
+
+	process_end()

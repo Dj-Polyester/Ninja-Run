@@ -6,6 +6,7 @@ class_name Player
 
 const MAX_NUM_JUMPS = 2
 var jump_counter = MAX_NUM_JUMPS
+var cleared = false
 
 @onready var camera = $Camera2D
 
@@ -30,6 +31,11 @@ func process_movement(delta: float):
 	# As good practice, you should replace UI actions with custom gameplay actions.
 	var direction := Input.get_axis("ui_left", "ui_right")
 
+	if direction > 0:
+		cleared = false
+	else:
+		cleared = true
+
 	# Add the gravity.
 	if is_on_floor():
 		jump_counter = MAX_NUM_JUMPS
@@ -37,7 +43,6 @@ func process_movement(delta: float):
 			sprite.play("run")
 		else:
 			sprite.play("idle")
-		
 	else:
 		velocity += get_gravity() * delta
 		if velocity.y > 0:
