@@ -1,15 +1,23 @@
-☐ Different level types
-    ☐ heavens
-    ☐ mountains (heavens 2)
-    ☐ cave
+Terrain:
+✔ Different biome types @done(26-07-07 03:09)
+    ✔ heavens @done(26-07-07 03:09)
+    ✔ mountains (heavens 2) @done(26-07-07 03:09)
+    ✔ cave @done(26-07-07 03:09)
+☐ Switch biomes
 ✔ stacked platforms @done(26-06-08 20:19)
 ☐ block types have different properties
     ☐ tundra is falling
     ☐ snow is slippery
     ☐ desert is burning hot
     ☐ astro has spikes
+
+Player:
 ☐ spawn player/enemies
     ✔ spawn helper method @done(26-06-09 21:11)
 ☐ small obstacles on top of platforms
-☐ add rolling animation to player
-
+☐ rolling
+    ☐ mechanics
+    ☐ animation
+☐ climbing
+    ✔ mechanics @done(26-07-07 02:34)
+    ☐ animation

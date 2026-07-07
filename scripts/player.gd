@@ -3,12 +3,18 @@ class_name Player
 
 @export var speed = 300.0
 @export var jump_speed = -500.0
+@export var back_speed = -100.0
 
 const MAX_NUM_JUMPS = 2
+const MAX_NUM_CLIMBS = 3
+
 var jump_counter = MAX_NUM_JUMPS
+var climb_counter = MAX_NUM_CLIMBS
 var cleared = false
+var climbing = false
 
 @onready var camera = $Camera2D
+@onready var hands = [$Area2DL, $Area2DR]
 
 func process_camera(delta: float):
 	var viewport_size = get_viewport().get_visible_rect().size
@@ -39,6 +45,8 @@ func process_movement(delta: float):
 	# Add the gravity.
 	if is_on_floor():
 		jump_counter = MAX_NUM_JUMPS
+		climb_counter = MAX_NUM_CLIMBS
+
 		if direction:
 			sprite.play("run")
 		else:
@@ -49,12 +57,19 @@ func process_movement(delta: float):
 			sprite.play("jump")
 		else:
 			sprite.play("fall")
-	
 
 	# Handle jump.
-	if Input.is_action_just_pressed("ui_up") and jump_counter > 0:
-		velocity.y = jump_speed
-		jump_counter -= 1
+	if Input.is_action_just_pressed("ui_up"):
+		if climbing and climb_counter > 0:
+			velocity.y = jump_speed
+			velocity.x = back_speed
+			climb_counter -= 1
+		if not climbing and jump_counter > 0:
+			velocity.y = jump_speed
+			jump_counter -= 1
+
+
+
 
 	if direction:
 		sprite.flip_h = (direction < 0)
@@ -62,3 +77,11 @@ func process_movement(delta: float):
 	else:
 		velocity.x = move_toward(velocity.x, 0, speed)
 	move_and_slide()
+
+	climbing = false
+	for hand in hands:
+		var overlapping_bodies = hand.get_overlapping_bodies()
+		for body in overlapping_bodies:
+			if body is TileMapLayer: # climb
+				print("climbing")
+				climbing = true

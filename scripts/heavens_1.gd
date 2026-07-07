@@ -111,7 +111,14 @@ func add_platform(idx, new_platform_set):
 		new_platform_set.append(new_platform)
 	return new_platform_set
 
-func gen_platforms():
+
+func fill_last_platform():
+	var last_starty = platforms[-1][-1][0].coo.y
+	for i in range(last_starty+1, map_height):
+		var startx = platforms[-1][-1][0].coo.x
+		platforms[-1].append(construct_platform(startx, i, len(platforms[-1][-1])))
+
+func gen_platforms(fill = true):
 	"""Add num_platforms platforms"""
 	if platforms.is_empty():
 		var starty_first_val = randi_range(MIN_AVAILABLE_STARTCOO, MAX_AVAILABLE_STARTCOO)
@@ -124,7 +131,7 @@ func gen_platforms():
 			if platforms.is_empty():
 				platforms.append([])
 			platforms[-1].append(construct_platform(startx, starty, randi_range(MIN_LEN, MAX_LEN)))
-		paint(platforms[-1])
+		
 	else:
 		var num_platforms_matching = min(len(platforms[-1]), num_platforms)
 		var surplus = abs(num_platforms - len(platforms[-1]))
@@ -138,7 +145,9 @@ func gen_platforms():
 			var idx = randi_range(0, len(platforms[-1]) - 1)
 			new_platform_set = add_platform(idx, new_platform_set)
 		platforms.append(new_platform_set)
-		paint(platforms[-1])
+	if fill:
+		fill_last_platform()
+	paint(platforms[-1])
 
 func clear_platforms(n = len(platforms)):
 	var coos2erase = []

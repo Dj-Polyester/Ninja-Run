@@ -37,22 +37,23 @@ func construct_wall_from_hollows(_hollows):
 
 func add_hollow(idx, new_hollow_set):
 	var possible_moves = ["n", "uw", "dw"]
+	var fstcoo = hollows[-1][idx][0]
+	var lastcoo = hollows[-1][idx][-1]
+	var prev_height = lastcoo.y - fstcoo.y + 1
 
-	if not dir_stack.is_empty() and dir_stack[0] == "uw" and "ds" not in dir_stack:
-		possible_moves.append("ds")
-	elif not dir_stack.is_empty() and dir_stack[0] == "dw" and "us" not in dir_stack:
-		possible_moves.append("us")
+	if player_height < prev_height:
+		if not dir_stack.is_empty() and dir_stack[0] == "uw" and "ds" not in dir_stack:
+			possible_moves.append("ds")
+		elif not dir_stack.is_empty() and dir_stack[0] == "dw" and "us" not in dir_stack:
+			possible_moves.append("us")
 	
 	dir_stack.append(possible_moves.pick_random())
 	if len(dir_stack) > player_width:
 		dir_stack.pop_front()
 
-	var fstcoo = hollows[-1][idx][0]
-	var lastcoo = hollows[-1][idx][-1]
-	
 	var miny = 0
 	var maxy = map_height - 2
-	var maxy_starty_lc = lastcoo.y - player_height
+	var maxy_starty_lc = lastcoo.y - player_height 
 	var miny_endy_fc = fstcoo.y + player_height
 
 	var starty
@@ -193,6 +194,20 @@ func mv_platforms_left(num_tiles):
 				coos2paint[rnd_idx].append(coo)
 		if new_wall != []:
 			new_walls.append(new_wall)
+	var new_hollows = []
+	for hollow_set in hollows:
+		var new_hollow_set = []
+		for hollow in hollow_set:
+			var new_hollow = []
+			for coo in hollow:
+				coo.x -= num_tiles
+				if coo.x >= 0:
+					new_hollow.append(coo)
+			if new_hollow != []:
+				new_hollow_set.append(new_hollow)
+		if new_hollow_set != []:
+			new_hollows.append(new_hollow_set)
+	hollows = new_hollows
 	walls = new_walls
 
 	for coo2erase in coos2erase:
@@ -210,8 +225,6 @@ func process(_delta: float) -> void:
 
 	var hollow_set_until_destroy = hollow_set_until_destroy_lastcoo_x[0]
 	var lastcoo_x = hollow_set_until_destroy_lastcoo_x[1]
-
-	# print(cam_x_left / map_width)
 
 	var shift_amount_tiles = map_width * (MV_THRESHOLD - 1)
 	if cam_x_left >= shift_amount_tiles:

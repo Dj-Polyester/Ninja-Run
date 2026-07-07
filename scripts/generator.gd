@@ -6,8 +6,8 @@ var curr_lwl = 0
 var cam_x_left
 var cam_x_right
 var cam_x_right_prev
+var switch_counter = 0
 
-const MAX_PROB = 2
 const MAX_NUM_FRAMES = 10
 const MIN_AVAILABLE_STARTCOO = 4
 const MAX_AVAILABLE_STARTCOO = 7
@@ -15,13 +15,19 @@ const MIN_LEN = 3
 const MAX_LEN = 10
 const MV_THRESHOLD = 8
 const LWL_THRESHOLD = 2
+const MAX_PROB = 5
+const LWL_SWITCH_AMOUNT1 = 1
+const LWL_SWITCH_AMOUNT2 = 4
 
 func switch_weight_ptr(curr_ptr, arr):
 	var nxt_ptr = (curr_ptr + 1) % len(arr)
-	lwl_probs[curr_ptr] -= 1
-	lwl_probs[nxt_ptr] += 1
+	var lwl_switch_amount = LWL_SWITCH_AMOUNT2 if switch_counter else LWL_SWITCH_AMOUNT1 
+	lwl_probs[curr_ptr] = max(lwl_probs[curr_ptr]-lwl_switch_amount, 0)
+	lwl_probs[nxt_ptr] = min(lwl_probs[nxt_ptr]+lwl_switch_amount, MAX_PROB)
 	if lwl_probs[curr_ptr] == 0:
 		curr_ptr = nxt_ptr
+	switch_counter = ((switch_counter + 1) % 2)
+	print(arr)
 	return curr_ptr
 
 func fill_frame():
