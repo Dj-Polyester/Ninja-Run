@@ -1,9 +1,6 @@
-extends Generator
+extends Biome
 class_name Cave
 
-var hollows = []
-var walls = []
-var num_hollows = 1
 var dir_stack = []
 
 const DIR_STACK_MAX = 4
@@ -88,39 +85,31 @@ func add_hollow(idx, new_hollow_set):
 
 func gen_hollows():
 	"""Add num_hollows hollows"""
+	var _hollowset = []
 	if walls.is_empty():
 		var rnd_indices = level.sample_unique(range(map_height - player_height), num_hollows)
 
-		var _hollowset = []
 		for rnd_idx in rnd_indices:
 			var starty = rnd_idx
 			var endy = min(starty + randi_range(player_height, MAX_LEN), map_height - 2)
 			var length = endy - starty + 1
 			_hollowset.append(construct_hollow(0, starty, length))
-
-		hollows.append(_hollowset)
-		
-		var _hollows = _hollowset.reduce(func(x, y): return x + y, [])
-		walls.append(construct_wall_from_hollows(_hollows))
-		paint(walls[-1])
 	else:
 		var num_hollows_matching = min(len(hollows[-1]), num_hollows)
 		var surplus = abs(num_hollows - len(hollows[-1]))
 
 		var rnd_indices = level.sample_unique(range(len(hollows[-1])), num_hollows_matching)
-		var new_hollow_set = []
 		for idx in rnd_indices:
-			new_hollow_set = add_hollow(idx, new_hollow_set)
+			_hollowset = add_hollow(idx, _hollowset)
 
 		for i in range(surplus):
 			var idx = randi_range(0, len(hollows[-1]) - 1)
-			new_hollow_set = add_hollow(idx, new_hollow_set)
+			_hollowset = add_hollow(idx, _hollowset)
 
-		hollows.append(new_hollow_set)
-		
-		var _hollows = new_hollow_set.reduce(func(x, y): return x + y, [])
-		walls.append(construct_wall_from_hollows(_hollows))
-		paint(walls[-1])
+	hollows.append(_hollowset)
+	var _hollows = _hollowset.reduce(func(x, y): return x + y, [])
+	walls.append(construct_wall_from_hollows(_hollows))
+	paint(walls[-1])
 
 func clear_walls(n = len(hollows)):
 	var coos2erase = []

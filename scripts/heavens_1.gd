@@ -1,8 +1,5 @@
-extends Generator
+extends Biome
 class_name Heavens
-
-var num_platforms = 1
-var platforms = []
 
 const COO_DIFF_INIT = 4
 const COO_DIFF_UPDATE_L = 2
@@ -120,6 +117,7 @@ func fill_last_platform():
 
 func gen_platforms(fill = true):
 	"""Add num_platforms platforms"""
+	var _platformset = []
 	if platforms.is_empty():
 		var starty_first_val = randi_range(MIN_AVAILABLE_STARTCOO, MAX_AVAILABLE_STARTCOO)
 		var possible_ys = range(starty_first_val, map_height, player_height)
@@ -128,23 +126,20 @@ func gen_platforms(fill = true):
 		for idx in rnd_indices:
 			var starty = possible_ys[idx]
 			var startx = level.rnd_coo2(0, COO_DIFF_INIT, 0, MAX_NUM_FRAMES * map_width - 1)
-			if platforms.is_empty():
-				platforms.append([])
-			platforms[-1].append(construct_platform(startx, starty, randi_range(MIN_LEN, MAX_LEN)))
+			_platformset.append(construct_platform(startx, starty, randi_range(MIN_LEN, MAX_LEN)))
 		
 	else:
 		var num_platforms_matching = min(len(platforms[-1]), num_platforms)
 		var surplus = abs(num_platforms - len(platforms[-1]))
 
 		var rnd_indices = level.sample_unique(range(len(platforms[-1])), num_platforms_matching)
-		var new_platform_set = []
 		for idx in rnd_indices:
-			new_platform_set = add_platform(idx, new_platform_set)
+			_platformset = add_platform(idx, _platformset)
 
 		for i in range(surplus):
 			var idx = randi_range(0, len(platforms[-1]) - 1)
-			new_platform_set = add_platform(idx, new_platform_set)
-		platforms.append(new_platform_set)
+			_platformset = add_platform(idx, _platformset)
+	platforms.append(_platformset)
 	if fill:
 		fill_last_platform()
 	paint(platforms[-1])
