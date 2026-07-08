@@ -1,9 +1,9 @@
 extends Biome
 class_name Heavens
 
+var fill = false
+
 const COO_DIFF_INIT = 4
-const COO_DIFF_UPDATE_L = 2
-const COO_DIFF_UPDATE_R = 6
 const NUM_PLATFORMS_THRESHOLD = 2
 
 func find_platform(_tile_coordinates_x):
@@ -23,23 +23,7 @@ func find_platform(_tile_coordinates_x):
 		set_index += 1
 	return set_index if found else -1
 
-func find_rightmost_platform_to_the_left_of_camera(_tile_coordinates_x):
-	var set_index = 0
-	var found = false
-	var lastcoo_x
-	for platform_set in platforms:
-		lastcoo_x = 0
-		for platform in platform_set:
-			var lastcoo = platform[-1].coo
-			if lastcoo.x >= _tile_coordinates_x:
-				found = true
-				break
-			if lastcoo.x > lastcoo_x:
-				lastcoo_x = lastcoo.x
-		if found:
-			break
-		set_index += 1
-	return [set_index, lastcoo_x] if found else [INF, INF]
+
 
 func get_tile_coo(platform_set_idx, platform_idx, tile_idx):
 	var tile_coordinates = platforms[platform_set_idx][platform_idx][tile_idx].coo
@@ -48,20 +32,6 @@ func get_tile_coo(platform_set_idx, platform_idx, tile_idx):
 		tile_map_layer.tile_set.tile_size.y * tile_map_layer.scale.y / 2.0
 	)
 	return [tile_world_center, tile_world_top]
-
-func find_leftmost_coo_x(platform_set):
-	var firstcoo_x = MAX_NUM_FRAMES * map_width
-	for platform in platform_set:
-		if platform[0].coo.x < firstcoo_x:
-			firstcoo_x = platform[0].coo.x
-	return firstcoo_x
-
-func find_rightmost_coo_x(platform_set):
-	var lastcoo_x = 0
-	for platform in platform_set:
-		if platform[-1].coo.x > lastcoo_x:
-			lastcoo_x = platform[-1].coo.x
-	return lastcoo_x
 	
 func paint(platform_set):
 	var coos2paint = []
@@ -108,6 +78,19 @@ func add_platform(idx, new_platform_set):
 		new_platform_set.append(new_platform)
 	return new_platform_set
 
+func add_platform2hollow(idx, new_platform_set):
+	
+	var fstcoo = hollows[-1][idx][0]
+	var lastcoo = hollows[-1][idx][-1]
+
+	var starty = level.rnd_coo2(lastcoo.y, player_height, 0, map_height - 1)
+	var minx = 0 if starty < fstcoo.y or starty > lastcoo.y else COO_DIFF_UPDATE_L
+	var startx = level.rnd_coo1(lastcoo.x + 1, minx, COO_DIFF_UPDATE_R, 0, MAX_NUM_FRAMES * map_width - 1)
+
+	var new_platform = construct_platform(startx, starty, randi_range(MIN_LEN, MAX_LEN))
+	new_platform_set.append(new_platform)
+	return new_platform_set
+
 
 func fill_last_platform():
 	var last_starty = platforms[-1][-1][0].coo.y
@@ -115,10 +98,27 @@ func fill_last_platform():
 		var startx = platforms[-1][-1][0].coo.x
 		platforms[-1].append(construct_platform(startx, i, len(platforms[-1][-1])))
 
-func gen_platforms(fill = true):
+func gen_platforms():
 	"""Add num_platforms platforms"""
 	var _platformset = []
-	if platforms.is_empty():
+	if should_switch:
+		# add_platform2hollow anchors each new platform to a Cave hollow
+		# in hollows[-1], so indices must be sampled over hollows[-1],
+		# NOT platforms[-1] (which is empty on the first Heavens generation).
+		var num_last_hollows = len(hollows[-1])
+		var num_platforms_matching = min(num_last_hollows, num_platforms)
+		var surplus = abs(num_platforms - num_last_hollows)
+
+		var rnd_indices = level.sample_unique(range(num_last_hollows), num_platforms_matching)
+		for idx in rnd_indices:
+			_platformset = add_platform2hollow(idx, _platformset)
+
+		if num_last_hollows > 0:
+			for i in range(surplus):
+				var idx = randi_range(0, num_last_hollows - 1)
+				_platformset = add_platform2hollow(idx, _platformset)
+		should_switch = false
+	elif platforms.is_empty():
 		var starty_first_val = randi_range(MIN_AVAILABLE_STARTCOO, MAX_AVAILABLE_STARTCOO)
 		var possible_ys = range(starty_first_val, map_height, player_height)
 		var rnd_indices = level.sample_unique(range(len(possible_ys)), num_platforms)
@@ -127,7 +127,7 @@ func gen_platforms(fill = true):
 			var starty = possible_ys[idx]
 			var startx = level.rnd_coo2(0, COO_DIFF_INIT, 0, MAX_NUM_FRAMES * map_width - 1)
 			_platformset.append(construct_platform(startx, starty, randi_range(MIN_LEN, MAX_LEN)))
-		
+
 	else:
 		var num_platforms_matching = min(len(platforms[-1]), num_platforms)
 		var surplus = abs(num_platforms - len(platforms[-1]))
@@ -144,56 +144,12 @@ func gen_platforms(fill = true):
 		fill_last_platform()
 	paint(platforms[-1])
 
-func clear_platforms(n = len(platforms)):
-	var coos2erase = []
-	for i in range(n):
-		var platform_set = platforms.pop_at(0)
-		for platform in platform_set:
-			for coo_rnd_idx in platform:
-				var coo = coo_rnd_idx.coo
-				coos2erase.append(coo)
-	for coo2erase in coos2erase:
-		tile_map_layer.erase_cell(coo2erase)
-
 func fill_frame():
 	while true:
 		gen_platforms()
 		var lastcoo_x = find_rightmost_coo_x(platforms[-1])
 		if lastcoo_x > map_width:
 			break
-
-func mv_platforms_left(num_tiles):
-	var coos2paint = []
-	for i in lwl_probs:
-		coos2paint.append([])
-	var coos2erase = []
-	var new_platforms = []
-	for platform_set in platforms:
-		var new_set = []
-		for platform in platform_set:
-			var new_platform = []
-			for coo_rnd_idx in platform:
-				var coo = coo_rnd_idx.coo
-				var rnd_idx = coo_rnd_idx.level
-				coos2erase.append(coo)
-				coo.x -= num_tiles
-				if coo.x >= 0:
-					coo_rnd_idx.coo = coo
-					new_platform.append(coo_rnd_idx)
-					coos2paint[rnd_idx].append(coo)
-			if new_platform != []:
-				new_set.append(new_platform)
-		if new_set != []:
-			new_platforms.append(new_set)
-	platforms = new_platforms
-
-	for coo2erase in coos2erase:
-		tile_map_layer.erase_cell(coo2erase)
-	var lwl_idx = 0
-	for coo2paint in coos2paint:
-		if coo2paint != []:
-			tile_map_layer.set_cells_terrain_connect(coo2paint, 0, lwl_idx)
-		lwl_idx += 1
 
 func spawn(entity: Entity, platform_set_idx: int, platform_idx: int, tile_idx: int):
 	var tile_world_center_top = get_tile_coo(platform_set_idx, platform_idx, tile_idx)
@@ -214,28 +170,18 @@ func spawn_player():
 
 func process(_delta: float) -> void:
 	super(_delta)
-	var rightmost_x = find_rightmost_coo_x(platforms[-1])
-	var platform_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
 
-	var platform_set_until_destroy = platform_set_until_destroy_lastcoo_x[0]
-	var lastcoo_x = platform_set_until_destroy_lastcoo_x[1]
-
-
-	var shift_amount_tiles = map_width * (MV_THRESHOLD - 1)
-	if cam_x_left >= shift_amount_tiles:
-		var shift_amount_pixels = level.get_tile_size().x * shift_amount_tiles
-		print("mv left")
-		mv_platforms_left(shift_amount_tiles)
-		camera.global_position.x -= shift_amount_pixels
-		player.global_position.x -= shift_amount_pixels
-	
-	if cam_x_right + map_width > rightmost_x:# generate one full viewport ahead
+	if should_switch:
+		# First Heavens generation: anchor platforms directly to the Cave
+		# hollows so platforms are visible right after the cave,
+		# regardless of the camera-to-hollow distance. gen_platforms()
+		# resets should_switch, so this branch fires only once.
 		gen_platforms()
+	else:
+		var rightmost_x = find_rightmost_coo_x(platforms[-1])
+		if cam_x_right + map_width > rightmost_x:# generate one full viewport ahead
+			gen_platforms()
 
-	if not cleared and cam_x_left > lastcoo_x:
-		print("clear platforms")
-		clear_platforms(platform_set_until_destroy)
-	
 	var num_platforms_threshold_tiles = map_width * NUM_PLATFORMS_THRESHOLD
 	if cam_x_right % num_platforms_threshold_tiles == 0 and cam_x_right != cam_x_right_prev:
 		print("switch_num_platforms ", curr_lwl)

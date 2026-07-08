@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://day00jdicihty"]
 
-[ext_resource type="Script" uid="uid://bfklkjunwfpqj" path="res://scripts/level.gd" id="1_mx8sn"]
+[ext_resource type="Script" uid="uid://cjghnfs52nhnm" path="res://scripts/level.gd" id="1_mx8sn"]
 [ext_resource type="Texture2D" uid="uid://du3y3mnyghfdq" path="res://media/Spritesheets/spritesheet-tiles-double.png" id="2_w7c3h"]
 [ext_resource type="PackedScene" uid="uid://ba8m7lk2lylu5" path="res://scenes/player.tscn" id="3_w8frs"]
-[ext_resource type="Script" uid="uid://cs5010t66jmxk" path="res://scripts/generator.gd" id="4_mx8sn"]
+[ext_resource type="Script" path="res://scripts/generator.gd" id="4_mx8sn"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_w8frs"]
 texture = ExtResource("2_w7c3h")

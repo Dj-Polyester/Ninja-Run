@@ -83,10 +83,42 @@ func add_hollow(idx, new_hollow_set):
 	new_hollow_set.append(new_hollow)
 	return new_hollow_set
 
+func add_hollow2platform(idx, new_platform_set):
+	var lastcoo = platforms[-1][idx][-1].coo
+	var endy = level.rnd_coo2(lastcoo.y, player_height, player_height, map_height - 1)
+	var starty = randi_range(0, endy - player_height)
+	var minx = 0 if endy < lastcoo.y or starty > lastcoo.y else COO_DIFF_UPDATE_L
+	var startx = level.rnd_coo1(lastcoo.x + 1, minx, COO_DIFF_UPDATE_R, 0, MAX_NUM_FRAMES * map_width - 1)
+	
+
+	var length = endy - starty + 1
+
+	var new_platform = construct_hollow(startx, starty, length)
+	new_platform_set.append(new_platform)
+	return new_platform_set
+
+
 func gen_hollows():
 	"""Add num_hollows hollows"""
 	var _hollowset = []
-	if walls.is_empty():
+	if should_switch:
+		# add_hollow2platform anchors each new hollow to a Heavens platform
+		# in platforms[-1], so indices must be sampled over platforms[-1],
+		# NOT hollows[-1] (which is empty on the first Cave generation).
+		var num_last_platforms = len(platforms[-1])
+		var num_hollows_matching = min(num_last_platforms, num_hollows)
+		var surplus = abs(num_hollows - num_last_platforms)
+
+		var rnd_indices = level.sample_unique(range(num_last_platforms), num_hollows_matching)
+		for idx in rnd_indices:
+			_hollowset = add_hollow2platform(idx, _hollowset)
+
+		if num_last_platforms > 0:
+			for i in range(surplus):
+				var idx = randi_range(0, num_last_platforms - 1)
+				_hollowset = add_hollow2platform(idx, _hollowset)
+		should_switch = false
+	elif walls.is_empty():
 		var rnd_indices = level.sample_unique(range(map_height - player_height), num_hollows)
 
 		for rnd_idx in rnd_indices:
@@ -110,17 +142,6 @@ func gen_hollows():
 	var _hollows = _hollowset.reduce(func(x, y): return x + y, [])
 	walls.append(construct_wall_from_hollows(_hollows))
 	paint(walls[-1])
-
-func clear_walls(n = len(hollows)):
-	var coos2erase = []
-	for i in range(n):
-		hollows.pop_at(0)
-		var wall = walls.pop_at(0)
-		for coo_rnd_idx in wall:
-			var coo = coo_rnd_idx.coo
-			coos2erase.append(coo)
-	for coo2erase in coos2erase:
-		tile_map_layer.erase_cell(coo2erase)
 
 func fill_frame():
 	while true:
@@ -154,82 +175,19 @@ func spawn(entity: Entity, hollow_set_idx: int, hollow_idx: int, tile_idx: int =
 func spawn_player():
 	spawn(player, 0, -1)
 
-func find_rightmost_platform_to_the_left_of_camera(_tile_coordinates_x):
-	var set_index = 0
-	var found = false
-	for hollow_set in hollows:
-		if hollow_set[0][0].x == _tile_coordinates_x - 1:
-			found = true
-			break
-		set_index += 1
-	return [set_index, _tile_coordinates_x - 1] if found else [INF, INF]
-
-func mv_platforms_left(num_tiles):
-	var coos2paint = []
-	for i in lwl_probs:
-		coos2paint.append([])
-	var coos2erase = []
-	var new_walls = []
-	for wall in walls:
-		var new_wall = []
-		for coo_rnd_idx in wall:
-			var coo = coo_rnd_idx.coo
-			var rnd_idx = coo_rnd_idx.level
-			coos2erase.append(coo)
-			coo.x -= num_tiles
-			if coo.x >= 0:
-				coo_rnd_idx.coo = coo
-				new_wall.append(coo_rnd_idx)
-				coos2paint[rnd_idx].append(coo)
-		if new_wall != []:
-			new_walls.append(new_wall)
-	var new_hollows = []
-	for hollow_set in hollows:
-		var new_hollow_set = []
-		for hollow in hollow_set:
-			var new_hollow = []
-			for coo in hollow:
-				coo.x -= num_tiles
-				if coo.x >= 0:
-					new_hollow.append(coo)
-			if new_hollow != []:
-				new_hollow_set.append(new_hollow)
-		if new_hollow_set != []:
-			new_hollows.append(new_hollow_set)
-	hollows = new_hollows
-	walls = new_walls
-
-	for coo2erase in coos2erase:
-		tile_map_layer.erase_cell(coo2erase)
-	var lwl_idx = 0
-	for coo2paint in coos2paint:
-		if coo2paint != []:
-			tile_map_layer.set_cells_terrain_connect(coo2paint, 0, lwl_idx)
-		lwl_idx += 1
-
 func process(_delta: float) -> void:
 	super(_delta)
-	var rightmost_x = hollows[-1][0][0].x
-	var hollow_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
 
-	var hollow_set_until_destroy = hollow_set_until_destroy_lastcoo_x[0]
-	var lastcoo_x = hollow_set_until_destroy_lastcoo_x[1]
-
-	var shift_amount_tiles = map_width * (MV_THRESHOLD - 1)
-	if cam_x_left >= shift_amount_tiles:
-		var shift_amount_pixels = level.get_tile_size().x * shift_amount_tiles
-		print("mv left")
-		mv_platforms_left(shift_amount_tiles)
-		camera.global_position.x -= shift_amount_pixels
-		player.global_position.x -= shift_amount_pixels
-	
-	if cam_x_right + map_width > rightmost_x:# generate one full viewport ahead
-		print("gen hollows")
+	if should_switch:
+		# First Cave generation: anchor hollows directly to the Heavens
+		# platforms so the cave is visible right after the platforms,
+		# regardless of the camera-to-platform distance. gen_hollows()
+		# resets should_switch, so this branch fires only once.
 		gen_hollows()
+	else:
+		var rightmost_x = hollows[-1][0][0].x
+		if cam_x_right + map_width > rightmost_x: # generate one viewport ahead
+			print("gen hollows")
+			gen_hollows()
 
-	if not cleared and cam_x_left > lastcoo_x:
-		print("clear hollows")
-		clear_walls(hollow_set_until_destroy)
-		cleared = true
-	
 	process_end()

@@ -22,11 +22,14 @@ var camera: Camera2D:
 	get:
 		return get_viewport().get_camera_2d()
 
-var generator
+var biome
 var debug_mode_enabled = false
 var cleared = false
+var cam_x_left
+var cam_x_right
 
 const CAM_SPEED = 5
+const BIOME_THRESHOLD = 2
 
 class LwlCoo:
 	var coo: Vector2i
@@ -101,9 +104,11 @@ func _ready() -> void:
 	player_camera.enabled = true
 	print(player_size_in_tiles)
 	
-	generator = Heavens.new(self)
+	biome = Cave.new(self)
 
 func _process(delta: float) -> void:
+	cam_x_left = global2tile(camera.global_position).x
+	cam_x_right = cam_x_left + map_width
 	debug_mode_label.visible = debug_camera.enabled
 
 	if Input.is_action_just_pressed("debug"):
@@ -115,7 +120,13 @@ func _process(delta: float) -> void:
 		camera.global_position.x += CAM_SPEED * direction
 	else:
 		player.process_camera(delta)
-	generator.process(delta)
+
+	var biome_threshold_tiles = map_width * BIOME_THRESHOLD
+	if cam_x_right >= biome_threshold_tiles and not (biome is Heavens):
+		biome.should_switch = true
+		biome = Heavens.new(self)
+
+	biome.process(delta)
 
 func _physics_process(delta: float) -> void:
 	if not debug_camera.enabled:
