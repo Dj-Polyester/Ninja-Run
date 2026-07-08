@@ -11,6 +11,7 @@ static var lwl_probs = [MAX_PROB, 0, 0, 0, 0]
 static var curr_lwl = 0
 static var switch_counter = 0
 static var should_switch = false
+static var should_switch_cave = false
 
 var cam_x_right_prev
 
@@ -214,6 +215,9 @@ func process(_delta: float) -> void:
 		player.global_position.x -= shift_amount_pixels
 		cam_x_left = level.global2tile(camera.global_position).x
 		cam_x_right = cam_x_left + map_width
+		# Keep the level's accumulator in sync so biome-zone thresholds can be
+		# computed from a monotonic world coordinate.
+		level.total_shift_tiles += shift_amount_tiles
 
 	var lwl_threshold_tiles = map_width * LWL_THRESHOLD
 	if cam_x_right % lwl_threshold_tiles == 0 and cam_x_right != cam_x_right_prev:
@@ -239,7 +243,11 @@ func process_end():
 
 	cam_x_right_prev = cam_x_right
 
-func _init(_level: Level):
+func set_params(_args: Dictionary):
+	pass
+
+func _init(_level: Level, _args: Dictionary = {}):
+	set_params(_args)
 	level = _level
 	if not should_switch:
 		fill_frame()

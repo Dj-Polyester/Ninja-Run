@@ -56,8 +56,6 @@ func add_hollow(idx, new_hollow_set):
 	var starty
 	var endy
 
-	print(player_width, player_height)
-
 	if dir_stack[-1] == "n": 
 		starty = fstcoo.y
 		endy = lastcoo.y
@@ -101,7 +99,7 @@ func add_hollow2platform(idx, new_platform_set):
 func gen_hollows():
 	"""Add num_hollows hollows"""
 	var _hollowset = []
-	if should_switch:
+	if should_switch_cave:
 		# add_hollow2platform anchors each new hollow to a Heavens platform
 		# in platforms[-1], so indices must be sampled over platforms[-1],
 		# NOT hollows[-1] (which is empty on the first Cave generation).
@@ -117,7 +115,7 @@ func gen_hollows():
 			for i in range(surplus):
 				var idx = randi_range(0, num_last_platforms - 1)
 				_hollowset = add_hollow2platform(idx, _hollowset)
-		should_switch = false
+		should_switch_cave = false
 	elif walls.is_empty():
 		var rnd_indices = level.sample_unique(range(map_height - player_height), num_hollows)
 

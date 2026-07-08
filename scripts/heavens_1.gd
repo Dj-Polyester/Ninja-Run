@@ -101,7 +101,7 @@ func fill_last_platform():
 func gen_platforms():
 	"""Add num_platforms platforms"""
 	var _platformset = []
-	if should_switch:
+	if should_switch_cave:
 		# add_platform2hollow anchors each new platform to a Cave hollow
 		# in hollows[-1], so indices must be sampled over hollows[-1],
 		# NOT platforms[-1] (which is empty on the first Heavens generation).
@@ -117,7 +117,7 @@ func gen_platforms():
 			for i in range(surplus):
 				var idx = randi_range(0, num_last_hollows - 1)
 				_platformset = add_platform2hollow(idx, _platformset)
-		should_switch = false
+		should_switch_cave = false
 	elif platforms.is_empty():
 		var starty_first_val = randi_range(MIN_AVAILABLE_STARTCOO, MAX_AVAILABLE_STARTCOO)
 		var possible_ys = range(starty_first_val, map_height, player_height)
@@ -164,6 +164,9 @@ func spawn(entity: Entity, platform_set_idx: int, platform_idx: int, tile_idx: i
 		tile_world_center.x - collision_shape.position.x * global_scale.x,
 		tile_world_top - collision_shape.position.y * global_scale.y - size.y / 2.0
 	)
+
+func set_params(_args: Dictionary):
+	fill = _args.get("fill", false)
 
 func spawn_player():
 	spawn(player, 0, 0, 0)

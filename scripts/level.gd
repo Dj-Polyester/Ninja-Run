@@ -14,19 +14,35 @@ class_name Level
 
 @onready var player_collision_shape = player.get_node("CollisionShape2D") as CollisionShape2D
 @onready var player_size_in_tiles = get_obj_collision_size_tiles(player, player_collision_shape)
-@onready var player_width = player_size_in_tiles.x
-@onready var player_height = player_size_in_tiles.y
+@onready var player_width = player_size_in_tiles.x + 1
+@onready var player_height = player_size_in_tiles.y + 1
 
 @onready var debug_mode_label: TextEdit = $CanvasLayer/DebugModeLabel
 var camera: Camera2D:
 	get:
 		return get_viewport().get_camera_2d()
 
-var biome
+var curr_biome
 var debug_mode_enabled = false
 var cleared = false
 var cam_x_left
 var cam_x_right
+var prev_id
+# Accumulated left-shifts applied to re-base the tilemap as the player
+# progresses. cam_x_right alone oscillates (it drops by shift_amount_tiles on
+# every mv cycle), so biome-zone thresholds are computed from the monotonic
+# world coordinate cam_x_right + total_shift_tiles instead.
+var total_shift_tiles = 0
+# Last biome zone (in threshold units) we already sampled for. The random
+# biome pick must fire ONCE per threshold crossing, not every frame, so we
+# compare the current zone against this.
+var last_zone = 0
+
+var biomes = [
+	BiomeConfig.new(1, Heavens),
+	BiomeConfig.new(2, Heavens, {"fill": true}),
+	BiomeConfig.new(3, Cave),
+]
 
 const CAM_SPEED = 5
 const BIOME_THRESHOLD = 2
@@ -37,6 +53,16 @@ class LwlCoo:
 	func _init(_coo, _level) -> void:
 		coo = _coo
 		level = _level
+
+class BiomeConfig:
+	var id
+	var type: GDScript
+	var args: Dictionary
+	func  _init(_id, _type, _args = {}) -> void:
+		id = _id
+		type = _type
+		args = _args
+
 
 func sample_weighted(weights: Array, population = null):
 	if population == null:
@@ -104,7 +130,8 @@ func _ready() -> void:
 	player_camera.enabled = true
 	print(player_size_in_tiles)
 	
-	biome = Cave.new(self)
+	curr_biome = Heavens.new(self)
+	prev_id = 1
 
 func _process(delta: float) -> void:
 	cam_x_left = global2tile(camera.global_position).x
@@ -122,11 +149,30 @@ func _process(delta: float) -> void:
 		player.process_camera(delta)
 
 	var biome_threshold_tiles = map_width * BIOME_THRESHOLD
-	if cam_x_right >= biome_threshold_tiles and not (biome is Heavens):
-		biome.should_switch = true
-		biome = Heavens.new(self)
+	# At each threshold crossing, sample a random biome. If it differs from the
+	# current one, switch: set the shared should_switch flag BEFORE constructing
+	# the new biome so Biome._init skips fill_frame/spawn_player and the new
+	# biome anchors to the previous biome's last set.
+	# Use the monotonic world right-edge (cam_x_right + total_shift_tiles) so
+	# mv re-basing (which drops cam_x_right by shift_amount_tiles each cycle)
+	# doesn't make the zone oscillate. last_zone ensures the random pick fires
+	# ONCE per crossing instead of every frame.
 
-	biome.process(delta)
+	var world_cam_x_right = cam_x_right + total_shift_tiles
+	var zone = floori(world_cam_x_right / biome_threshold_tiles)
+	if zone != last_zone:
+		print("enter switch")
+		last_zone = zone
+		var curr_config = biomes.pick_random()
+		var curr_id = curr_config.id
+		if curr_id != prev_id:
+			print("switch")
+			if curr_id == 3 or prev_id == 3:
+				curr_biome.should_switch_cave = true
+			curr_biome.should_switch = true
+			curr_biome = curr_config.type.new(self, curr_config.args)
+			prev_id = curr_id
+	curr_biome.process(delta)
 
 func _physics_process(delta: float) -> void:
 	if not debug_camera.enabled:
