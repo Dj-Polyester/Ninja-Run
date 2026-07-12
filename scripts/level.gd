@@ -2,8 +2,6 @@ extends Node2D
 class_name Level
 
 @onready var tile_map_layer: TileMapLayer = $Platforms
-@onready var player = $Player
-@onready var player_camera = $Player/PlayerCamera
 @onready var debug_camera = $DebugCamera
 
 @onready var viewport_size_in_tiles = (
@@ -12,6 +10,8 @@ class_name Level
 @onready var map_width = viewport_size_in_tiles.x
 @onready var map_height = viewport_size_in_tiles.y
 
+@onready var player = $Player
+@onready var player_camera = $Player/PlayerCamera
 @onready var player_collision_shape = player.get_node("CollisionShape2D") as CollisionShape2D
 @onready var player_size_in_tiles = get_obj_collision_size_tiles(player, player_collision_shape)
 @onready var player_width = player_size_in_tiles.x + 1
@@ -40,7 +40,7 @@ var last_zone = 0
 
 var biomes = [
 	BiomeConfig.new(1, Heavens),
-	BiomeConfig.new(2, Heavens, {"fill": true}),
+	# BiomeConfig.new(2, Heavens, {"fill": true}),
 	BiomeConfig.new(3, Cave),
 ]
 
@@ -79,6 +79,15 @@ func sample_weighted(weights: Array, population = null):
 			break
 		rnd_idx += 1
 	return population[rnd_idx]
+
+func get_tile_from_coo(tile_coo_global: Vector2):
+	return tile_map_layer.get_cell_tile_data(global2tile(tile_coo_global))
+
+func get_tile_top_from_center(tile_world_center: Vector2):
+	return tile_world_center.y - (get_tile_size().y / 2.0)
+
+func get_tile_bottom_from_center(tile_world_center: Vector2):
+	return tile_world_center.y + (get_tile_size().y / 2.0)
 
 func get_tile_size():
 	return (tile_map_layer.tile_set.tile_size as Vector2) * tile_map_layer.scale
@@ -132,6 +141,7 @@ func _ready() -> void:
 	
 	curr_biome = Heavens.new(self)
 	prev_id = 1
+	player.level = self
 
 func _process(delta: float) -> void:
 	cam_x_left = global2tile(camera.global_position).x

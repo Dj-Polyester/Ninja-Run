@@ -151,9 +151,7 @@ func fill_frame():
 func get_tile_coo(hollow_set_idx, hollow_idx, tile_idx):
 	var tile_coordinates = hollows[hollow_set_idx][hollow_idx][tile_idx]
 	var tile_world_center = level.tile2global(tile_coordinates)
-	var tile_world_bottom = tile_world_center.y + (
-		tile_map_layer.tile_set.tile_size.y * tile_map_layer.scale.y / 2.0
-	)
+	var tile_world_bottom = level.get_tile_bottom_from_center(tile_world_center)
 	return [tile_world_center, tile_world_bottom]
 	
 func spawn(entity: Entity, hollow_set_idx: int, hollow_idx: int, tile_idx: int = -1):
@@ -162,13 +160,7 @@ func spawn(entity: Entity, hollow_set_idx: int, hollow_idx: int, tile_idx: int =
 	var tile_world_center = tile_world_center_bottom[0]
 	var tile_world_bottom = tile_world_center_bottom[1]
 
-	var collision_shape = entity.get_node("CollisionShape2D") as CollisionShape2D
-	var size = entity.get_collision_size(collision_shape)
-
-	entity.global_position = Vector2(
-		tile_world_center.x - collision_shape.position.x * global_scale.x,
-		tile_world_bottom - collision_shape.position.y * global_scale.y - size.y / 2.0
-	)
+	entity.set_spawn_position_from_tile_coos(tile_world_center, tile_world_bottom)
 
 func spawn_player():
 	spawn(player, 0, -1)
@@ -179,9 +171,14 @@ func process(_delta: float) -> void:
 	if should_switch:
 		# First Cave generation: anchor hollows directly to the Heavens
 		# platforms so the cave is visible right after the platforms,
-		# regardless of the camera-to-platform distance. gen_hollows()
-		# resets should_switch, so this branch fires only once.
+		# regardless of the camera-to-platform distance.
 		gen_hollows()
+		# should_switch is the one-shot "immediate gen" gate; it is NOT reset
+		# inside gen_hollows (gen_hollows only resets should_switch_cave, the
+		# anchor-vs-chain gate). Without resetting it here, process() would
+		# call gen_hollows() every frame forever, appending a new hollow/wall
+		# set each frame -> unbounded growth -> mv_walls_left freezes the game.
+		should_switch = false
 	else:
 		var rightmost_x = hollows[-1][0][0].x
 		if cam_x_right + map_width > rightmost_x: # generate one viewport ahead

@@ -28,9 +28,7 @@ func find_platform(_tile_coordinates_x):
 func get_tile_coo(platform_set_idx, platform_idx, tile_idx):
 	var tile_coordinates = platforms[platform_set_idx][platform_idx][tile_idx].coo
 	var tile_world_center = level.tile2global(tile_coordinates)
-	var tile_world_top = tile_world_center.y - (
-		tile_map_layer.tile_set.tile_size.y * tile_map_layer.scale.y / 2.0
-	)
+	var tile_world_top = level.get_tile_top_from_center(tile_world_center)
 	return [tile_world_center, tile_world_top]
 	
 func paint(platform_set):
@@ -157,13 +155,7 @@ func spawn(entity: Entity, platform_set_idx: int, platform_idx: int, tile_idx: i
 	var tile_world_center = tile_world_center_top[0]
 	var tile_world_top = tile_world_center_top[1]
 
-	var collision_shape = entity.get_node("CollisionShape2D") as CollisionShape2D
-	var size = entity.get_collision_size(collision_shape)
-
-	entity.global_position = Vector2(
-		tile_world_center.x - collision_shape.position.x * global_scale.x,
-		tile_world_top - collision_shape.position.y * global_scale.y - size.y / 2.0
-	)
+	entity.set_spawn_position_from_tile_coos(tile_world_center, tile_world_top)
 
 func set_params(_args: Dictionary):
 	fill = _args.get("fill", false)
@@ -177,9 +169,15 @@ func process(_delta: float) -> void:
 	if should_switch:
 		# First Heavens generation: anchor platforms directly to the Cave
 		# hollows so platforms are visible right after the cave,
-		# regardless of the camera-to-hollow distance. gen_platforms()
-		# resets should_switch, so this branch fires only once.
+		# regardless of the camera-to-hollow distance.
 		gen_platforms()
+		# should_switch is the one-shot "immediate gen" gate; it is NOT reset
+		# inside gen_platforms (gen_platforms only resets should_switch_cave,
+		# the anchor-vs-chain gate). Without resetting it here, process() would
+		# call gen_platforms() every frame forever, appending a new platform
+		# set each frame -> unbounded growth -> mv_platforms_left freezes the
+		# game.
+		should_switch = false
 	else:
 		var rightmost_x = find_rightmost_coo_x(platforms[-1])
 		if cam_x_right + map_width > rightmost_x:# generate one full viewport ahead

@@ -3,6 +3,31 @@ class_name Entity
 
 @onready var sprite = $AnimatedSprite2D
 
+func get_spawn_position_from_tile_coos(tile_world_center: Vector2, tile_world_edge: float):
+	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
+	var size = get_collision_size(collision_shape)
+
+	return Vector2(
+		tile_world_center.x - collision_shape.position.x * global_scale.x,
+		tile_world_edge - collision_shape.position.y * global_scale.y - size.y / 2.0
+	)
+
+func set_spawn_position_from_tile_coos(tile_world_center: Vector2, tile_world_edge: float):
+	global_position = get_spawn_position_from_tile_coos(tile_world_center, tile_world_edge)
+
+func get_tile_global_coo_under(level: Level):
+	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
+	var size = get_collision_size(collision_shape)
+	var feet_bottom = Vector2(
+		collision_shape.global_position.x, 
+		collision_shape.global_position.y + size.y / 2
+	)
+	var tile_center = Vector2(
+		feet_bottom.x,
+		feet_bottom.y + level.get_tile_size().y / 2.0
+	) 
+	return tile_center
+
 func rising():
 	return velocity.y < 0
 

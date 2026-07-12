@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://ba8m7lk2lylu5"]
 
-[ext_resource type="Script" uid="uid://dj3wt3gtm5qsl" path="res://scripts/player.gd" id="1_d2wvv"]
+[ext_resource type="Script" uid="uid://cu2vrdw2irol2" path="res://scripts/player.gd" id="1_d2wvv"]
 [ext_resource type="Texture2D" uid="uid://it3evdihmiyv" path="res://media/Characters/Ninja01/03Attack_/__Ninja01_Attack_000.png" id="2_tk41t"]
 [ext_resource type="Texture2D" uid="uid://btpmu0vvm0ivg" path="res://media/Characters/Ninja01/02Run_/__Ninja01_Run_000.png" id="2_ur7pv"]
 [ext_resource type="Texture2D" uid="uid://dgmjw5ahmybi" path="res://media/Characters/Ninja01/03Attack_/__Ninja01_Attack_001.png" id="3_fuw3a"]

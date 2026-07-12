@@ -2,3 +2,6 @@
 .godot/
 /android/
 *.uid
+assets/**
+!assets/**/
+!assets/**/*.png

@@ -155,14 +155,27 @@ func find_rightmost_platform_to_the_left_of_camera(_tile_coordinates_x):
 	return [set_index, lastcoo_x] if found else [INF, INF]
 	
 func find_rightmost_hollow_to_the_left_of_camera(_tile_coordinates_x):
+	# Mirror find_rightmost_platform_to_the_left_of_camera: use a range
+	# comparison (>=) to find the first hollow set that still reaches the
+	# camera, and return the count of sets strictly to its left to clear.
+	# The previous exact-equality check (hollow_set[0][0].x == x - 1) almost
+	# never matched, so clear_walls never ran and walls/hollows grew without
+	# bound, making mv_walls_left O(total history) each cycle -> slowdown.
 	var set_index = 0
 	var found = false
+	var lastcoo_x = 0
 	for hollow_set in hollows:
-		if hollow_set[0][0].x == _tile_coordinates_x - 1:
+		var set_rightmost_x = 0
+		for hollow in hollow_set:
+			# each hollow is a vertical column (constant x); use its last tile
+			if hollow[-1].x > set_rightmost_x:
+				set_rightmost_x = hollow[-1].x
+		if set_rightmost_x >= _tile_coordinates_x:
 			found = true
 			break
+		lastcoo_x = set_rightmost_x
 		set_index += 1
-	return [set_index, _tile_coordinates_x - 1] if found else [INF, INF]
+	return [set_index, lastcoo_x] if found else [INF, INF]
 
 func clear_platforms(n = len(platforms)):
 	var coos2erase = []
