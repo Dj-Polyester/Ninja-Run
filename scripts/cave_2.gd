@@ -30,7 +30,18 @@ func construct_wall_from_hollows(_hollows):
 		func(y): return level.LwlCoo.new(Vector2i(coox, y), level.sample_weighted(lwl_probs))
 	)
 	
-	return all_wall.filter(func(lwlcoo): return lwlcoo.coo not in _hollows)
+	var wall_refined = []
+	var prev_was_hollow = false
+	for coo_rnd_idx in all_wall:
+		if coo_rnd_idx.coo in _hollows:
+			prev_was_hollow = true
+		else:
+			if prev_was_hollow:
+				prev_was_hollow = false
+				coo_rnd_idx.is_ground = true
+			wall_refined.append(coo_rnd_idx)
+
+	return wall_refined
 
 func add_hollow(idx, new_hollow_set):
 	var possible_moves = ["n", "uw", "dw"]
@@ -140,6 +151,13 @@ func gen_hollows():
 	var _hollows = _hollowset.reduce(func(x, y): return x + y, [])
 	walls.append(construct_wall_from_hollows(_hollows))
 	paint(walls[-1])
+	gen_spikes_walls(walls[-1])
+	
+func gen_spikes_walls(wall):
+	print("gen spikes walls")
+	for coo_rnd_idx in wall:
+		if coo_rnd_idx.level == 5 and coo_rnd_idx.is_ground:
+			level.create_spike(coo_rnd_idx)
 
 func fill_frame():
 	while true:

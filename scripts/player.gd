@@ -15,10 +15,8 @@ var climb_counter = MAX_NUM_CLIMBS
 var cleared = false
 var climbing = false
 var prev_accel = 0
-var fire
-var fire_created_once = false
-var tile_global_coo
-var fire_particles = []
+var tile_global_coo_under
+var tile_coo_under
 
 var level: Level
 
@@ -41,34 +39,21 @@ func process_camera(delta: float):
 		camera.global_position.y = viewport_size.y
 	camera.global_position.x = global_position.x
 
-
-func _on_fire_animation_finished(_fire):
-	fire_particles.erase(_fire)
-	_fire.queue_free()
-	if fire_particles.is_empty():
-		fire_created_once = false
-
-
 func create_fire():
-	var fire_scene = preload("res://scenes/fire.tscn")
-	
-	
 	var num_fire_particles = randi_range(1,3)
 	for i in range(num_fire_particles):
-		fire = fire_scene.instantiate()
-		level.add_child(fire)
-		fire.sprite.animation_finished.connect(_on_fire_animation_finished.bind(fire))
-		fire_particles.append(fire)
+		level.create_fire(tile_global_coo_under)
 
-		var margin = level.get_tile_size().x / 2
-
-		var randx = randf_range(-margin, margin)
-		var randy = randf_range(0, level.get_tile_size().y / 2)
-
-		fire.global_position = Vector2(
-			tile_global_coo.x,	
-			tile_global_coo.y - fire.scale.y * fire.get_size().y / 2,
-		) + Vector2(randx, randy)
+func drop_blocks():
+	for y in range(tile_coo_under.y, level.map_height):
+		var tile_coo = Vector2i(tile_coo_under.x, y)
+		var tile = level.get_tile_from_coo(tile_coo)
+		if tile != null:
+			var terrain = tile.terrain
+			if terrain == 4:
+				level.drop_block(tile_coo)
+			else:
+				break
 
 func process_movement(delta: float):
 	# Get the input direction and handle the movement/deceleration.
@@ -90,8 +75,9 @@ func process_movement(delta: float):
 		else:
 			sprite.play("idle")
 		# get tile coo
-		tile_global_coo = get_tile_global_coo_under(level) 
-		var tile = level.get_tile_from_coo(tile_global_coo)
+		tile_global_coo_under = get_tile_global_coo_under(level) 
+		tile_coo_under = level.global2tile(tile_global_coo_under)
+		var tile = level.get_tile_from_coo(tile_coo_under)
 		if tile != null:
 			terrain = tile.terrain
 
@@ -115,9 +101,6 @@ func process_movement(delta: float):
 	var target_speed = direction * speed
 	var accel
 	
-	if terrain == 3 and not fire_created_once and is_on_floor():
-		fire_created_once = true
-		create_fire()
 
 	if terrain == 2 and abs(velocity.x) > target_speed: # deccelerating
 		accel = ice_acceleration
@@ -129,7 +112,12 @@ func process_movement(delta: float):
 		sprite.flip_h = (direction < 0)
 	velocity.x = move_toward(velocity.x, target_speed, accel*delta)
 
-	move_and_slide()
+	if terrain == 3 and not level.fire_created_once and is_on_floor():
+		level.fire_created_once = true
+		create_fire()
+
+	if terrain == 4:
+		drop_blocks()
 
 	climbing = false
 	for hand in hands:
@@ -139,4 +127,5 @@ func process_movement(delta: float):
 				print("climbing")
 				climbing = true
 
+	move_and_slide()
 	prev_accel = accel

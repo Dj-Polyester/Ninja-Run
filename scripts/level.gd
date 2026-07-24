@@ -18,6 +18,13 @@ class_name Level
 @onready var player_height = player_size_in_tiles.y + 1
 
 @onready var debug_mode_label: TextEdit = $CanvasLayer/DebugModeLabel
+@onready var block_scene = preload("res://scenes/block.tscn")
+@onready var spike_scene = preload("res://scenes/spikes.tscn")
+@onready var fire_scene = preload("res://scenes/fire.tscn")
+
+var fire_particles = []
+var fire_created_once = false
+
 var camera: Camera2D:
 	get:
 		return get_viewport().get_camera_2d()
@@ -40,7 +47,7 @@ var last_zone = 0
 
 var biomes = [
 	BiomeConfig.new(1, Heavens),
-	# BiomeConfig.new(2, Heavens, {"fill": true}),
+	BiomeConfig.new(2, Heavens, {"fill": true}),
 	BiomeConfig.new(3, Cave),
 ]
 
@@ -50,9 +57,12 @@ const BIOME_THRESHOLD = 2
 class LwlCoo:
 	var coo: Vector2i
 	var level: int
-	func _init(_coo, _level) -> void:
+	var is_ground: bool
+	var spike = null
+	func _init(_coo, _level, _is_ground = true) -> void:
 		coo = _coo
 		level = _level
+		is_ground = _is_ground
 
 class BiomeConfig:
 	var id
@@ -80,8 +90,60 @@ func sample_weighted(weights: Array, population = null):
 		rnd_idx += 1
 	return population[rnd_idx]
 
-func get_tile_from_coo(tile_coo_global: Vector2):
-	return tile_map_layer.get_cell_tile_data(global2tile(tile_coo_global))
+func create_spike(tile_coo: LwlCoo):
+	tile_coo.spike = spike_scene.instantiate()
+	add_child(tile_coo.spike)
+	var global_coo = tile2global(tile_coo.coo)
+	tile_coo.spike.global_position = global_coo
+	tile_coo.spike.z_index = -1
+
+
+func _on_fire_animation_finished(_fire):
+	fire_particles.erase(_fire)
+	_fire.queue_free()
+	if fire_particles.is_empty():
+		fire_created_once = false
+
+func create_fire(global_coo: Vector2):
+	var fire = fire_scene.instantiate()
+	add_child(fire)
+	fire.sprite.animation_finished.connect(_on_fire_animation_finished.bind(fire))
+	fire_particles.append(fire)
+
+	var margin = get_tile_size().x / 2
+
+	var randx = randf_range(-margin, margin)
+	var randy = randf_range(0, get_tile_size().y / 2)
+
+	fire.global_position = Vector2(
+		global_coo.x,	
+		global_coo.y - fire.scale.y * fire.get_size().y / 2,
+	) + Vector2(randx, randy)
+
+func drop_block(tile_coo: Vector2i):
+	var global_coo = tile2global(tile_coo)
+
+	var srcid = tile_map_layer.get_cell_source_id(tile_coo)
+	var atlas_coo = tile_map_layer.get_cell_atlas_coords(tile_coo)
+	if srcid != -1:
+		print("srcid != -1")
+		var block = block_scene.instantiate()
+		add_child(block)
+		var src = tile_map_layer.tile_set.get_source(srcid)
+		if src is TileSetAtlasSource:
+			print("src is TileSetAtlasSource")
+			var texture = src.texture
+			var region = src.get_tile_texture_region(atlas_coo)
+			var atlas_tex = AtlasTexture.new()
+			atlas_tex.atlas = texture
+			atlas_tex.region = region
+			block.sprite.texture = atlas_tex
+		block.global_position = global_coo
+	tile_map_layer.erase_cell(tile_coo)
+
+
+func get_tile_from_coo(tile_coo: Vector2i):
+	return tile_map_layer.get_cell_tile_data(tile_coo)
 
 func get_tile_top_from_center(tile_world_center: Vector2):
 	return tile_world_center.y - (get_tile_size().y / 2.0)
@@ -138,9 +200,10 @@ func _ready() -> void:
 	debug_camera.enabled = false
 	player_camera.enabled = true
 	print(player_size_in_tiles)
-	
-	curr_biome = Heavens.new(self)
-	prev_id = 1
+
+	var curr_config = biomes[0]
+	curr_biome = curr_config.type.new(self, curr_config.args)
+	prev_id = curr_config.id
 	player.level = self
 
 func _process(delta: float) -> void:

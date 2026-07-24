@@ -46,8 +46,14 @@ func paint(platform_set):
 			tile_map_layer.set_cells_terrain_connect(coo2paint, 0, lwl_idx)
 		lwl_idx += 1
 		
-func construct_platform(coox, cooy, length):
-	return range(length).map(func(x): return level.LwlCoo.new(Vector2i(coox + x, cooy), level.sample_weighted(lwl_probs)))
+func construct_platform(coox, cooy, length, is_ground=true):
+	return range(length).map(
+		func(x): return level.LwlCoo.new(
+			Vector2i(coox + x, cooy), 
+			level.sample_weighted(lwl_probs),
+			is_ground
+		)
+	)
 
 func construct_platform_constrained_from(coox, cooy, new_platform_sets):
 	var there_is_platform_closer = false
@@ -94,7 +100,9 @@ func fill_last_platform():
 	var last_starty = platforms[-1][-1][0].coo.y
 	for i in range(last_starty+1, map_height):
 		var startx = platforms[-1][-1][0].coo.x
-		platforms[-1].append(construct_platform(startx, i, len(platforms[-1][-1])))
+		platforms[-1].append(
+			construct_platform(startx, i, len(platforms[-1][-1]), false)
+		)
 
 func gen_platforms():
 	"""Add num_platforms platforms"""
@@ -141,6 +149,7 @@ func gen_platforms():
 	if fill:
 		fill_last_platform()
 	paint(platforms[-1])
+	gen_spikes_platforms(platforms[-1])
 
 func fill_frame():
 	while true:
@@ -162,6 +171,14 @@ func set_params(_args: Dictionary):
 
 func spawn_player():
 	spawn(player, 0, 0, 0)
+
+func gen_spikes_platforms(platform_set):
+	print("gen spikes platforms")
+	for platform in platform_set:
+		for coo_rnd_idx in platform:
+			if coo_rnd_idx.level == 5 and coo_rnd_idx.is_ground:
+				level.create_spike(coo_rnd_idx)
+
 
 func process(_delta: float) -> void:
 	super(_delta)

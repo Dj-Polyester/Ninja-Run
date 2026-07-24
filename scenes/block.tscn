@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://dqdk5ldi3g21w"]
+
+[ext_resource type="Texture2D" uid="uid://c0pgykfjgoe27" path="res://assets/Tiles/block_blue.png" id="1_8r6n6"]
+[ext_resource type="Script" uid="uid://celuehbu2s7f4" path="res://scripts/block.gd" id="1_cgrg5"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hfv4w"]
+
+[node name="Block" type="RigidBody2D" unique_id=1776195058]
+script = ExtResource("1_cgrg5")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=927111831]
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("1_8r6n6")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=671865493]
+scale = Vector2(1.97, 1.97)
+shape = SubResource("RectangleShape2D_hfv4w")

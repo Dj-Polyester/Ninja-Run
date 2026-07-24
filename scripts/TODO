@@ -6,11 +6,11 @@ Terrain:
 ✔ Switch biomes @done(26-07-08 15:16)
 ✔ stacked platforms @done(26-06-08 20:19)
 ☐ block types have different properties
-    ☐ tundra is falling
-    ☐ snow is slippery
-    ☐ desert is burning hot
-    ☐ astro has spikes
-
+    ✔ snow is slippery @done(26-07-19 00:31)
+    ✔ desert is burning hot @done(26-07-19 00:31)
+    ✔ astro is falling @done(26-07-19 00:31)
+    ✔ metal has spikes @done(26-07-24 21:49)
+    ☐ Water drowns
 Player:
 ☐ spawn player/enemies
     ✔ spawn helper method @done(26-06-09 21:11)

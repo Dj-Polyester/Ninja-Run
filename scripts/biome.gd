@@ -7,7 +7,7 @@ static var walls = []
 static var num_platforms = 1
 static var num_hollows = 1
 
-static var lwl_probs = [MAX_PROB, 0, 0, 0, 0]
+static var lwl_probs = [MAX_PROB, 0, 0, 0, 0, 0]
 static var curr_lwl = 0
 static var switch_counter = 0
 static var should_switch = false
@@ -53,6 +53,19 @@ var cam_x_right:
 	get: return level.cam_x_right
 	set(val): level.cam_x_right = val
 
+func mv_spikes_platforms_left(num_pixels):
+	for platform_set in platforms:
+		for platform in platform_set:
+			for coo_rnd_idx in platform:
+				if coo_rnd_idx.spike != null:
+					coo_rnd_idx.spike.global_position.x -= num_pixels
+
+func mv_spikes_walls_left(num_pixels):
+	for wall in walls:
+		for coo_rnd_idx in wall:
+			if coo_rnd_idx.spike != null:
+				coo_rnd_idx.spike.global_position.x -= num_pixels
+
 func mv_platforms_left(num_tiles):
 	var coos2paint = []
 	for i in lwl_probs:
@@ -72,6 +85,10 @@ func mv_platforms_left(num_tiles):
 					coo_rnd_idx.coo = coo
 					new_platform.append(coo_rnd_idx)
 					coos2paint[rnd_idx].append(coo)
+				else:
+					if coo_rnd_idx.spike != null:
+						coo_rnd_idx.spike.queue_free()
+						coo_rnd_idx.spike = null
 			if new_platform != []:
 				new_set.append(new_platform)
 		if new_set != []:
@@ -103,6 +120,10 @@ func mv_walls_left(num_tiles):
 				coo_rnd_idx.coo = coo
 				new_wall.append(coo_rnd_idx)
 				coos2paint[rnd_idx].append(coo)
+			else:
+				if coo_rnd_idx.spike != null:
+					coo_rnd_idx.spike.queue_free()
+					coo_rnd_idx.spike = null
 		if new_wall != []:
 			new_walls.append(new_wall)
 	var new_hollows = []
@@ -177,6 +198,19 @@ func find_rightmost_hollow_to_the_left_of_camera(_tile_coordinates_x):
 		set_index += 1
 	return [set_index, lastcoo_x] if found else [INF, INF]
 
+func clear_spikes_platforms(platform_set):
+	for platform in platform_set:
+		for coo_rnd_idx in platform:
+			if coo_rnd_idx.spike != null:
+				coo_rnd_idx.spike.queue_free()
+				coo_rnd_idx.spike = null
+
+func clear_spikes_walls(wall):
+	for coo_rnd_idx in wall:
+		if coo_rnd_idx.spike != null:
+			coo_rnd_idx.spike.queue_free()
+			coo_rnd_idx.spike = null
+
 func clear_platforms(n = len(platforms)):
 	var coos2erase = []
 	for i in range(n):
@@ -185,9 +219,10 @@ func clear_platforms(n = len(platforms)):
 			for coo_rnd_idx in platform:
 				var coo = coo_rnd_idx.coo
 				coos2erase.append(coo)
+		clear_spikes_platforms(platform_set)
 	for coo2erase in coos2erase:
 		tile_map_layer.erase_cell(coo2erase)
-		
+
 func clear_walls(n = len(hollows)):
 	var coos2erase = []
 	for i in range(n):
@@ -196,6 +231,7 @@ func clear_walls(n = len(hollows)):
 		for coo_rnd_idx in wall:
 			var coo = coo_rnd_idx.coo
 			coos2erase.append(coo)
+		clear_spikes_walls(wall)
 	for coo2erase in coos2erase:
 		tile_map_layer.erase_cell(coo2erase)
 
@@ -223,7 +259,9 @@ func process(_delta: float) -> void:
 		var shift_amount_pixels = level.get_tile_size().x * shift_amount_tiles
 		print("mv left")
 		mv_platforms_left(shift_amount_tiles)
+		mv_spikes_platforms_left(shift_amount_pixels)
 		mv_walls_left(shift_amount_tiles)
+		mv_spikes_walls_left(shift_amount_pixels)
 		camera.global_position.x -= shift_amount_pixels
 		player.global_position.x -= shift_amount_pixels
 		cam_x_left = level.global2tile(camera.global_position).x
