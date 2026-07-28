@@ -1,13 +1,15 @@
 extends Node2D
 class_name Biome
 
+@export var char_id = 2
+
 static var platforms = []
 static var hollows = []
 static var walls = []
 static var num_platforms = 1
 static var num_hollows = 1
 
-static var lwl_probs = [MAX_PROB, 0, 0, 0, 0, 0]
+static var lwl_probs = [0, 0, 0, 0, 0, 0]
 static var curr_lwl = 0
 static var switch_counter = 0
 static var should_switch = false
@@ -22,11 +24,11 @@ const MIN_LEN = 3
 const MAX_LEN = 10
 const MV_THRESHOLD = 3
 const LWL_THRESHOLD = 2
-const MAX_PROB = 5
-const LWL_SWITCH_AMOUNT1 = 1
-const LWL_SWITCH_AMOUNT2 = 4
+const LWL_MAX_WEIGHT = 5
+const LWL_SWITCH_AMOUNTS = [1, 4]
 const COO_DIFF_UPDATE_L = 2
 const COO_DIFF_UPDATE_R = 6
+const SPIKEY_THRESHOLD = 0.5
 
 var level: Level
 var tile_map_layer: 
@@ -85,10 +87,9 @@ func mv_platforms_left(num_tiles):
 					coo_rnd_idx.coo = coo
 					new_platform.append(coo_rnd_idx)
 					coos2paint[rnd_idx].append(coo)
-				else:
-					if coo_rnd_idx.spike != null:
-						coo_rnd_idx.spike.queue_free()
-						coo_rnd_idx.spike = null
+				elif coo_rnd_idx.spike != null:
+					coo_rnd_idx.spike.queue_free()
+					coo_rnd_idx.spike = null
 			if new_platform != []:
 				new_set.append(new_platform)
 		if new_set != []:
@@ -235,15 +236,17 @@ func clear_walls(n = len(hollows)):
 	for coo2erase in coos2erase:
 		tile_map_layer.erase_cell(coo2erase)
 
-func switch_weight_ptr(curr_ptr, arr):
-	var nxt_ptr = (curr_ptr + 1) % len(arr)
-	var lwl_switch_amount = LWL_SWITCH_AMOUNT2 if switch_counter else LWL_SWITCH_AMOUNT1 
-	lwl_probs[curr_ptr] = max(lwl_probs[curr_ptr]-lwl_switch_amount, 0)
-	lwl_probs[nxt_ptr] = min(lwl_probs[nxt_ptr]+lwl_switch_amount, MAX_PROB)
-	if lwl_probs[curr_ptr] == 0:
+func switch_weight_ptr(curr_ptr: int, weight_arr: Array, switch_amounts: Array, max_weight: int):
+	var nxt_ptr = (curr_ptr + 1) % len(weight_arr)
+
+	var switch_amount = switch_amounts[switch_counter]
+	weight_arr[curr_ptr] = max(weight_arr[curr_ptr]-switch_amount, 0)
+	weight_arr[nxt_ptr] = min(weight_arr[nxt_ptr]+switch_amount, max_weight)
+
+	if weight_arr[curr_ptr] == 0:
 		curr_ptr = nxt_ptr
-	switch_counter = ((switch_counter + 1) % 2)
-	print(arr)
+	switch_counter = ((switch_counter + 1) % len(switch_amounts))
+	print(weight_arr)
 	return curr_ptr
 
 func fill_frame():
@@ -273,7 +276,10 @@ func process(_delta: float) -> void:
 	var lwl_threshold_tiles = map_width * LWL_THRESHOLD
 	if cam_x_right % lwl_threshold_tiles == 0 and cam_x_right != cam_x_right_prev:
 		print("switch_lwl ", curr_lwl)
-		curr_lwl = switch_weight_ptr(curr_lwl, lwl_probs)
+		curr_lwl = switch_weight_ptr(curr_lwl, lwl_probs, LWL_SWITCH_AMOUNTS, LWL_MAX_WEIGHT)
+
+func get_tile_config_from_coo(_tile_coo: Vector2i):
+	pass
 
 func process_end():
 
@@ -297,9 +303,14 @@ func process_end():
 func set_params(_args: Dictionary):
 	pass
 
+func set_player_anims():
+	level.player.sprite.sprite_frames = load("assets/Characters/%d/Png/Character Sprite/sprite_frames.tres" % char_id)
+
 func _init(_level: Level, _args: Dictionary = {}):
+	lwl_probs[curr_lwl] = LWL_MAX_WEIGHT
 	set_params(_args)
 	level = _level
 	if not should_switch:
 		fill_frame()
 		spawn_player()
+		set_player_anims()

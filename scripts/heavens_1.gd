@@ -48,7 +48,7 @@ func paint(platform_set):
 		
 func construct_platform(coox, cooy, length, is_ground=true):
 	return range(length).map(
-		func(x): return level.LwlCoo.new(
+		func(x): return level.TileConfig.new(
 			Vector2i(coox + x, cooy), 
 			level.sample_weighted(lwl_probs),
 			is_ground
@@ -176,9 +176,16 @@ func gen_spikes_platforms(platform_set):
 	print("gen spikes platforms")
 	for platform in platform_set:
 		for coo_rnd_idx in platform:
-			if coo_rnd_idx.level == 5 and coo_rnd_idx.is_ground:
+			if coo_rnd_idx.level == 5 and coo_rnd_idx.is_ground and randf() > SPIKEY_THRESHOLD:
 				level.create_spike(coo_rnd_idx)
 
+func get_tile_config_from_coo(tile_coo: Vector2i):
+	for platform_set in platforms:
+		for platform in platform_set:
+			for coo_rnd_idx in platform:
+				if coo_rnd_idx.coo == tile_coo:
+					return coo_rnd_idx
+	return null
 
 func process(_delta: float) -> void:
 	super(_delta)

@@ -27,7 +27,7 @@ func construct_hollow(coox, cooy, length):
 func construct_wall_from_hollows(_hollows):
 	var coox = _hollows[0].x
 	var all_wall = range(map_height).map(
-		func(y): return level.LwlCoo.new(Vector2i(coox, y), level.sample_weighted(lwl_probs))
+		func(y): return level.TileConfig.new(Vector2i(coox, y), level.sample_weighted(lwl_probs))
 	)
 	
 	var wall_refined = []
@@ -156,7 +156,7 @@ func gen_hollows():
 func gen_spikes_walls(wall):
 	print("gen spikes walls")
 	for coo_rnd_idx in wall:
-		if coo_rnd_idx.level == 5 and coo_rnd_idx.is_ground:
+		if coo_rnd_idx.level == 5 and coo_rnd_idx.is_ground and randf() > SPIKEY_THRESHOLD:
 			level.create_spike(coo_rnd_idx)
 
 func fill_frame():
@@ -182,6 +182,13 @@ func spawn(entity: Entity, hollow_set_idx: int, hollow_idx: int, tile_idx: int =
 
 func spawn_player():
 	spawn(player, 0, -1)
+
+func get_tile_config_from_coo(tile_coo: Vector2i):
+	for wall in walls:
+		for coo_rnd_idx in wall:
+			if coo_rnd_idx.coo == tile_coo:
+				return coo_rnd_idx
+	return null
 
 func process(_delta: float) -> void:
 	super(_delta)

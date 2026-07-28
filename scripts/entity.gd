@@ -2,6 +2,7 @@ extends CharacterBody2D
 class_name Entity
 
 @onready var sprite = $AnimatedSprite2D
+@onready var damage_timer: Timer = $DamageTimer 
 
 func get_spawn_position_from_tile_coos(tile_world_center: Vector2, tile_world_edge: float):
 	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
@@ -41,7 +42,7 @@ func outside_above():
 func outside_below():
 	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
 	var viewport_size = get_viewport().get_visible_rect().size
-	return (collision_shape.global_position.y + get_collision_size(collision_shape).y / 2) > viewport_size.y
+	return (collision_shape.global_position.y - get_collision_size(collision_shape).y / 2) > viewport_size.y
 
 func get_collision_size(collision_shape: CollisionShape2D) -> Vector2:
 	# 1. Safety check to make sure a shape resource is actually assigned
@@ -77,4 +78,14 @@ func get_collision_size(collision_shape: CollisionShape2D) -> Vector2:
 	# this ensures the pixel math scales up accurately too.
 	return calculated_size * collision_shape.global_scale
 
+func _ready() -> void:
+	damage_timer.timeout.connect(_on_damage_timeout)
+
+func _on_damage_timeout():
+	sprite.modulate = Color.WHITE
+
+func take_damage(val, health_bar):
+	health_bar.decrease(val)
+	sprite.modulate = Color.RED
+	damage_timer.start(0.2)
 

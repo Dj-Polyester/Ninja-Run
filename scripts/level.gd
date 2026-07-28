@@ -17,7 +17,9 @@ class_name Level
 @onready var player_width = player_size_in_tiles.x + 1
 @onready var player_height = player_size_in_tiles.y + 1
 
-@onready var debug_mode_label: TextEdit = $CanvasLayer/DebugModeLabel
+@onready var debug_mode_label: TextEdit = $UI/DebugModeLabel
+@onready var health_bar: ProgressBar = $UI/HealthBar
+
 @onready var block_scene = preload("res://scenes/block.tscn")
 @onready var spike_scene = preload("res://scenes/spikes.tscn")
 @onready var fire_scene = preload("res://scenes/fire.tscn")
@@ -54,7 +56,7 @@ var biomes = [
 const CAM_SPEED = 5
 const BIOME_THRESHOLD = 2
 
-class LwlCoo:
+class TileConfig:
 	var coo: Vector2i
 	var level: int
 	var is_ground: bool
@@ -90,7 +92,7 @@ func sample_weighted(weights: Array, population = null):
 		rnd_idx += 1
 	return population[rnd_idx]
 
-func create_spike(tile_coo: LwlCoo):
+func create_spike(tile_coo: TileConfig):
 	tile_coo.spike = spike_scene.instantiate()
 	add_child(tile_coo.spike)
 	var global_coo = tile2global(tile_coo.coo)
@@ -141,6 +143,8 @@ func drop_block(tile_coo: Vector2i):
 		block.global_position = global_coo
 	tile_map_layer.erase_cell(tile_coo)
 
+func get_tile_config_from_coo(tile_coo: Vector2i):
+	return curr_biome.get_tile_config_from_coo(tile_coo)
 
 func get_tile_from_coo(tile_coo: Vector2i):
 	return tile_map_layer.get_cell_tile_data(tile_coo)
@@ -195,15 +199,23 @@ func rnd_coo1(coo, radius_l, radius_r, min_val, max_val):
 func rnd_coo2(coo, radius, min_val, max_val):
 	return rnd_coo1(coo, radius, radius, min_val, max_val)
 
+func game_over():
+	print("game over")
+
 func _ready() -> void:
 	randomize()
+	# print
+	print(player_size_in_tiles)
+	# debug
 	debug_camera.enabled = false
 	player_camera.enabled = true
-	print(player_size_in_tiles)
-
+	# signals
+	health_bar.no_hp_left.connect(game_over)
+	# biome
 	var curr_config = biomes[0]
 	curr_biome = curr_config.type.new(self, curr_config.args)
 	prev_id = curr_config.id
+
 	player.level = self
 
 func _process(delta: float) -> void:
