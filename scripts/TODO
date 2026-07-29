@@ -22,4 +22,22 @@ Player:
     ✔ mechanics @done(26-07-07 02:34)
     ☐ animation
 ☐ Health bar
+Stats:
+☐ Health
+☐ Defense (Damage taken)
+Abilities:
+Essential:
+☐ Move
+☐ Jump
+☐ Roll 
+Extra:
+☐ Movement
+    ☐ Jump (double jump, triple jump)
+    ☐ Climb (double climb)
+    ☐ Glide/hang (reverse gravity, fly)
+    ☐ Dash (fatal dash, teleport, pull enemy to itself)
+☐ Attack 
+    ☐ Shoot forward (arbitrary, shooting speed, num ammo to shoot) 
+☐ Misc 
+    ☐ Slow down time (duration)
 Enemy:

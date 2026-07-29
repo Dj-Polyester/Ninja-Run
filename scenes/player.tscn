@@ -310,3 +310,4 @@ self_modulate = Color(0, 1, 0, 1)
 shape = SubResource("RectangleShape2D_hfv4w")
 
 [node name="DamageTimer" type="Timer" parent="." unique_id=1564798855]
+one_shot = true

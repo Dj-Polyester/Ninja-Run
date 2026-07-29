@@ -3,10 +3,10 @@ class_name Entity
 
 @onready var sprite = $AnimatedSprite2D
 @onready var damage_timer: Timer = $DamageTimer 
+@onready var collision_shape: CollisionShape2D = $CollisionShape2D
 
 func get_spawn_position_from_tile_coos(tile_world_center: Vector2, tile_world_edge: float):
-	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
-	var size = get_collision_size(collision_shape)
+	var size = get_collision_size()
 
 	return Vector2(
 		tile_world_center.x - collision_shape.position.x * global_scale.x,
@@ -17,8 +17,7 @@ func set_spawn_position_from_tile_coos(tile_world_center: Vector2, tile_world_ed
 	global_position = get_spawn_position_from_tile_coos(tile_world_center, tile_world_edge)
 
 func get_tile_global_coo_under(level: Level):
-	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
-	var size = get_collision_size(collision_shape)
+	var size = get_collision_size()
 	var feet_bottom = Vector2(
 		collision_shape.global_position.x, 
 		collision_shape.global_position.y + size.y / 2
@@ -36,15 +35,13 @@ func falling():
 	return velocity.y > 0
 
 func outside_above():
-	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
-	return (collision_shape.global_position.y - get_collision_size(collision_shape).y / 2) < 0
+	return (collision_shape.global_position.y - get_collision_size().y / 2) < 0
 
 func outside_below():
-	var collision_shape = get_node("CollisionShape2D") as CollisionShape2D
 	var viewport_size = get_viewport().get_visible_rect().size
-	return (collision_shape.global_position.y - get_collision_size(collision_shape).y / 2) > viewport_size.y
+	return (collision_shape.global_position.y - get_collision_size().y / 2) > viewport_size.y
 
-func get_collision_size(collision_shape: CollisionShape2D) -> Vector2:
+func get_collision_size() -> Vector2:
 	# 1. Safety check to make sure a shape resource is actually assigned
 	if not collision_shape or not collision_shape.shape:
 		push_warning("No shape resource assigned!")

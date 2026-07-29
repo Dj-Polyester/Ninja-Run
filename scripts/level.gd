@@ -12,8 +12,7 @@ class_name Level
 
 @onready var player = $Player
 @onready var player_camera = $Player/PlayerCamera
-@onready var player_collision_shape = player.get_node("CollisionShape2D") as CollisionShape2D
-@onready var player_size_in_tiles = get_obj_collision_size_tiles(player, player_collision_shape)
+@onready var player_size_in_tiles = get_obj_collision_size_tiles(player)
 @onready var player_width = player_size_in_tiles.x + 1
 @onready var player_height = player_size_in_tiles.y + 1
 
@@ -158,8 +157,8 @@ func get_tile_bottom_from_center(tile_world_center: Vector2):
 func get_tile_size():
 	return (tile_map_layer.tile_set.tile_size as Vector2) * tile_map_layer.scale
 
-func get_obj_collision_size_tiles(entity: Entity, collision_shape: CollisionShape2D) -> Vector2i:
-	var obj_size = entity.get_collision_size(collision_shape)
+func get_obj_collision_size_tiles(entity: Entity) -> Vector2i:
+	var obj_size = entity.get_collision_size()
 	return (obj_size / get_tile_size()).ceil() as Vector2i
 
 func sample(array: Array, amount: int = 1):
@@ -211,6 +210,9 @@ func _ready() -> void:
 	player_camera.enabled = true
 	# signals
 	health_bar.no_hp_left.connect(game_over)
+	var new_val = 100 + 5 * player.health.level
+	health_bar.set_max_val(new_val)
+	health_bar.set_val(new_val)
 	# biome
 	var curr_config = biomes[0]
 	curr_biome = curr_config.type.new(self, curr_config.args)

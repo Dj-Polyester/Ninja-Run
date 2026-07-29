@@ -10,7 +10,7 @@ static var num_platforms = 1
 static var num_hollows = 1
 
 static var lwl_probs = [0, 0, 0, 0, 0, 0]
-static var curr_lwl = 0
+static var curr_lwl = 2
 static var switch_counter = 0
 static var should_switch = false
 static var should_switch_cave = false

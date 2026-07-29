@@ -8,13 +8,25 @@ class_name Player
 @export var back_speed = -100.0
 @export var free_movement: bool = true
 
-const MAX_NUM_JUMPS = 2
-const MAX_NUM_CLIMBS = 3
-const FIRE_DAMAGE = 1
-const SPIKE_DAMAGE = 5
+var max_num_jumps = null
+var max_num_climbs = null
+const FIRE_DAMAGE = 10
+const SPIKE_DAMAGE = 15
 
-var jump_counter = MAX_NUM_JUMPS
-var climb_counter = MAX_NUM_CLIMBS
+# Stats
+var health: Stat = Stat.new()
+var defense: Stat = Stat.new(0, 3)
+var jump: Stat = Stat.new(2, 3)
+var climb: Stat = Stat.new(0, 2)
+# Abilities
+@export var can_glide = false
+@export var can_reverse_gravity = false
+@export var fly = false
+@export var can_dash = false
+@export var can_fatal_dash = false
+@export var can_teleport = false
+@export var can_telekinesis = false
+
 var cleared = false
 var climbing = false
 var prev_accel = 0
@@ -23,9 +35,24 @@ var tile_coo_under
 var prev_spikey = false
 var level: Level
 var was_on_floor = true
+var jump_counter 
+var climb_counter
 
 @onready var camera = $Camera2D
 @onready var hands = [$Area2DL, $Area2DR] 
+
+class Stat:
+	var level = 0
+	var max_level = null
+	func _init(_level = 0, _max_level = null) -> void:
+		level = _level
+		max_level = _max_level
+
+func _ready() -> void:
+	super._ready()
+	max_num_jumps = jump.level
+	max_num_climbs = climb.level
+	
 
 func process_camera(delta: float):
 	var viewport_size = get_viewport().get_visible_rect().size
@@ -78,8 +105,8 @@ func process_movement(delta: float):
 
 	# Add the gravity.
 	if on_floor_before:
-		jump_counter = MAX_NUM_JUMPS
-		climb_counter = MAX_NUM_CLIMBS
+		jump_counter = max_num_jumps
+		climb_counter = max_num_climbs
 
 		# get tile coo
 		tile_global_coo_under = get_tile_global_coo_under(level) 
@@ -94,17 +121,23 @@ func process_movement(delta: float):
 			sprite.play("fall")
 		velocity += get_gravity() * delta
 
-	# Handle jump.
 	if Input.is_action_just_pressed("ui_up"):
 		if climb_counter > 0 or jump_counter > 0:
 			sprite.play("jump before")
+		# Climb
 		if climbing and climb_counter > 0:
 			velocity.y = jump_speed
 			velocity.x = back_speed
 			climb_counter -= 1
+		# Jump
 		if not climbing and jump_counter > 0:
 			velocity.y = jump_speed
 			jump_counter -= 1
+
+	if Input.is_action_just_pressed("ui_down"):
+		if on_floor_before:
+			sprite.play("roll")
+
 
 	var target_speed = direction * speed
 	var accel
@@ -120,7 +153,7 @@ func process_movement(delta: float):
 	velocity.x = move_toward(velocity.x, target_speed, accel*delta)
 
 	if terrain == 3 and not level.fire_created_once and on_floor_before:
-		take_damage(FIRE_DAMAGE, level.health_bar)
+		take_damage(FIRE_DAMAGE - 3*defense.level, level.health_bar)
 		level.fire_created_once = true
 		create_fire()
 
@@ -130,7 +163,7 @@ func process_movement(delta: float):
 
 	if curr_tile_config != null and curr_tile_config.spike != null:
 		if on_floor_before and not prev_spikey and curr_tile_config.spike.spikey:
-			take_damage(SPIKE_DAMAGE, level.health_bar)
+			take_damage(SPIKE_DAMAGE - 4*defense.level, level.health_bar)
 		prev_spikey = curr_tile_config.spike.spikey
 
 	climbing = false
@@ -153,6 +186,9 @@ func process_movement(delta: float):
 	elif on_floor_after:
 		if sprite.animation == "jump after" and sprite.is_playing():
 			print("jump after playing")
+			pass # let landing animation finish
+		elif sprite.animation == "roll" and sprite.is_playing():
+			print("roll playing")
 			pass # let landing animation finish
 		elif direction:
 			sprite.play("fast run")
