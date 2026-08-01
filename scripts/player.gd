@@ -13,20 +13,6 @@ var max_num_climbs = null
 const FIRE_DAMAGE = 10
 const SPIKE_DAMAGE = 15
 
-# Stats
-var health: Stat = Stat.new()
-var defense: Stat = Stat.new(0, 3)
-var jump: Stat = Stat.new(2, 3)
-var climb: Stat = Stat.new(0, 2)
-# Abilities
-@export var can_glide = false
-@export var can_reverse_gravity = false
-@export var fly = false
-@export var can_dash = false
-@export var can_fatal_dash = false
-@export var can_teleport = false
-@export var can_telekinesis = false
-
 var cleared = false
 var climbing = false
 var prev_accel = 0
@@ -40,19 +26,25 @@ var climb_counter
 
 @onready var camera = $Camera2D
 @onready var hands = [$Area2DL, $Area2DR] 
+@onready var magnet_area = $MagnetArea
 
-class Stat:
-	var level = 0
-	var max_level = null
-	func _init(_level = 0, _max_level = null) -> void:
-		level = _level
-		max_level = _max_level
+var stats 
+var abilities
 
-func _ready() -> void:
-	super._ready()
-	max_num_jumps = jump.level
-	max_num_climbs = climb.level
+func init(_stats, _abilities) -> void:
+	stats = _stats
+	abilities = _abilities
 	
+	max_num_jumps = stats.jump.value
+	max_num_climbs = stats.climb.value
+
+	magnet_area.area_entered.connect(_on_magnet_area_entered)
+
+func _on_magnet_area_entered(area: Area2D):
+	print("entered collectible area")
+	if area.is_in_group("collectible"):
+		print("magnetting")
+		area.start_magnet(collision_shape)
 
 func process_camera(delta: float):
 	var viewport_size = get_viewport().get_visible_rect().size
@@ -88,6 +80,33 @@ func drop_blocks():
 				level.drop_block(tile_coo)
 			else:
 				break
+
+func collect(collectible: Collectible):
+	match collectible.type:
+		Collectible.Type.COIN_BRONZE:
+			stats.currency += randi_range(1,5)
+		Collectible.Type.COIN_SILVER:
+			stats.currency += randi_range(6,10)
+		Collectible.Type.COIN_GOLD:
+			stats.currency += randi_range(11,50)
+
+		Collectible.Type.GEM_YELLOW:
+			stats.currency += randi_range(51,100)
+		Collectible.Type.GEM_RED:
+			stats.currency += randi_range(101,200)
+		Collectible.Type.GEM_GREEN:
+			stats.currency += randi_range(201,500)
+		Collectible.Type.GEM_BLUE:
+			stats.currency += randi_range(501,1000)
+
+		Collectible.Type.HEART:
+			level.health_bar.increase(randi_range(10,30))
+
+func _on_animation_finished():
+	match sprite.animation:
+		"roll":
+			collision_shape.global_position.y -= get_collision_size().y / 2
+			collision_shape.shape.size.y *= 2
 
 func process_movement(delta: float):
 	# Get the input direction and handle the movement/deceleration.
@@ -136,8 +155,10 @@ func process_movement(delta: float):
 
 	if Input.is_action_just_pressed("ui_down"):
 		if on_floor_before:
+			sprite.animation_finished.connect(_on_animation_finished, CONNECT_ONE_SHOT)
 			sprite.play("roll")
-
+			collision_shape.global_position.y += get_collision_size().y / 4
+			collision_shape.shape.size.y /= 2
 
 	var target_speed = direction * speed
 	var accel
@@ -153,7 +174,7 @@ func process_movement(delta: float):
 	velocity.x = move_toward(velocity.x, target_speed, accel*delta)
 
 	if terrain == 3 and not level.fire_created_once and on_floor_before:
-		take_damage(FIRE_DAMAGE - 3*defense.level, level.health_bar)
+		take_damage(FIRE_DAMAGE*(1-stats.defense.value), level.health_bar)
 		level.fire_created_once = true
 		create_fire()
 
@@ -163,7 +184,7 @@ func process_movement(delta: float):
 
 	if curr_tile_config != null and curr_tile_config.spike != null:
 		if on_floor_before and not prev_spikey and curr_tile_config.spike.spikey:
-			take_damage(SPIKE_DAMAGE - 4*defense.level, level.health_bar)
+			take_damage(SPIKE_DAMAGE*(1-stats.defense.value), level.health_bar)
 		prev_spikey = curr_tile_config.spike.spikey
 
 	climbing = false

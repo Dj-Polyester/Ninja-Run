@@ -17,3 +17,4 @@ scale = Vector2(1.97, 1.97)
 shape = SubResource("RectangleShape2D_hfv4w")
 
 [node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=457556603]
+rect = Rect2(-20, -20, 40, 40)

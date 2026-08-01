@@ -150,6 +150,7 @@ func gen_platforms():
 		fill_last_platform()
 	paint(platforms[-1])
 	gen_spikes_platforms(platforms[-1])
+	spawn_collectible()
 
 func fill_frame():
 	while true:
@@ -158,7 +159,7 @@ func fill_frame():
 		if lastcoo_x > map_width:
 			break
 
-func spawn(entity: Entity, platform_set_idx: int, platform_idx: int, tile_idx: int):
+func spawn(entity, platform_set_idx: int, platform_idx: int, tile_idx: int):
 	var tile_world_center_top = get_tile_coo(platform_set_idx, platform_idx, tile_idx)
 
 	var tile_world_center = tile_world_center_top[0]
@@ -187,6 +188,33 @@ func get_tile_config_from_coo(tile_coo: Vector2i):
 					return coo_rnd_idx
 	return null
 
+func spawn_collectible():
+	if randf() > 0.7:
+		var collectible = create_collectible()
+		var platform_idx = range(len(platforms[-1])).pick_random()
+		var tile_idx = range(len(platforms[-1][platform_idx])).pick_random()
+		spawn(collectible, -1, platform_idx, tile_idx)
+
+func clear_spikes_platforms(platform_set):
+	for platform in platform_set:
+		for coo_rnd_idx in platform:
+			if coo_rnd_idx.spike != null:
+				coo_rnd_idx.spike.queue_free()
+				coo_rnd_idx.spike = null
+
+
+func clear_platforms(n = len(platforms)):
+	var coos2erase = []
+	for i in range(n):
+		var platform_set = platforms.pop_at(0)
+		for platform in platform_set:
+			for coo_rnd_idx in platform:
+				var coo = coo_rnd_idx.coo
+				coos2erase.append(coo)
+		clear_spikes_platforms(platform_set)
+	for coo2erase in coos2erase:
+		tile_map_layer.erase_cell(coo2erase)
+		
 func process(_delta: float) -> void:
 	super(_delta)
 
@@ -212,4 +240,10 @@ func process(_delta: float) -> void:
 		print("switch_num_platforms ", curr_lwl)
 		num_platforms = level.sample_weighted([.75, .25], range(1,3))
 
+	var platform_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
+	var platform_set_until_destroy = platform_set_until_destroy_lastcoo_x[0]
+	var lastcoo_x_platform = platform_set_until_destroy_lastcoo_x[1]
+	if not cleared and cam_x_left > lastcoo_x_platform:
+		print("clear platforms")
+		clear_platforms(platform_set_until_destroy)
 	process_end()

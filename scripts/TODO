@@ -25,6 +25,7 @@ Player:
 Stats:
 ☐ Health
 ☐ Defense (Damage taken)
+☐ Jump
 Abilities:
 Essential:
 ☐ Move
@@ -40,4 +41,10 @@ Extra:
     ☐ Shoot forward (arbitrary, shooting speed, num ammo to shoot) 
 ☐ Misc 
     ☐ Slow down time (duration)
+    ☐ invisible
+    ☐ transform to tapped enemy
 Enemy:
+Collectibles:
+☐ Spawned
+☐ Moving
+☐ Attracted

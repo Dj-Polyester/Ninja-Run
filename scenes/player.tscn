@@ -267,16 +267,17 @@ size = Vector2(336.66666, 350)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hfv4w"]
 
-[node name="Player" type="CharacterBody2D" unique_id=614182069]
+[sub_resource type="CircleShape2D" id="CircleShape2D_hfv4w"]
+radius = 100.0
+
+[node name="Player" type="CharacterBody2D" unique_id=614182069 groups=["player"]]
 script = ExtResource("1_d2wvv")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="." unique_id=2103347776]
 position = Vector2(82, -18)
 scale = Vector2(0.5, 0.5)
 sprite_frames = SubResource("SpriteFrames_60mlk")
-animation = &"fast run"
-frame = 1
-frame_progress = 0.43991587
+animation = &"idle"
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1345703530]
 position = Vector2(78.5, 0)
@@ -311,3 +312,9 @@ shape = SubResource("RectangleShape2D_hfv4w")
 
 [node name="DamageTimer" type="Timer" parent="." unique_id=1564798855]
 one_shot = true
+
+[node name="MagnetArea" type="Area2D" parent="." unique_id=1324122087]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MagnetArea" unique_id=1885405664]
+position = Vector2(81, 0)
+shape = SubResource("CircleShape2D_hfv4w")

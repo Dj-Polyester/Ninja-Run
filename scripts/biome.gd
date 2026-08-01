@@ -9,13 +9,13 @@ static var walls = []
 static var num_platforms = 1
 static var num_hollows = 1
 
+static var collectible_probs = null
 static var lwl_probs = [0, 0, 0, 0, 0, 0]
-static var curr_lwl = 2
+static var curr_lwl = 3
 static var switch_counter = 0
 static var should_switch = false
 static var should_switch_cave = false
-
-var cam_x_right_prev
+static var collectibles = []
 
 const MAX_NUM_FRAMES = 10
 const MIN_AVAILABLE_STARTCOO = 4
@@ -30,6 +30,9 @@ const COO_DIFF_UPDATE_L = 2
 const COO_DIFF_UPDATE_R = 6
 const SPIKEY_THRESHOLD = 0.5
 
+
+var collectible_names = null
+var cam_x_right_prev
 var level: Level
 var tile_map_layer: 
 	get: return level.tile_map_layer
@@ -51,6 +54,9 @@ var cleared:
 var cam_x_left:
 	get: return level.cam_x_left
 	set(val): level.cam_x_left = val
+var cam_x_left_pixels:
+	get: return level.cam_x_left_pixels
+	set(val): level.cam_x_left_pixels = val
 var cam_x_right:
 	get: return level.cam_x_right
 	set(val): level.cam_x_right = val
@@ -161,18 +167,17 @@ func find_rightmost_coo_x(platform_set):
 func find_rightmost_platform_to_the_left_of_camera(_tile_coordinates_x):
 	var set_index = 0
 	var found = false
-	var lastcoo_x
+	var lastcoo_x = 0
 	for platform_set in platforms:
-		lastcoo_x = 0
+		var set_rightmost_x = 0
 		for platform in platform_set:
 			var lastcoo = platform[-1].coo
-			if lastcoo.x >= _tile_coordinates_x:
-				found = true
-				break
-			if lastcoo.x > lastcoo_x:
-				lastcoo_x = lastcoo.x
-		if found:
+			if lastcoo.x > set_rightmost_x:
+				set_rightmost_x = lastcoo.x
+		if set_rightmost_x >= _tile_coordinates_x:
+			found = true
 			break
+		lastcoo_x = set_rightmost_x
 		set_index += 1
 	return [set_index, lastcoo_x] if found else [INF, INF]
 	
@@ -199,43 +204,6 @@ func find_rightmost_hollow_to_the_left_of_camera(_tile_coordinates_x):
 		set_index += 1
 	return [set_index, lastcoo_x] if found else [INF, INF]
 
-func clear_spikes_platforms(platform_set):
-	for platform in platform_set:
-		for coo_rnd_idx in platform:
-			if coo_rnd_idx.spike != null:
-				coo_rnd_idx.spike.queue_free()
-				coo_rnd_idx.spike = null
-
-func clear_spikes_walls(wall):
-	for coo_rnd_idx in wall:
-		if coo_rnd_idx.spike != null:
-			coo_rnd_idx.spike.queue_free()
-			coo_rnd_idx.spike = null
-
-func clear_platforms(n = len(platforms)):
-	var coos2erase = []
-	for i in range(n):
-		var platform_set = platforms.pop_at(0)
-		for platform in platform_set:
-			for coo_rnd_idx in platform:
-				var coo = coo_rnd_idx.coo
-				coos2erase.append(coo)
-		clear_spikes_platforms(platform_set)
-	for coo2erase in coos2erase:
-		tile_map_layer.erase_cell(coo2erase)
-
-func clear_walls(n = len(hollows)):
-	var coos2erase = []
-	for i in range(n):
-		hollows.pop_at(0)
-		var wall = walls.pop_at(0)
-		for coo_rnd_idx in wall:
-			var coo = coo_rnd_idx.coo
-			coos2erase.append(coo)
-		clear_spikes_walls(wall)
-	for coo2erase in coos2erase:
-		tile_map_layer.erase_cell(coo2erase)
-
 func switch_weight_ptr(curr_ptr: int, weight_arr: Array, switch_amounts: Array, max_weight: int):
 	var nxt_ptr = (curr_ptr + 1) % len(weight_arr)
 
@@ -252,9 +220,11 @@ func switch_weight_ptr(curr_ptr: int, weight_arr: Array, switch_amounts: Array, 
 func fill_frame():
 	pass
 
-func spawn_player():
-	pass
-	
+func mv_collectibles_left(shift_amount_pixels):
+	for collectible in collectibles:
+		if is_instance_valid(collectible):
+			collectible.global_position.x -= shift_amount_pixels
+
 func process(_delta: float) -> void:
 
 	var shift_amount_tiles = map_width * (MV_THRESHOLD - 1)
@@ -265,10 +235,11 @@ func process(_delta: float) -> void:
 		mv_spikes_platforms_left(shift_amount_pixels)
 		mv_walls_left(shift_amount_tiles)
 		mv_spikes_walls_left(shift_amount_pixels)
+		mv_collectibles_left(shift_amount_pixels)
+
 		camera.global_position.x -= shift_amount_pixels
 		player.global_position.x -= shift_amount_pixels
-		cam_x_left = level.global2tile(camera.global_position).x
-		cam_x_right = cam_x_left + map_width
+		level.calc_cam_coos()
 		# Keep the level's accumulator in sync so biome-zone thresholds can be
 		# computed from a monotonic world coordinate.
 		level.total_shift_tiles += shift_amount_tiles
@@ -282,22 +253,16 @@ func get_tile_config_from_coo(_tile_coo: Vector2i):
 	pass
 
 func process_end():
-
-	var platform_set_until_destroy_lastcoo_x = find_rightmost_platform_to_the_left_of_camera(cam_x_left)
-	var platform_set_until_destroy = platform_set_until_destroy_lastcoo_x[0]
-	var lastcoo_x_platform = platform_set_until_destroy_lastcoo_x[1]
-	if not cleared and cam_x_left > lastcoo_x_platform:
-		print("clear platforms")
-		clear_platforms(platform_set_until_destroy)
-
-	var hollow_set_until_destroy_lastcoo_x = find_rightmost_hollow_to_the_left_of_camera(cam_x_left)
-	var hollow_set_until_destroy = hollow_set_until_destroy_lastcoo_x[0]
-	var lastcoo_x_hollow = hollow_set_until_destroy_lastcoo_x[1]
-	if not cleared and cam_x_left > lastcoo_x_hollow:
-		print("clear hollows")
-		clear_walls(hollow_set_until_destroy)
-		cleared = true
-
+	if not cleared:
+		var remove_collectibles_until = -1
+		for collectible in collectibles:
+			if not is_instance_valid(collectible) or collectible.global_position.x < cam_x_left_pixels:
+				remove_collectibles_until += 1
+		for i in range(remove_collectibles_until + 1):
+			var collectible = collectibles.pop_front() 
+			if is_instance_valid(collectible):
+				collectible.queue_free()
+		
 	cam_x_right_prev = cam_x_right
 
 func set_params(_args: Dictionary):
@@ -305,6 +270,60 @@ func set_params(_args: Dictionary):
 
 func set_player_anims():
 	level.player.sprite.sprite_frames = load("assets/Characters/%d/Png/Character Sprite/sprite_frames.tres" % char_id)
+
+func spawn_player():
+	pass
+
+func get_png_files(path: String) -> Array[String]:
+	var files: Array[String] = []
+
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return files
+
+	dir.list_dir_begin()
+
+	while true:
+		var file := dir.get_next()
+		if file == "":
+			break
+
+		if dir.current_is_dir():
+			continue
+
+		if file.begins_with("."):
+			continue
+
+		if file.get_extension().to_lower() == "png":
+			files.append(file.get_basename())
+
+	dir.list_dir_end()
+
+	files.sort()
+
+	return files
+
+func create_collectible():
+	if collectible_names == null:
+		collectible_names = get_png_files("res://assets/Collectibles")
+	if collectible_probs == null:
+		collectible_probs = [
+			20,10,15, 
+			1,3,5,7,
+			20
+		]
+
+	var rnd_collectible_name = level.sample_weighted(collectible_probs, collectible_names)
+	var type_idx = collectible_names.find(rnd_collectible_name)
+	print(rnd_collectible_name)
+	var collectible_sprite = load("res://assets/Collectibles/%s.png" % rnd_collectible_name)
+	var collectible_scene = preload("res://scenes/collectible.tscn")
+	var collectible = collectible_scene.instantiate()
+	level.add_child(collectible)
+	collectible.init(type_idx)
+	collectible.sprite.texture = collectible_sprite
+	collectibles.append(collectible)
+	return collectible
 
 func _init(_level: Level, _args: Dictionary = {}):
 	lwl_probs[curr_lwl] = LWL_MAX_WEIGHT

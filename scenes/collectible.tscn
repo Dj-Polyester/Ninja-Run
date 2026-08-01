@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://dpo4hadr17fmw"]
+
+[ext_resource type="Script" uid="uid://bx8rgroocccbh" path="res://scripts/collectible.gd" id="1_8orai"]
+[ext_resource type="Texture2D" uid="uid://4oe1q71a5stu" path="res://assets/Collectibles/heart.png" id="1_rd2yi"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_qodcl"]
+radius = 52.03845
+
+[node name="Collectible" type="Area2D" unique_id=298543054 groups=["collectible"]]
+scale = Vector2(0.5, 0.5)
+script = ExtResource("1_8orai")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=300560890]
+texture = ExtResource("1_rd2yi")
+
+[node name="VisibleOnScreenNotifier2D" type="VisibleOnScreenNotifier2D" parent="." unique_id=805318461]
+rect = Rect2(-60, -60, 120, 120)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=1817777803]
+shape = SubResource("CircleShape2D_qodcl")

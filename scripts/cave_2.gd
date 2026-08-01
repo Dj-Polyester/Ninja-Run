@@ -152,6 +152,7 @@ func gen_hollows():
 	walls.append(construct_wall_from_hollows(_hollows))
 	paint(walls[-1])
 	gen_spikes_walls(walls[-1])
+	spawn_collectible()
 	
 func gen_spikes_walls(wall):
 	print("gen spikes walls")
@@ -172,7 +173,7 @@ func get_tile_coo(hollow_set_idx, hollow_idx, tile_idx):
 	var tile_world_bottom = level.get_tile_bottom_from_center(tile_world_center)
 	return [tile_world_center, tile_world_bottom]
 	
-func spawn(entity: Entity, hollow_set_idx: int, hollow_idx: int, tile_idx: int = -1):
+func spawn(entity, hollow_set_idx: int, hollow_idx: int, tile_idx: int = -1):
 	var tile_world_center_bottom = get_tile_coo(hollow_set_idx, hollow_idx, tile_idx)
 
 	var tile_world_center = tile_world_center_bottom[0]
@@ -190,6 +191,31 @@ func get_tile_config_from_coo(tile_coo: Vector2i):
 				return coo_rnd_idx
 	return null
 
+func spawn_collectible():
+	if randf() > 0.9:
+		var collectible = create_collectible()
+		var hollow_idx = range(len(hollows[-1])).pick_random()
+		var tile_idx = range(len(hollows[-1][hollow_idx])).pick_random()
+		spawn(collectible, -1, hollow_idx, tile_idx)
+
+func clear_spikes_walls(wall):
+	for coo_rnd_idx in wall:
+		if coo_rnd_idx.spike != null:
+			coo_rnd_idx.spike.queue_free()
+			coo_rnd_idx.spike = null
+
+func clear_walls(n = len(hollows)):
+	var coos2erase = []
+	for i in range(n):
+		hollows.pop_at(0)
+		var wall = walls.pop_at(0)
+		for coo_rnd_idx in wall:
+			var coo = coo_rnd_idx.coo
+			coos2erase.append(coo)
+		clear_spikes_walls(wall)
+	for coo2erase in coos2erase:
+		tile_map_layer.erase_cell(coo2erase)
+		
 func process(_delta: float) -> void:
 	super(_delta)
 
@@ -209,5 +235,12 @@ func process(_delta: float) -> void:
 		if cam_x_right + map_width > rightmost_x: # generate one viewport ahead
 			print("gen hollows")
 			gen_hollows()
-
+	
+	var hollow_set_until_destroy_lastcoo_x = find_rightmost_hollow_to_the_left_of_camera(cam_x_left)
+	var hollow_set_until_destroy = hollow_set_until_destroy_lastcoo_x[0]
+	var lastcoo_x_hollow = hollow_set_until_destroy_lastcoo_x[1]
+	if not cleared and cam_x_left > lastcoo_x_hollow:
+		print("clear hollows")
+		clear_walls(hollow_set_until_destroy)
+		cleared = true
 	process_end()

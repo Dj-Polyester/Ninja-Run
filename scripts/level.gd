@@ -1,4 +1,4 @@
-extends Node2D
+extends Main
 class_name Level
 
 @onready var tile_map_layer: TileMapLayer = $Platforms
@@ -34,6 +34,7 @@ var curr_biome
 var debug_mode_enabled = false
 var cleared = false
 var cam_x_left
+var cam_x_left_pixels
 var cam_x_right
 var prev_id
 # Accumulated left-shifts applied to re-base the tilemap as the player
@@ -201,6 +202,15 @@ func rnd_coo2(coo, radius, min_val, max_val):
 func game_over():
 	print("game over")
 
+func init_player():
+	player.init(stats, abilities)
+	player.level = self
+
+func init_hud():
+	var max_health = stats.max_health.value
+	health_bar.set_max_val(max_health)
+	health_bar.set_val(max_health)
+
 func _ready() -> void:
 	randomize()
 	# print
@@ -210,19 +220,20 @@ func _ready() -> void:
 	player_camera.enabled = true
 	# signals
 	health_bar.no_hp_left.connect(game_over)
-	var new_val = 100 + 5 * player.health.level
-	health_bar.set_max_val(new_val)
-	health_bar.set_val(new_val)
 	# biome
 	var curr_config = biomes[0]
 	curr_biome = curr_config.type.new(self, curr_config.args)
 	prev_id = curr_config.id
+	init_hud()
+	init_player()
 
-	player.level = self
-
-func _process(delta: float) -> void:
+func calc_cam_coos():
+	cam_x_left_pixels = camera.global_position.x
 	cam_x_left = global2tile(camera.global_position).x
 	cam_x_right = cam_x_left + map_width
+
+func _process(delta: float) -> void:
+	calc_cam_coos()
 	debug_mode_label.visible = debug_camera.enabled
 
 	if Input.is_action_just_pressed("debug"):
