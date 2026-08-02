@@ -1,4 +1,4 @@
-extends Node2D
+extends StaticBody2D
 
 var distance := -20.0
 var duration := .5

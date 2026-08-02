@@ -1,6 +1,6 @@
 extends ProgressBar
 
-@onready var damage_bar: ProgressBar = $DamageBar
+@onready var damage_bar: ProgressBar = get_parent().get_node("DamageBar")
 @onready var health_timer: Timer = $HealthTimer
 
 const HEALTH_DELAY = 0.5

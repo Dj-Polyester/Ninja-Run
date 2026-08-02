@@ -189,7 +189,7 @@ func get_tile_config_from_coo(tile_coo: Vector2i):
 	return null
 
 func spawn_collectible():
-	if randf() > 0.7:
+	if randf() > 0.1:
 		var collectible = create_collectible()
 		var platform_idx = range(len(platforms[-1])).pick_random()
 		var tile_idx = range(len(platforms[-1][platform_idx])).pick_random()

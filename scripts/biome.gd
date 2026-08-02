@@ -9,9 +9,10 @@ static var walls = []
 static var num_platforms = 1
 static var num_hollows = 1
 
-static var collectible_probs = null
+static var collectible_probs_spawnable = null
+static var collectible_probs_droppable = null
 static var lwl_probs = [0, 0, 0, 0, 0, 0]
-static var curr_lwl = 3
+static var curr_lwl = 5
 static var switch_counter = 0
 static var should_switch = false
 static var should_switch_cave = false
@@ -30,8 +31,6 @@ const COO_DIFF_UPDATE_L = 2
 const COO_DIFF_UPDATE_R = 6
 const SPIKEY_THRESHOLD = 0.5
 
-
-var collectible_names = null
 var cam_x_right_prev
 var level: Level
 var tile_map_layer: 
@@ -303,24 +302,29 @@ func get_png_files(path: String) -> Array[String]:
 
 	return files
 
-func create_collectible():
-	if collectible_names == null:
-		collectible_names = get_png_files("res://assets/Collectibles")
-	if collectible_probs == null:
-		collectible_probs = [
-			20,10,15, 
-			1,3,5,7,
-			20
-		]
-
+func create_collectible(spawnable = true):
+	var collectible_str = null
+	var collectible_probs = null
+	if spawnable:
+		collectible_str = "spawnable" 
+		if collectible_probs_spawnable == null:
+			collectible_probs_spawnable = [5, 1, 3, 5]
+		collectible_probs = collectible_probs_spawnable
+	else:
+		collectible_str = "droppable"
+		if collectible_probs_droppable == null:
+			collectible_probs_droppable = [1, 3, 5]
+		collectible_probs = collectible_probs_droppable
+	var collectible_url = "res://assets/Collectibles/%s" % collectible_str
+	var collectible_names = get_png_files(collectible_url)
+	print(collectible_names)
 	var rnd_collectible_name = level.sample_weighted(collectible_probs, collectible_names)
-	var type_idx = collectible_names.find(rnd_collectible_name)
 	print(rnd_collectible_name)
-	var collectible_sprite = load("res://assets/Collectibles/%s.png" % rnd_collectible_name)
+	var collectible_sprite = load("%s/%s.png" % [collectible_url, rnd_collectible_name])
 	var collectible_scene = preload("res://scenes/collectible.tscn")
 	var collectible = collectible_scene.instantiate()
 	level.add_child(collectible)
-	collectible.init(type_idx)
+	collectible.init(rnd_collectible_name)
 	collectible.sprite.texture = collectible_sprite
 	collectibles.append(collectible)
 	return collectible
