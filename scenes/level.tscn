@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://cjghnfs52nhnm" path="res://scripts/level.gd" id="1_mx8sn"]
 [ext_resource type="Texture2D" uid="uid://du3y3mnyghfdq" path="res://assets/Spritesheets/spritesheet-tiles-double.png" id="2_w7c3h"]
 [ext_resource type="PackedScene" uid="uid://ba8m7lk2lylu5" path="res://scenes/player.tscn" id="3_w8frs"]
+[ext_resource type="Texture2D" uid="uid://diarv6lpn8bg" path="res://assets/Tiles/coin_gold.png" id="4_2r41h"]
 [ext_resource type="Script" uid="uid://bxkiq46ajeete" path="res://scripts/biome.gd" id="4_mx8sn"]
 [ext_resource type="Script" uid="uid://7qd0xof7yjjl" path="res://scripts/health_bar.gd" id="5_ppgk2"]
 
@@ -933,8 +934,8 @@ terrain_set_0/terrain_5/name = "Metal"
 terrain_set_0/terrain_5/color = Color(0.29219013, 0.29219002, 0.29219, 1)
 sources/0 = SubResource("TileSetAtlasSource_w8frs")
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_klq6b"]
-bg_color = Color(0, 0.78431374, 0, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2r41h"]
+bg_color = Color(1, 1, 1, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -945,8 +946,8 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2r41h"]
-bg_color = Color(1, 1, 1, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_klq6b"]
+bg_color = Color(0, 0.78431374, 0, 1)
 border_width_left = 1
 border_width_top = 1
 border_width_right = 1
@@ -975,9 +976,9 @@ drag_vertical_enabled = true
 drag_horizontal_offset = 1.0
 drag_left_margin = 1.0
 
-[node name="UI" type="CanvasLayer" parent="." unique_id=1238306325]
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1238306325]
 
-[node name="DebugModeLabel" type="TextEdit" parent="UI" unique_id=1588863204]
+[node name="DebugModeLabel" type="TextEdit" parent="HUD" unique_id=1588863204]
 offset_left = 4.0
 offset_right = 132.0
 offset_bottom = 37.0
@@ -985,27 +986,67 @@ text = "DEBUG MODE"
 editable = false
 wrap_mode = 1
 
-[node name="HealthBar" type="ProgressBar" parent="UI" unique_id=1181239378]
-offset_left = 10.0
-offset_top = 10.0
-offset_right = 301.0
-offset_bottom = 49.0
+[node name="Control" type="Control" parent="HUD" unique_id=1167330652]
+z_index = -1
+layout_mode = 3
+anchors_preset = 0
+offset_right = 42.0
+offset_bottom = 35.0
+
+[node name="MarginContainer" type="MarginContainer" parent="HUD/Control" unique_id=301653415]
+layout_mode = 0
+offset_right = 288.0
+offset_bottom = 60.0
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+
+[node name="DamageBar" type="ProgressBar" parent="HUD/Control/MarginContainer" unique_id=500616290]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_styles/fill = SubResource("StyleBoxFlat_2r41h")
+value = 70.0
+show_percentage = false
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/Control/MarginContainer" unique_id=1181239378]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
 theme_override_styles/fill = SubResource("StyleBoxFlat_klq6b")
 value = 50.0
 show_percentage = false
 script = ExtResource("5_ppgk2")
 metadata/_edit_group_ = true
 
-[node name="DamageBar" type="ProgressBar" parent="UI/HealthBar" unique_id=500616290]
-z_index = -1
-layout_mode = 0
-offset_right = 291.0
-offset_bottom = 39.0
-theme_override_styles/fill = SubResource("StyleBoxFlat_2r41h")
-value = 70.0
-show_percentage = false
+[node name="HealthTimer" type="Timer" parent="HUD/Control/MarginContainer/HealthBar" unique_id=2009290024]
 
-[node name="HealthTimer" type="Timer" parent="UI/HealthBar" unique_id=2009290024]
+[node name="Control2" type="Control" parent="HUD" unique_id=133170791]
+layout_mode = 3
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -40.0
+offset_bottom = 40.0
+grow_horizontal = 0
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HUD/Control2" unique_id=1503725247]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -161.0
+offset_bottom = 128.0
+grow_horizontal = 0
+
+[node name="Label" type="Label" parent="HUD/Control2/HBoxContainer" unique_id=1035132714]
+layout_mode = 2
+theme_override_constants/outline_size = 10
+theme_override_font_sizes/font_size = 50
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="TextureRect" type="TextureRect" parent="HUD/Control2/HBoxContainer" unique_id=1695515479]
+layout_mode = 2
+texture = ExtResource("4_2r41h")
 
 [node name="Generator" type="Node2D" parent="." unique_id=2091490756]
 script = ExtResource("4_mx8sn")

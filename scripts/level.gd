@@ -16,8 +16,9 @@ class_name Level
 @onready var player_width = player_size_in_tiles.x + 1
 @onready var player_height = player_size_in_tiles.y + 1
 
-@onready var debug_mode_label: TextEdit = $UI/DebugModeLabel
-@onready var health_bar: ProgressBar = $UI/HealthBar
+@onready var debug_mode_label: TextEdit = $HUD/DebugModeLabel
+@onready var health_bar: ProgressBar = $HUD/Control/MarginContainer/HealthBar
+@onready var currency_label: Label = $HUD/Control2/HBoxContainer/Label
 
 @onready var block_scene = preload("res://scenes/block.tscn")
 @onready var spike_scene = preload("res://scenes/spikes.tscn")
@@ -210,6 +211,8 @@ func init_hud():
 	var max_health = stats.max_health.value
 	health_bar.set_max_val(max_health)
 	health_bar.set_val(max_health)
+
+	currency_label.text = str(stats.currency)
 
 func _ready() -> void:
 	randomize()

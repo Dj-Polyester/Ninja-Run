@@ -36,7 +36,7 @@ Extra:
     ☐ Jump (double jump, triple jump)
     ☐ Climb (double climb)
     ☐ Glide/hang (reverse gravity, fly)
-    ☐ Dash (fatal dash, teleport, pull enemy to itself)
+    ☐ Dash (fatal dash, teleport, pull enemy to itself, pass through walls)
 ☐ Attack 
     ☐ Shoot forward (arbitrary, shooting speed, num ammo to shoot) 
 ☐ Misc 
@@ -45,6 +45,6 @@ Extra:
     ☐ transform to tapped enemy
 Enemy:
 Collectibles:
-☐ Spawned
-☐ Moving
-☐ Attracted
+✔ Spawned @done(26-08-02 08:40)
+✔ Moving @done(26-08-02 08:40)
+✔ Attracted @done(26-08-02 08:40)

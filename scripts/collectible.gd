@@ -1,17 +1,6 @@
 extends Area2D
 class_name Collectible
 
-enum Type {
-	COIN_BRONZE,
-	COIN_GOLD,
-	COIN_SILVER,
-	GEM_BLUE,
-	GEM_GREEN,
-	GEM_RED,
-	GEM_YELLOW,
-	HEART,
-}
-
 @onready var sprite: Sprite2D = $Sprite2D
 @export var amplitude := 8.0
 @export var speed := 2.0
@@ -21,7 +10,7 @@ var t := 0.0
 var base_scale := Vector2.ONE
 var base_rot := 0.
 var target_to_follow = null
-var type: Type
+var type: String
 
 func get_size():
 	return sprite.get_rect().size * sprite.global_scale
@@ -52,7 +41,7 @@ func start_magnet(target):
 	print("starting magnetting")
 	target_to_follow = target
 
-func init(_type: Type):
+func init(_type: String):
 	type = _type
 
 func _on_collectible_pick_up(body: Node2D):

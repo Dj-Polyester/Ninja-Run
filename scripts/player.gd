@@ -83,24 +83,24 @@ func drop_blocks():
 
 func collect(collectible: Collectible):
 	match collectible.type:
-		Collectible.Type.COIN_BRONZE:
+		"coin_bronze":
 			stats.currency += randi_range(1,5)
-		Collectible.Type.COIN_SILVER:
-			stats.currency += randi_range(6,10)
-		Collectible.Type.COIN_GOLD:
-			stats.currency += randi_range(11,50)
+		"coin_silver":
+			stats.currency += randi_range(6,20)
+		"coin_gold":
+			stats.currency += randi_range(21,100)
 
-		Collectible.Type.GEM_YELLOW:
-			stats.currency += randi_range(51,100)
-		Collectible.Type.GEM_RED:
+		"gem_yellow":
 			stats.currency += randi_range(101,200)
-		Collectible.Type.GEM_GREEN:
+		"gem_green":
 			stats.currency += randi_range(201,500)
-		Collectible.Type.GEM_BLUE:
+		"gem_blue":
 			stats.currency += randi_range(501,1000)
 
-		Collectible.Type.HEART:
+		"heart":
 			level.health_bar.increase(randi_range(10,30))
+	if collectible.type != "heart":
+		level.currency_label.text = str(stats.currency)
 
 func _on_animation_finished():
 	match sprite.animation:

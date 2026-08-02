@@ -4,7 +4,10 @@
 [ext_resource type="Texture2D" uid="uid://c14ctg7q0ntd1" path="res://assets/Props/Spikes.png" id="2_bflj7"]
 [ext_resource type="Script" uid="uid://c435nol3mqe7a" path="res://scripts/spikes.gd" id="3_bflj7"]
 
-[node name="Spikes" type="Node2D" unique_id=1171042816]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hfv4w"]
+size = Vector2(38, 38)
+
+[node name="Spikes" type="StaticBody2D" unique_id=1117281647]
 script = ExtResource("3_bflj7")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=740376272]
@@ -16,3 +19,6 @@ texture = ExtResource("2_bflj7")
 [node name="Sprite2D2" type="Sprite2D" parent="." unique_id=1806564655]
 scale = Vector2(0.3, 0.3)
 texture = ExtResource("1_xbcdo")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=912856435]
+shape = SubResource("RectangleShape2D_hfv4w")
