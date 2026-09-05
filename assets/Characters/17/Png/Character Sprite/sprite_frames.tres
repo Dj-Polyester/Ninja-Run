@@ -1,0 +1,1389 @@
+[gd_resource type="SpriteFrames" format=3 uid="uid://dwbtvy34rmeql"]
+
+[ext_resource type="Texture2D" uid="uid://beamuyrwigoy1" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_00.png" id="1_v7puh"]
+[ext_resource type="Texture2D" uid="uid://cgycc6fp1rjvf" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_01.png" id="2_5pd48"]
+[ext_resource type="Texture2D" uid="uid://cg5vk8vhbrf0c" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_02.png" id="3_sforc"]
+[ext_resource type="Texture2D" uid="uid://blbfffakxq38x" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_03.png" id="4_huadb"]
+[ext_resource type="Texture2D" uid="uid://fg0vfjecckc7" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_04.png" id="5_3yran"]
+[ext_resource type="Texture2D" uid="uid://chxyuaq2w8slx" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_05.png" id="6_lgt67"]
+[ext_resource type="Texture2D" uid="uid://8oawgfwqpn23" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_06.png" id="7_jib6e"]
+[ext_resource type="Texture2D" uid="uid://c8230yccnjctw" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_07.png" id="8_lhpvx"]
+[ext_resource type="Texture2D" uid="uid://dh1qu3wr633ch" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_08.png" id="9_4tfcd"]
+[ext_resource type="Texture2D" uid="uid://o8qhhva5dtu0" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_09.png" id="10_6ua5y"]
+[ext_resource type="Texture2D" uid="uid://gtkgd377lq56" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_10.png" id="11_oxfid"]
+[ext_resource type="Texture2D" uid="uid://rhn530heny52" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_11.png" id="12_ffhhr"]
+[ext_resource type="Texture2D" uid="uid://cdtwa4tgnxplm" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_12.png" id="13_t45tx"]
+[ext_resource type="Texture2D" uid="uid://bkwddmyo0oj8w" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_13.png" id="14_jo1oo"]
+[ext_resource type="Texture2D" uid="uid://p102q4affge5" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_14.png" id="15_l7800"]
+[ext_resource type="Texture2D" uid="uid://dq4vxdjtdet2f" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_15.png" id="16_6rsfr"]
+[ext_resource type="Texture2D" uid="uid://bpeoh7mrhrblv" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_16.png" id="17_flmyx"]
+[ext_resource type="Texture2D" uid="uid://ci188djx6otqv" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_17.png" id="18_l6du3"]
+[ext_resource type="Texture2D" uid="uid://dl8rlu3euiwrh" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_18.png" id="19_131uk"]
+[ext_resource type="Texture2D" uid="uid://stiyo2o37r6s" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_19.png" id="20_15b3s"]
+[ext_resource type="Texture2D" uid="uid://be6pk3kk5u4bf" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_20.png" id="21_oxc8n"]
+[ext_resource type="Texture2D" uid="uid://nmf67f2wwnl" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_21.png" id="22_kp656"]
+[ext_resource type="Texture2D" uid="uid://hw080cm72bgt" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_22.png" id="23_4t8m1"]
+[ext_resource type="Texture2D" uid="uid://5t62vwc38ame" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_23.png" id="24_5yp3s"]
+[ext_resource type="Texture2D" uid="uid://1nyenvafu0en" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_24.png" id="25_04nwf"]
+[ext_resource type="Texture2D" uid="uid://cxmxrnn75ycs5" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_25.png" id="26_by6fr"]
+[ext_resource type="Texture2D" uid="uid://b3inlb77twwsr" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_26.png" id="27_34ww8"]
+[ext_resource type="Texture2D" uid="uid://dj6wb8t4qwqqi" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_27.png" id="28_ihdmo"]
+[ext_resource type="Texture2D" uid="uid://dqnqceeibsth0" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_28.png" id="29_vrgr0"]
+[ext_resource type="Texture2D" uid="uid://cpie5kc653p4r" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_29.png" id="30_qngvb"]
+[ext_resource type="Texture2D" uid="uid://yuuaa5e68kvn" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_30.png" id="31_8bddm"]
+[ext_resource type="Texture2D" uid="uid://cni25gu4kvodd" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_31.png" id="32_1vuc2"]
+[ext_resource type="Texture2D" uid="uid://b44b2bq3m1y2i" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_32.png" id="33_c6rym"]
+[ext_resource type="Texture2D" uid="uid://ctur685yrobkf" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_33.png" id="34_veo35"]
+[ext_resource type="Texture2D" uid="uid://cxdrmty7lr2rb" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_34.png" id="35_1elm1"]
+[ext_resource type="Texture2D" uid="uid://cce2ih6n4u81r" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_35.png" id="36_mfrk8"]
+[ext_resource type="Texture2D" uid="uid://d2nxlw82hru3l" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_36.png" id="37_e8ff8"]
+[ext_resource type="Texture2D" uid="uid://cl2ix0ewpdcba" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_37.png" id="38_4vkb5"]
+[ext_resource type="Texture2D" uid="uid://b5l7uvcgsu0ff" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_38.png" id="39_8sphd"]
+[ext_resource type="Texture2D" uid="uid://bmy5iylkutnbo" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_39.png" id="40_y4ew8"]
+[ext_resource type="Texture2D" uid="uid://b0pmbln02s557" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_40.png" id="41_knn1j"]
+[ext_resource type="Texture2D" uid="uid://cf6yb7e8p7e5d" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_41.png" id="42_8o3vk"]
+[ext_resource type="Texture2D" uid="uid://8rv3pp705w16" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_42.png" id="43_ogjhn"]
+[ext_resource type="Texture2D" uid="uid://b4b81eyrwdvtm" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_43.png" id="44_abl2d"]
+[ext_resource type="Texture2D" uid="uid://b6p5cnkne1yky" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_44.png" id="45_y4s01"]
+[ext_resource type="Texture2D" uid="uid://bh2qu1fihecvb" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_45.png" id="46_pqspx"]
+[ext_resource type="Texture2D" uid="uid://b5kt8c5u1bm4e" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_46.png" id="47_7gjmf"]
+[ext_resource type="Texture2D" uid="uid://b37wyxsfmptby" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_47.png" id="48_10tqo"]
+[ext_resource type="Texture2D" uid="uid://cxwh8lkaw1ygd" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_48.png" id="49_ymth7"]
+[ext_resource type="Texture2D" uid="uid://b0tws8rtssl5r" path="res://assets/Characters/17/Png/Character Sprite/Dead/Character-Dead_49.png" id="50_lgli7"]
+[ext_resource type="Texture2D" uid="uid://l4lrbmllnram" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_00.png" id="51_hxdg2"]
+[ext_resource type="Texture2D" uid="uid://d0ut2400ryue" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_01.png" id="52_nog2l"]
+[ext_resource type="Texture2D" uid="uid://b3uh2qpswngoq" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_02.png" id="53_wvsdx"]
+[ext_resource type="Texture2D" uid="uid://ckg28wdx68mdg" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_03.png" id="54_4jkaf"]
+[ext_resource type="Texture2D" uid="uid://64w2elphehf7" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_04.png" id="55_cp3de"]
+[ext_resource type="Texture2D" uid="uid://il4kcwe3lq88" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_05.png" id="56_n3r6b"]
+[ext_resource type="Texture2D" uid="uid://bl3aj5tgxis32" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_06.png" id="57_0l8e5"]
+[ext_resource type="Texture2D" uid="uid://eh58m0rg320r" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_07.png" id="58_h6hbe"]
+[ext_resource type="Texture2D" uid="uid://c582qexdtlu6c" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_08.png" id="59_xpiwv"]
+[ext_resource type="Texture2D" uid="uid://bk1lva3624qir" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_09.png" id="60_ko4ho"]
+[ext_resource type="Texture2D" uid="uid://s5ptkrbofflw" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_10.png" id="61_d1ccy"]
+[ext_resource type="Texture2D" uid="uid://271jmcv6ft5c" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_11.png" id="62_03wwi"]
+[ext_resource type="Texture2D" uid="uid://cdcdvibrbp4am" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_12.png" id="63_2d612"]
+[ext_resource type="Texture2D" uid="uid://jaxhkooiulqx" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_13.png" id="64_sjwq2"]
+[ext_resource type="Texture2D" uid="uid://7pr3ty5cdy80" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_14.png" id="65_070nx"]
+[ext_resource type="Texture2D" uid="uid://d4srxs5n4b2k" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_15.png" id="66_w78sq"]
+[ext_resource type="Texture2D" uid="uid://1su4vdbey8g6" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_16.png" id="67_h68gn"]
+[ext_resource type="Texture2D" uid="uid://bls2lmolj72uo" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_17.png" id="68_8vqav"]
+[ext_resource type="Texture2D" uid="uid://di7xnrusukk2u" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_18.png" id="69_0esra"]
+[ext_resource type="Texture2D" uid="uid://d2l4gvjp01u21" path="res://assets/Characters/17/Png/Character Sprite/Driving/Character-Driving_19.png" id="70_txgsk"]
+[ext_resource type="Texture2D" uid="uid://byk10c5md5rfp" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_00.png" id="71_aum6x"]
+[ext_resource type="Texture2D" uid="uid://c7xl0r8kpn36n" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_01.png" id="72_xkje8"]
+[ext_resource type="Texture2D" uid="uid://bqnd3hdt2rog1" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_02.png" id="73_w8r4a"]
+[ext_resource type="Texture2D" uid="uid://cyyxml04ruj7e" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_03.png" id="74_h0ge7"]
+[ext_resource type="Texture2D" uid="uid://uiohopctsfov" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_04.png" id="75_qd4yp"]
+[ext_resource type="Texture2D" uid="uid://b0y7qds5y7joy" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_05.png" id="76_mvoj5"]
+[ext_resource type="Texture2D" uid="uid://bvnresuj7iyea" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_06.png" id="77_5d5tk"]
+[ext_resource type="Texture2D" uid="uid://drhraow76foo8" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_07.png" id="78_5pe82"]
+[ext_resource type="Texture2D" uid="uid://dltwqa5pn6dk1" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_08.png" id="79_4mohk"]
+[ext_resource type="Texture2D" uid="uid://ddotbqeqrut23" path="res://assets/Characters/17/Png/Character Sprite/Fall/Character-Fall_09.png" id="80_2bwoh"]
+[ext_resource type="Texture2D" uid="uid://cru1gthue7xn1" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_0.png" id="81_jldv8"]
+[ext_resource type="Texture2D" uid="uid://buv7p6hd3dnyl" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_1.png" id="82_xnjws"]
+[ext_resource type="Texture2D" uid="uid://4ld0icrf4mee" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_2.png" id="83_56u5u"]
+[ext_resource type="Texture2D" uid="uid://bf5q7vaq5f0db" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_3.png" id="84_v4pxy"]
+[ext_resource type="Texture2D" uid="uid://502khbamtfdy" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_4.png" id="85_2ipuv"]
+[ext_resource type="Texture2D" uid="uid://bl2tifop8jjup" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_5.png" id="86_to3rw"]
+[ext_resource type="Texture2D" uid="uid://dqgi78yc48y7t" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_6.png" id="87_2peeh"]
+[ext_resource type="Texture2D" uid="uid://bq5dnda4kfub6" path="res://assets/Characters/17/Png/Character Sprite/Fast Run/Character-FastRun_7.png" id="88_oxjwn"]
+[ext_resource type="Texture2D" uid="uid://bfxahko8br5pf" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_00.png" id="89_dl6ih"]
+[ext_resource type="Texture2D" uid="uid://bp3xpvay4wr5x" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_01.png" id="90_pf4c0"]
+[ext_resource type="Texture2D" uid="uid://dnmywugar6ko3" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_02.png" id="91_tpcqp"]
+[ext_resource type="Texture2D" uid="uid://816mai7cvcv8" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_03.png" id="92_in702"]
+[ext_resource type="Texture2D" uid="uid://wjoem8m17nvj" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_04.png" id="93_k8hbi"]
+[ext_resource type="Texture2D" uid="uid://b51ciqt52ceof" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_05.png" id="94_rlsaw"]
+[ext_resource type="Texture2D" uid="uid://bchb8ygdh2nve" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_06.png" id="95_e43qp"]
+[ext_resource type="Texture2D" uid="uid://bywut7fuw310a" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_07.png" id="96_jlqua"]
+[ext_resource type="Texture2D" uid="uid://b06qgti7pkjay" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_08.png" id="97_11x68"]
+[ext_resource type="Texture2D" uid="uid://bom73roa45mlx" path="res://assets/Characters/17/Png/Character Sprite/Glide/Character-Glide_09.png" id="98_xrvsf"]
+[ext_resource type="Texture2D" uid="uid://bv2sx1r5xhwbm" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_00.png" id="99_um7ii"]
+[ext_resource type="Texture2D" uid="uid://d4komfa3a6vyf" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_01.png" id="100_hnlb4"]
+[ext_resource type="Texture2D" uid="uid://dxf2eqtxdjoa4" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_02.png" id="101_g3ria"]
+[ext_resource type="Texture2D" uid="uid://gps2adhfv4u2" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_03.png" id="102_dprp5"]
+[ext_resource type="Texture2D" uid="uid://bk77s57g7r4xq" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_04.png" id="103_ny3jt"]
+[ext_resource type="Texture2D" uid="uid://c4ynhmgst7g7g" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_05.png" id="104_ccavp"]
+[ext_resource type="Texture2D" uid="uid://es32onu63y01" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_06.png" id="105_6yai2"]
+[ext_resource type="Texture2D" uid="uid://7a7hclol437j" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_07.png" id="106_1bkgc"]
+[ext_resource type="Texture2D" uid="uid://csyx3coeev4u" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_08.png" id="107_moysl"]
+[ext_resource type="Texture2D" uid="uid://dh6ogh52ooem0" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_09.png" id="108_cc3bj"]
+[ext_resource type="Texture2D" uid="uid://b4owsyn76csqd" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_10.png" id="109_acjuu"]
+[ext_resource type="Texture2D" uid="uid://dhvj4h0dmyaxc" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_11.png" id="110_ifap5"]
+[ext_resource type="Texture2D" uid="uid://cuelvo2jtrrki" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_12.png" id="111_pkw0e"]
+[ext_resource type="Texture2D" uid="uid://rf51agd1yu2b" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_13.png" id="112_dbmqd"]
+[ext_resource type="Texture2D" uid="uid://dilqqrtcbclaq" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_14.png" id="113_f3ph7"]
+[ext_resource type="Texture2D" uid="uid://d2ta7nicuqt0n" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_15.png" id="114_ajhgf"]
+[ext_resource type="Texture2D" uid="uid://bu3tjkfrusu1r" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_16.png" id="115_kewwt"]
+[ext_resource type="Texture2D" uid="uid://drl4m0spma08g" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_17.png" id="116_42y61"]
+[ext_resource type="Texture2D" uid="uid://bepug27lltsmb" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_18.png" id="117_2cvfx"]
+[ext_resource type="Texture2D" uid="uid://dchl3lwds8f2v" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_19.png" id="118_17nm0"]
+[ext_resource type="Texture2D" uid="uid://dlw8rjayc3a36" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_20.png" id="119_k756x"]
+[ext_resource type="Texture2D" uid="uid://clnx8cngfhf6s" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_21.png" id="120_stxb1"]
+[ext_resource type="Texture2D" uid="uid://bkklfjptbso46" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_22.png" id="121_b2a81"]
+[ext_resource type="Texture2D" uid="uid://tu371t1kvlop" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_23.png" id="122_q53c4"]
+[ext_resource type="Texture2D" uid="uid://c7l11jfyrg7jg" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_24.png" id="123_at2wf"]
+[ext_resource type="Texture2D" uid="uid://76ublhuahiex" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_25.png" id="124_bsjk1"]
+[ext_resource type="Texture2D" uid="uid://dmpd3i1efsild" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_26.png" id="125_ig3ki"]
+[ext_resource type="Texture2D" uid="uid://bsc02sr74itf8" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_27.png" id="126_garst"]
+[ext_resource type="Texture2D" uid="uid://bktbtwopbdu15" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_28.png" id="127_2i7ut"]
+[ext_resource type="Texture2D" uid="uid://bf0d4rubvf4l6" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_29.png" id="128_h18bu"]
+[ext_resource type="Texture2D" uid="uid://fj47wty6uau6" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_30.png" id="129_y5nxa"]
+[ext_resource type="Texture2D" uid="uid://k0xsa0tmxbjt" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_31.png" id="130_1b7ab"]
+[ext_resource type="Texture2D" uid="uid://yin3a6voxs5b" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_32.png" id="131_4b1qp"]
+[ext_resource type="Texture2D" uid="uid://0jdxynhvh3s" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_33.png" id="132_ny6b7"]
+[ext_resource type="Texture2D" uid="uid://c1s7qqq5spkfd" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_34.png" id="133_wfcvc"]
+[ext_resource type="Texture2D" uid="uid://blqlejcm0bjmp" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_35.png" id="134_8bohg"]
+[ext_resource type="Texture2D" uid="uid://d2bc00q23plgh" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_36.png" id="135_023xx"]
+[ext_resource type="Texture2D" uid="uid://xhe6gbely87i" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_37.png" id="136_14ahl"]
+[ext_resource type="Texture2D" uid="uid://doxd3nlsurn27" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_38.png" id="137_duaus"]
+[ext_resource type="Texture2D" uid="uid://ct3qo7ctb33bx" path="res://assets/Characters/17/Png/Character Sprite/Hit/Character-HammerHit_39.png" id="138_5oeyq"]
+[ext_resource type="Texture2D" uid="uid://cpcqq8c816pmx" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_00.png" id="139_hjv7h"]
+[ext_resource type="Texture2D" uid="uid://q2xghwp048lt" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_01.png" id="140_r7yao"]
+[ext_resource type="Texture2D" uid="uid://dah1taxsbj6v2" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_02.png" id="141_07pg6"]
+[ext_resource type="Texture2D" uid="uid://c0hcibp5vj20e" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_03.png" id="142_ptgra"]
+[ext_resource type="Texture2D" uid="uid://b7tgcnkc7qac" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_04.png" id="143_fe8ai"]
+[ext_resource type="Texture2D" uid="uid://bt2yclv5bfn1x" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_05.png" id="144_sags6"]
+[ext_resource type="Texture2D" uid="uid://db8bfmkbyp4vm" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_06.png" id="145_x0d7v"]
+[ext_resource type="Texture2D" uid="uid://vhj27dcm6b3" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_07.png" id="146_bjsn7"]
+[ext_resource type="Texture2D" uid="uid://he4rjfxrh7nk" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_08.png" id="147_wmxqh"]
+[ext_resource type="Texture2D" uid="uid://dtukmfkj8x3sf" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_09.png" id="148_rog23"]
+[ext_resource type="Texture2D" uid="uid://b8mlkfemqc156" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_10.png" id="149_xhehj"]
+[ext_resource type="Texture2D" uid="uid://cjg0yhbadahqh" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_11.png" id="150_la1rb"]
+[ext_resource type="Texture2D" uid="uid://c03q81wpctrhq" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_12.png" id="151_gp6su"]
+[ext_resource type="Texture2D" uid="uid://bivpettph3k0g" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_13.png" id="152_6rytd"]
+[ext_resource type="Texture2D" uid="uid://bjhn4f4r3363v" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_14.png" id="153_t888c"]
+[ext_resource type="Texture2D" uid="uid://bon6i1clr6pvk" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_15.png" id="154_m1akc"]
+[ext_resource type="Texture2D" uid="uid://e5n0coary1wn" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_16.png" id="155_cp0k7"]
+[ext_resource type="Texture2D" uid="uid://vpekmhvcritf" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_17.png" id="156_bv63x"]
+[ext_resource type="Texture2D" uid="uid://cylwlsmpnocxd" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_18.png" id="157_t77pl"]
+[ext_resource type="Texture2D" uid="uid://b2ml7u4853815" path="res://assets/Characters/17/Png/Character Sprite/Idle/Character-Idle_19.png" id="158_wlwy5"]
+[ext_resource type="Texture2D" uid="uid://bfl3upkrovp00" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_10.png" id="159_qfomv"]
+[ext_resource type="Texture2D" uid="uid://bx2js2qdbms40" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_11.png" id="160_sc7a7"]
+[ext_resource type="Texture2D" uid="uid://tr50vip3hchq" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_12.png" id="161_rms5t"]
+[ext_resource type="Texture2D" uid="uid://b15uni62ueqe7" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_13.png" id="162_x4urt"]
+[ext_resource type="Texture2D" uid="uid://nj7y8et12axy" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_14.png" id="163_qqj7h"]
+[ext_resource type="Texture2D" uid="uid://qcu8o52wi41n" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_15.png" id="164_15j2b"]
+[ext_resource type="Texture2D" uid="uid://cy5vphblrfgw7" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_16.png" id="165_mkx5a"]
+[ext_resource type="Texture2D" uid="uid://crwj3cf3plhyq" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_17.png" id="166_6whty"]
+[ext_resource type="Texture2D" uid="uid://dbssowkd1dese" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_18.png" id="167_jaknu"]
+[ext_resource type="Texture2D" uid="uid://yur5d540p1gk" path="res://assets/Characters/17/Png/Character Sprite/Jump After/Character-Jump_19.png" id="168_jptxk"]
+[ext_resource type="Texture2D" uid="uid://4i5w5ypwobio" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_00.png" id="169_1eoxc"]
+[ext_resource type="Texture2D" uid="uid://hwjxqty2f3mt" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_01.png" id="170_hu05u"]
+[ext_resource type="Texture2D" uid="uid://cllprccsghhhc" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_02.png" id="171_kia6l"]
+[ext_resource type="Texture2D" uid="uid://cpvh4jippjeob" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_03.png" id="172_k2r42"]
+[ext_resource type="Texture2D" uid="uid://6o05pspeorb5" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_04.png" id="173_6wkba"]
+[ext_resource type="Texture2D" uid="uid://c638yr1toufp" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_05.png" id="174_3kgh8"]
+[ext_resource type="Texture2D" uid="uid://cugg5hii0d763" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_06.png" id="175_fp8fy"]
+[ext_resource type="Texture2D" uid="uid://blmfi3eic6gnb" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_07.png" id="176_n2pec"]
+[ext_resource type="Texture2D" uid="uid://568yn3ehqwi7" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_08.png" id="177_ix133"]
+[ext_resource type="Texture2D" uid="uid://cgsnsgxdfc4bq" path="res://assets/Characters/17/Png/Character Sprite/Jump Before/Character-Jump_09.png" id="178_0qm3o"]
+[ext_resource type="Texture2D" uid="uid://ca5751slp5anb" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_00.png" id="179_wwslj"]
+[ext_resource type="Texture2D" uid="uid://djldvq8dj4j2l" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_01.png" id="180_ctuod"]
+[ext_resource type="Texture2D" uid="uid://dqfsasnsvgjdw" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_02.png" id="181_d7xi5"]
+[ext_resource type="Texture2D" uid="uid://cba17dr7g6b35" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_03.png" id="182_o7v47"]
+[ext_resource type="Texture2D" uid="uid://cuhpfwquts85f" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_04.png" id="183_vmd3b"]
+[ext_resource type="Texture2D" uid="uid://cqmvr2onxc0qg" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_05.png" id="184_q8130"]
+[ext_resource type="Texture2D" uid="uid://dctt4vfhs7q5j" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_06.png" id="185_r6775"]
+[ext_resource type="Texture2D" uid="uid://nhdtoruqc1de" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_07.png" id="186_u2t1b"]
+[ext_resource type="Texture2D" uid="uid://dckpli3yykfqw" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_08.png" id="187_bmfla"]
+[ext_resource type="Texture2D" uid="uid://durtscvldged8" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_09.png" id="188_6xkj0"]
+[ext_resource type="Texture2D" uid="uid://bd46b2svlqdhm" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_10.png" id="189_ay05y"]
+[ext_resource type="Texture2D" uid="uid://cgxrcp4v8w3ii" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_11.png" id="190_v7jhf"]
+[ext_resource type="Texture2D" uid="uid://bwcpahvforuyr" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_12.png" id="191_h4ejk"]
+[ext_resource type="Texture2D" uid="uid://5cpiox7hdcxe" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_13.png" id="192_1nhd3"]
+[ext_resource type="Texture2D" uid="uid://jse4qu23abjf" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_14.png" id="193_f65rp"]
+[ext_resource type="Texture2D" uid="uid://cms5cfws4pagt" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_15.png" id="194_kgrbq"]
+[ext_resource type="Texture2D" uid="uid://d0dw5u7fvjk2h" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_16.png" id="195_dhbn3"]
+[ext_resource type="Texture2D" uid="uid://cin6asn8mcunv" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_17.png" id="196_svk42"]
+[ext_resource type="Texture2D" uid="uid://cmao40nb7w52b" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_18.png" id="197_2o6ns"]
+[ext_resource type="Texture2D" uid="uid://mle7na6buxpy" path="res://assets/Characters/17/Png/Character Sprite/Parachute/Character-Flying_19.png" id="198_hhcyc"]
+[ext_resource type="Texture2D" uid="uid://ctpediqc78g8b" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_0.png" id="199_yd2xu"]
+[ext_resource type="Texture2D" uid="uid://cbivsmekdnu04" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_1.png" id="200_jk0eu"]
+[ext_resource type="Texture2D" uid="uid://dfehutrcgl5jm" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_2.png" id="201_c0bxx"]
+[ext_resource type="Texture2D" uid="uid://byne11nowlue6" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_3.png" id="202_rildx"]
+[ext_resource type="Texture2D" uid="uid://b60ppt5s80xjv" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_4.png" id="203_iet8b"]
+[ext_resource type="Texture2D" uid="uid://bfxyxivbm4fcx" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_5.png" id="204_dcb5y"]
+[ext_resource type="Texture2D" uid="uid://qkv4kbsi07ko" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_6.png" id="205_ja4ey"]
+[ext_resource type="Texture2D" uid="uid://deopsf4g75gc1" path="res://assets/Characters/17/Png/Character Sprite/Roll/Character-Roll_7.png" id="206_xx027"]
+[ext_resource type="Texture2D" uid="uid://8dqvqadf3e2i" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_00.png" id="207_ijmwc"]
+[ext_resource type="Texture2D" uid="uid://cpoaf2w4j6e0" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_01.png" id="208_aaai1"]
+[ext_resource type="Texture2D" uid="uid://c5t0nq0135gsm" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_02.png" id="209_igl8r"]
+[ext_resource type="Texture2D" uid="uid://cpp8ptqdl174n" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_03.png" id="210_jbiul"]
+[ext_resource type="Texture2D" uid="uid://cl1vjni5gpip2" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_04.png" id="211_gf7wv"]
+[ext_resource type="Texture2D" uid="uid://cxv286bp313gr" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_05.png" id="212_hhj6i"]
+[ext_resource type="Texture2D" uid="uid://cr37gq6510bgr" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_06.png" id="213_0rhpf"]
+[ext_resource type="Texture2D" uid="uid://b75gumuuyit0d" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_07.png" id="214_83ny6"]
+[ext_resource type="Texture2D" uid="uid://cq8bu3qq7pxtp" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_08.png" id="215_diie3"]
+[ext_resource type="Texture2D" uid="uid://bgx54b6oy8dow" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_09.png" id="216_kqymo"]
+[ext_resource type="Texture2D" uid="uid://buyvaaa3n6yfo" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_10.png" id="217_52e0t"]
+[ext_resource type="Texture2D" uid="uid://dpq7bi8v06hfg" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_11.png" id="218_s8o4j"]
+[ext_resource type="Texture2D" uid="uid://cksqfj4ofd20m" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_12.png" id="219_dxrwq"]
+[ext_resource type="Texture2D" uid="uid://16b0tbe7747" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_13.png" id="220_ci67f"]
+[ext_resource type="Texture2D" uid="uid://h4rk0axw7yp0" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_14.png" id="221_3lcyu"]
+[ext_resource type="Texture2D" uid="uid://sqisojbbhewq" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_15.png" id="222_8tr70"]
+[ext_resource type="Texture2D" uid="uid://d350tsklq7brn" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_16.png" id="223_5oidr"]
+[ext_resource type="Texture2D" uid="uid://dsl2a2rm7xn24" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_17.png" id="224_s1o8o"]
+[ext_resource type="Texture2D" uid="uid://wr7jeeqouesl" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_18.png" id="225_g0ces"]
+[ext_resource type="Texture2D" uid="uid://2pn70iplc6x1" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_19.png" id="226_qkdip"]
+[ext_resource type="Texture2D" uid="uid://2qtxc64yaefo" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_20.png" id="227_g35cq"]
+[ext_resource type="Texture2D" uid="uid://dbkums3fgpxro" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_21.png" id="228_ucemx"]
+[ext_resource type="Texture2D" uid="uid://bxlwlf25o3xou" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_22.png" id="229_1ywd1"]
+[ext_resource type="Texture2D" uid="uid://pbs8141vkwl3" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_23.png" id="230_r8sh2"]
+[ext_resource type="Texture2D" uid="uid://cmwwjynvoldtu" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_24.png" id="231_0e1ho"]
+[ext_resource type="Texture2D" uid="uid://dktkmkdmgnxp8" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_25.png" id="232_4dxob"]
+[ext_resource type="Texture2D" uid="uid://mckqwrwb33dw" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_26.png" id="233_kboe5"]
+[ext_resource type="Texture2D" uid="uid://bi5dyyjgcw65k" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_27.png" id="234_wu32b"]
+[ext_resource type="Texture2D" uid="uid://bhlnf2htjedvt" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_28.png" id="235_lo632"]
+[ext_resource type="Texture2D" uid="uid://v3o0kua5iuft" path="res://assets/Characters/17/Png/Character Sprite/Run/Character-Run_29.png" id="236_qfrdd"]
+[ext_resource type="Texture2D" uid="uid://jgwiavuvdfja" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_00.png" id="237_bqbvy"]
+[ext_resource type="Texture2D" uid="uid://cg6dcq1wyp5cs" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_01.png" id="238_6fay7"]
+[ext_resource type="Texture2D" uid="uid://deqb1ww3fupy3" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_02.png" id="239_r0k54"]
+[ext_resource type="Texture2D" uid="uid://crrqpbseipvqk" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_03.png" id="240_e3uem"]
+[ext_resource type="Texture2D" uid="uid://dray1llhr2vis" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_04.png" id="241_1pdrr"]
+[ext_resource type="Texture2D" uid="uid://bl60r1h775iki" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_05.png" id="242_nrppx"]
+[ext_resource type="Texture2D" uid="uid://dpoqc86b8w46m" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_06.png" id="243_j1wdu"]
+[ext_resource type="Texture2D" uid="uid://ddp0rra6dq8r2" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_07.png" id="244_2galh"]
+[ext_resource type="Texture2D" uid="uid://kugdsu8clu3i" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_08.png" id="245_3m2yf"]
+[ext_resource type="Texture2D" uid="uid://dchwcmenqjbpb" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_09.png" id="246_inn0s"]
+[ext_resource type="Texture2D" uid="uid://bl7pjp3j3kr8i" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_10.png" id="247_e7mx8"]
+[ext_resource type="Texture2D" uid="uid://dpfu07vw8isut" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_11.png" id="248_7givv"]
+[ext_resource type="Texture2D" uid="uid://bxe2p4luxposa" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_12.png" id="249_eyu6c"]
+[ext_resource type="Texture2D" uid="uid://pek6rxi0gmyd" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_13.png" id="250_tbs4a"]
+[ext_resource type="Texture2D" uid="uid://bdh2u0km63rjj" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_14.png" id="251_id78p"]
+[ext_resource type="Texture2D" uid="uid://btijdwq78jdst" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_15.png" id="252_ywd4g"]
+[ext_resource type="Texture2D" uid="uid://8jkx7glnt7sm" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_16.png" id="253_blbf0"]
+[ext_resource type="Texture2D" uid="uid://cyx1c7ojs34c7" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_17.png" id="254_thuef"]
+[ext_resource type="Texture2D" uid="uid://cksbe1lnf7g3u" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_18.png" id="255_rrtoj"]
+[ext_resource type="Texture2D" uid="uid://2niohtm0afvp" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_19.png" id="256_mipbr"]
+[ext_resource type="Texture2D" uid="uid://dyru7lpyk3ejw" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_20.png" id="257_2p702"]
+[ext_resource type="Texture2D" uid="uid://cpnakb2mn7u22" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_21.png" id="258_ryh11"]
+[ext_resource type="Texture2D" uid="uid://cg5hphwfgra7q" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_22.png" id="259_5bssh"]
+[ext_resource type="Texture2D" uid="uid://dg1p2okdagk5f" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_23.png" id="260_s615e"]
+[ext_resource type="Texture2D" uid="uid://lntg2muefpgu" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_24.png" id="261_jokgw"]
+[ext_resource type="Texture2D" uid="uid://dn0thy2yrmski" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_25.png" id="262_hrumg"]
+[ext_resource type="Texture2D" uid="uid://cpscg6ghidubi" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_26.png" id="263_kp4ru"]
+[ext_resource type="Texture2D" uid="uid://d2jyvjto0pgrf" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_27.png" id="264_uhh86"]
+[ext_resource type="Texture2D" uid="uid://bcns0g8sa3kef" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_28.png" id="265_ale8t"]
+[ext_resource type="Texture2D" uid="uid://dwhakss2pnqi1" path="res://assets/Characters/17/Png/Character Sprite/Shoot/Character-Shoot_29.png" id="266_vxtth"]
+[ext_resource type="Texture2D" uid="uid://8pws60okotdi" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_00.png" id="267_cxs8c"]
+[ext_resource type="Texture2D" uid="uid://qsbkr6yovptr" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_01.png" id="268_tbf8d"]
+[ext_resource type="Texture2D" uid="uid://bbhd801qm418y" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_02.png" id="269_vcxoy"]
+[ext_resource type="Texture2D" uid="uid://dkraj50yq50q7" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_03.png" id="270_hroa3"]
+[ext_resource type="Texture2D" uid="uid://gxfa2tv0klab" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_04.png" id="271_eq7k6"]
+[ext_resource type="Texture2D" uid="uid://de72klgvftmkr" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_05.png" id="272_lggnr"]
+[ext_resource type="Texture2D" uid="uid://in3b1b6pjt8x" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_06.png" id="273_83ywp"]
+[ext_resource type="Texture2D" uid="uid://b5tx1d2tbnt6k" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_07.png" id="274_gsd4g"]
+[ext_resource type="Texture2D" uid="uid://d1wwvdqhxbhrb" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_08.png" id="275_qi1vb"]
+[ext_resource type="Texture2D" uid="uid://dn3t2lppcwryf" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_09.png" id="276_effwl"]
+[ext_resource type="Texture2D" uid="uid://dym5rvs0u48f5" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_10.png" id="277_cenqp"]
+[ext_resource type="Texture2D" uid="uid://ckv425jkd1qf2" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_11.png" id="278_sduck"]
+[ext_resource type="Texture2D" uid="uid://cfpkpbaoae7n" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_12.png" id="279_gwjsh"]
+[ext_resource type="Texture2D" uid="uid://dsbnk8ab5b7o6" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_13.png" id="280_brmb2"]
+[ext_resource type="Texture2D" uid="uid://dgsksh3wyq3r6" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_14.png" id="281_61bqe"]
+[ext_resource type="Texture2D" uid="uid://cx3b8a4sd6giq" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_15.png" id="282_p0mrw"]
+[ext_resource type="Texture2D" uid="uid://dxrrj2m0w228y" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_16.png" id="283_e2r62"]
+[ext_resource type="Texture2D" uid="uid://cdvddumhpbquc" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_17.png" id="284_dkxq3"]
+[ext_resource type="Texture2D" uid="uid://tobpayj828fh" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_18.png" id="285_vbv50"]
+[ext_resource type="Texture2D" uid="uid://dp6xgbci31o08" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_19.png" id="286_m00mi"]
+[ext_resource type="Texture2D" uid="uid://ciovie445ydob" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_20.png" id="287_65xpr"]
+[ext_resource type="Texture2D" uid="uid://dt5dgjyig6rfu" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_21.png" id="288_verhv"]
+[ext_resource type="Texture2D" uid="uid://ce52b77rkgvrm" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_22.png" id="289_1m504"]
+[ext_resource type="Texture2D" uid="uid://bs0mv0r61gcmm" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_23.png" id="290_2fo0u"]
+[ext_resource type="Texture2D" uid="uid://buypc2wg5crrm" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_24.png" id="291_mo2rk"]
+[ext_resource type="Texture2D" uid="uid://wlepk8unqmhe" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_25.png" id="292_p71qu"]
+[ext_resource type="Texture2D" uid="uid://c6u50q5ep3vph" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_26.png" id="293_723j5"]
+[ext_resource type="Texture2D" uid="uid://bq6fpya2a1m26" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_27.png" id="294_gxvfa"]
+[ext_resource type="Texture2D" uid="uid://b7qk1vt17184y" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_28.png" id="295_2wmoh"]
+[ext_resource type="Texture2D" uid="uid://didt3w1ftrgqr" path="res://assets/Characters/17/Png/Character Sprite/Walk/Character-Walk_29.png" id="296_tx6u6"]
+[ext_resource type="Texture2D" uid="uid://33vy7j2ryevv" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_00.png" id="297_rvm22"]
+[ext_resource type="Texture2D" uid="uid://cmeg1qrhh72ra" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_01.png" id="298_2eq25"]
+[ext_resource type="Texture2D" uid="uid://c5vlmvr5ojdon" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_02.png" id="299_uyuu1"]
+[ext_resource type="Texture2D" uid="uid://di3k2n4repxrp" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_03.png" id="300_uoc70"]
+[ext_resource type="Texture2D" uid="uid://q21iafqgday" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_04.png" id="301_an881"]
+[ext_resource type="Texture2D" uid="uid://l83b373i6hra" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_05.png" id="302_ng5mj"]
+[ext_resource type="Texture2D" uid="uid://75eb7ft884vy" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_06.png" id="303_bx2ui"]
+[ext_resource type="Texture2D" uid="uid://cn31khrfm1e2m" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_07.png" id="304_kio3d"]
+[ext_resource type="Texture2D" uid="uid://b1b7b8fs25a8i" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_08.png" id="305_kqar1"]
+[ext_resource type="Texture2D" uid="uid://fumw2db5c6yk" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_09.png" id="306_m50t3"]
+[ext_resource type="Texture2D" uid="uid://cnfcvugcep1f5" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_10.png" id="307_k7i6t"]
+[ext_resource type="Texture2D" uid="uid://xxlgmvkgl5f3" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_11.png" id="308_fc22j"]
+[ext_resource type="Texture2D" uid="uid://bcwk84p6j8cjf" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_12.png" id="309_fwx80"]
+[ext_resource type="Texture2D" uid="uid://bvokecnqsadu8" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_13.png" id="310_8amy7"]
+[ext_resource type="Texture2D" uid="uid://cig3v3nvybt05" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_14.png" id="311_ve3kd"]
+[ext_resource type="Texture2D" uid="uid://5fks4q7rtivq" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_15.png" id="312_yrytw"]
+[ext_resource type="Texture2D" uid="uid://bei5noqda7ai7" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_16.png" id="313_34mlc"]
+[ext_resource type="Texture2D" uid="uid://40djcdn8wyom" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_17.png" id="314_nkrri"]
+[ext_resource type="Texture2D" uid="uid://bb76y5ulhn8js" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_18.png" id="315_ukp1y"]
+[ext_resource type="Texture2D" uid="uid://b2oobryjlmlv8" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_19.png" id="316_ui3fm"]
+[ext_resource type="Texture2D" uid="uid://canc8x6ieysbl" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_20.png" id="317_whx4q"]
+[ext_resource type="Texture2D" uid="uid://c1yqioivopdjc" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_21.png" id="318_rm18c"]
+[ext_resource type="Texture2D" uid="uid://c1orj5mn6t32c" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_22.png" id="319_u5lwy"]
+[ext_resource type="Texture2D" uid="uid://dnwuv0d01wgm3" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_23.png" id="320_751hd"]
+[ext_resource type="Texture2D" uid="uid://v57w2pbye5li" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_24.png" id="321_0ppqb"]
+[ext_resource type="Texture2D" uid="uid://dl6ykl18y6f0p" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_25.png" id="322_xjd46"]
+[ext_resource type="Texture2D" uid="uid://c1skxx6vtama4" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_26.png" id="323_glfsu"]
+[ext_resource type="Texture2D" uid="uid://cdgn187lrg0ow" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_27.png" id="324_ktlee"]
+[ext_resource type="Texture2D" uid="uid://c1og6m0hd0kel" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_28.png" id="325_u62vk"]
+[ext_resource type="Texture2D" uid="uid://bwp6iuleqcr8r" path="res://assets/Characters/17/Png/Character Sprite/Win/Character-Win_29.png" id="326_e60fu"]
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("1_v7puh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("2_5pd48")
+}, {
+"duration": 1.0,
+"texture": ExtResource("3_sforc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_huadb")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_3yran")
+}, {
+"duration": 1.0,
+"texture": ExtResource("6_lgt67")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_jib6e")
+}, {
+"duration": 1.0,
+"texture": ExtResource("8_lhpvx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("9_4tfcd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("10_6ua5y")
+}, {
+"duration": 1.0,
+"texture": ExtResource("11_oxfid")
+}, {
+"duration": 1.0,
+"texture": ExtResource("12_ffhhr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("13_t45tx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("14_jo1oo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("15_l7800")
+}, {
+"duration": 1.0,
+"texture": ExtResource("16_6rsfr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("17_flmyx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("18_l6du3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("19_131uk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("20_15b3s")
+}, {
+"duration": 1.0,
+"texture": ExtResource("21_oxc8n")
+}, {
+"duration": 1.0,
+"texture": ExtResource("22_kp656")
+}, {
+"duration": 1.0,
+"texture": ExtResource("23_4t8m1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("24_5yp3s")
+}, {
+"duration": 1.0,
+"texture": ExtResource("25_04nwf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("26_by6fr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("27_34ww8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("28_ihdmo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("29_vrgr0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("30_qngvb")
+}, {
+"duration": 1.0,
+"texture": ExtResource("31_8bddm")
+}, {
+"duration": 1.0,
+"texture": ExtResource("32_1vuc2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("33_c6rym")
+}, {
+"duration": 1.0,
+"texture": ExtResource("34_veo35")
+}, {
+"duration": 1.0,
+"texture": ExtResource("35_1elm1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("36_mfrk8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("37_e8ff8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("38_4vkb5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("39_8sphd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("40_y4ew8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("41_knn1j")
+}, {
+"duration": 1.0,
+"texture": ExtResource("42_8o3vk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("43_ogjhn")
+}, {
+"duration": 1.0,
+"texture": ExtResource("44_abl2d")
+}, {
+"duration": 1.0,
+"texture": ExtResource("45_y4s01")
+}, {
+"duration": 1.0,
+"texture": ExtResource("46_pqspx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("47_7gjmf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("48_10tqo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("49_ymth7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("50_lgli7")
+}],
+"loop": 0,
+"name": &"dead",
+"speed": 20.0
+}, {
+"frames": [],
+"loop": 1,
+"name": &"default",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("51_hxdg2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("52_nog2l")
+}, {
+"duration": 1.0,
+"texture": ExtResource("53_wvsdx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("54_4jkaf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("55_cp3de")
+}, {
+"duration": 1.0,
+"texture": ExtResource("56_n3r6b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("57_0l8e5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("58_h6hbe")
+}, {
+"duration": 1.0,
+"texture": ExtResource("59_xpiwv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("60_ko4ho")
+}, {
+"duration": 1.0,
+"texture": ExtResource("61_d1ccy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("62_03wwi")
+}, {
+"duration": 1.0,
+"texture": ExtResource("63_2d612")
+}, {
+"duration": 1.0,
+"texture": ExtResource("64_sjwq2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("65_070nx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("66_w78sq")
+}, {
+"duration": 1.0,
+"texture": ExtResource("67_h68gn")
+}, {
+"duration": 1.0,
+"texture": ExtResource("68_8vqav")
+}, {
+"duration": 1.0,
+"texture": ExtResource("69_0esra")
+}, {
+"duration": 1.0,
+"texture": ExtResource("70_txgsk")
+}],
+"loop": 0,
+"name": &"driving",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("71_aum6x")
+}, {
+"duration": 1.0,
+"texture": ExtResource("72_xkje8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("73_w8r4a")
+}, {
+"duration": 1.0,
+"texture": ExtResource("74_h0ge7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("75_qd4yp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("76_mvoj5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("77_5d5tk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("78_5pe82")
+}, {
+"duration": 1.0,
+"texture": ExtResource("79_4mohk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("80_2bwoh")
+}],
+"loop": 1,
+"name": &"fall",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("81_jldv8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("82_xnjws")
+}, {
+"duration": 1.0,
+"texture": ExtResource("83_56u5u")
+}, {
+"duration": 1.0,
+"texture": ExtResource("84_v4pxy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("85_2ipuv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("86_to3rw")
+}, {
+"duration": 1.0,
+"texture": ExtResource("87_2peeh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("88_oxjwn")
+}],
+"loop": 1,
+"name": &"fast run",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("89_dl6ih")
+}, {
+"duration": 1.0,
+"texture": ExtResource("90_pf4c0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("91_tpcqp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("92_in702")
+}, {
+"duration": 1.0,
+"texture": ExtResource("93_k8hbi")
+}, {
+"duration": 1.0,
+"texture": ExtResource("94_rlsaw")
+}, {
+"duration": 1.0,
+"texture": ExtResource("95_e43qp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("96_jlqua")
+}, {
+"duration": 1.0,
+"texture": ExtResource("97_11x68")
+}, {
+"duration": 1.0,
+"texture": ExtResource("98_xrvsf")
+}],
+"loop": 0,
+"name": &"glide",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("99_um7ii")
+}, {
+"duration": 1.0,
+"texture": ExtResource("100_hnlb4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("101_g3ria")
+}, {
+"duration": 1.0,
+"texture": ExtResource("102_dprp5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("103_ny3jt")
+}, {
+"duration": 1.0,
+"texture": ExtResource("104_ccavp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("105_6yai2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("106_1bkgc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("107_moysl")
+}, {
+"duration": 1.0,
+"texture": ExtResource("108_cc3bj")
+}, {
+"duration": 1.0,
+"texture": ExtResource("109_acjuu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("110_ifap5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("111_pkw0e")
+}, {
+"duration": 1.0,
+"texture": ExtResource("112_dbmqd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("113_f3ph7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("114_ajhgf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("115_kewwt")
+}, {
+"duration": 1.0,
+"texture": ExtResource("116_42y61")
+}, {
+"duration": 1.0,
+"texture": ExtResource("117_2cvfx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("118_17nm0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("119_k756x")
+}, {
+"duration": 1.0,
+"texture": ExtResource("120_stxb1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("121_b2a81")
+}, {
+"duration": 1.0,
+"texture": ExtResource("122_q53c4")
+}, {
+"duration": 1.0,
+"texture": ExtResource("123_at2wf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("124_bsjk1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("125_ig3ki")
+}, {
+"duration": 1.0,
+"texture": ExtResource("126_garst")
+}, {
+"duration": 1.0,
+"texture": ExtResource("127_2i7ut")
+}, {
+"duration": 1.0,
+"texture": ExtResource("128_h18bu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("129_y5nxa")
+}, {
+"duration": 1.0,
+"texture": ExtResource("130_1b7ab")
+}, {
+"duration": 1.0,
+"texture": ExtResource("131_4b1qp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("132_ny6b7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("133_wfcvc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("134_8bohg")
+}, {
+"duration": 1.0,
+"texture": ExtResource("135_023xx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("136_14ahl")
+}, {
+"duration": 1.0,
+"texture": ExtResource("137_duaus")
+}, {
+"duration": 1.0,
+"texture": ExtResource("138_5oeyq")
+}],
+"loop": 0,
+"name": &"hit",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("139_hjv7h")
+}, {
+"duration": 1.0,
+"texture": ExtResource("140_r7yao")
+}, {
+"duration": 1.0,
+"texture": ExtResource("141_07pg6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("142_ptgra")
+}, {
+"duration": 1.0,
+"texture": ExtResource("143_fe8ai")
+}, {
+"duration": 1.0,
+"texture": ExtResource("144_sags6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("145_x0d7v")
+}, {
+"duration": 1.0,
+"texture": ExtResource("146_bjsn7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("147_wmxqh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("148_rog23")
+}, {
+"duration": 1.0,
+"texture": ExtResource("149_xhehj")
+}, {
+"duration": 1.0,
+"texture": ExtResource("150_la1rb")
+}, {
+"duration": 1.0,
+"texture": ExtResource("151_gp6su")
+}, {
+"duration": 1.0,
+"texture": ExtResource("152_6rytd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("153_t888c")
+}, {
+"duration": 1.0,
+"texture": ExtResource("154_m1akc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("155_cp0k7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("156_bv63x")
+}, {
+"duration": 1.0,
+"texture": ExtResource("157_t77pl")
+}, {
+"duration": 1.0,
+"texture": ExtResource("158_wlwy5")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("159_qfomv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("160_sc7a7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("161_rms5t")
+}, {
+"duration": 1.0,
+"texture": ExtResource("162_x4urt")
+}, {
+"duration": 1.0,
+"texture": ExtResource("163_qqj7h")
+}, {
+"duration": 1.0,
+"texture": ExtResource("164_15j2b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("165_mkx5a")
+}, {
+"duration": 1.0,
+"texture": ExtResource("166_6whty")
+}, {
+"duration": 1.0,
+"texture": ExtResource("167_jaknu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("168_jptxk")
+}],
+"loop": 0,
+"name": &"jump after",
+"speed": 60.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("169_1eoxc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("170_hu05u")
+}, {
+"duration": 1.0,
+"texture": ExtResource("171_kia6l")
+}, {
+"duration": 1.0,
+"texture": ExtResource("172_k2r42")
+}, {
+"duration": 1.0,
+"texture": ExtResource("173_6wkba")
+}, {
+"duration": 1.0,
+"texture": ExtResource("174_3kgh8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("175_fp8fy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("176_n2pec")
+}, {
+"duration": 1.0,
+"texture": ExtResource("177_ix133")
+}, {
+"duration": 1.0,
+"texture": ExtResource("178_0qm3o")
+}],
+"loop": 0,
+"name": &"jump before",
+"speed": 60.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("179_wwslj")
+}, {
+"duration": 1.0,
+"texture": ExtResource("180_ctuod")
+}, {
+"duration": 1.0,
+"texture": ExtResource("181_d7xi5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("182_o7v47")
+}, {
+"duration": 1.0,
+"texture": ExtResource("183_vmd3b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("184_q8130")
+}, {
+"duration": 1.0,
+"texture": ExtResource("185_r6775")
+}, {
+"duration": 1.0,
+"texture": ExtResource("186_u2t1b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("187_bmfla")
+}, {
+"duration": 1.0,
+"texture": ExtResource("188_6xkj0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("189_ay05y")
+}, {
+"duration": 1.0,
+"texture": ExtResource("190_v7jhf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("191_h4ejk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("192_1nhd3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("193_f65rp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("194_kgrbq")
+}, {
+"duration": 1.0,
+"texture": ExtResource("195_dhbn3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("196_svk42")
+}, {
+"duration": 1.0,
+"texture": ExtResource("197_2o6ns")
+}, {
+"duration": 1.0,
+"texture": ExtResource("198_hhcyc")
+}],
+"loop": 0,
+"name": &"parachute",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("199_yd2xu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("200_jk0eu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("201_c0bxx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("202_rildx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("203_iet8b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("204_dcb5y")
+}, {
+"duration": 1.0,
+"texture": ExtResource("205_ja4ey")
+}, {
+"duration": 1.0,
+"texture": ExtResource("206_xx027")
+}],
+"loop": 0,
+"name": &"roll",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("207_ijmwc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("208_aaai1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("209_igl8r")
+}, {
+"duration": 1.0,
+"texture": ExtResource("210_jbiul")
+}, {
+"duration": 1.0,
+"texture": ExtResource("211_gf7wv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("212_hhj6i")
+}, {
+"duration": 1.0,
+"texture": ExtResource("213_0rhpf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("214_83ny6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("215_diie3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("216_kqymo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("217_52e0t")
+}, {
+"duration": 1.0,
+"texture": ExtResource("218_s8o4j")
+}, {
+"duration": 1.0,
+"texture": ExtResource("219_dxrwq")
+}, {
+"duration": 1.0,
+"texture": ExtResource("220_ci67f")
+}, {
+"duration": 1.0,
+"texture": ExtResource("221_3lcyu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("222_8tr70")
+}, {
+"duration": 1.0,
+"texture": ExtResource("223_5oidr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("224_s1o8o")
+}, {
+"duration": 1.0,
+"texture": ExtResource("225_g0ces")
+}, {
+"duration": 1.0,
+"texture": ExtResource("226_qkdip")
+}, {
+"duration": 1.0,
+"texture": ExtResource("227_g35cq")
+}, {
+"duration": 1.0,
+"texture": ExtResource("228_ucemx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("229_1ywd1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("230_r8sh2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("231_0e1ho")
+}, {
+"duration": 1.0,
+"texture": ExtResource("232_4dxob")
+}, {
+"duration": 1.0,
+"texture": ExtResource("233_kboe5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("234_wu32b")
+}, {
+"duration": 1.0,
+"texture": ExtResource("235_lo632")
+}, {
+"duration": 1.0,
+"texture": ExtResource("236_qfrdd")
+}],
+"loop": 1,
+"name": &"run",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("237_bqbvy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("238_6fay7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("239_r0k54")
+}, {
+"duration": 1.0,
+"texture": ExtResource("240_e3uem")
+}, {
+"duration": 1.0,
+"texture": ExtResource("241_1pdrr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("242_nrppx")
+}, {
+"duration": 1.0,
+"texture": ExtResource("243_j1wdu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("244_2galh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("245_3m2yf")
+}, {
+"duration": 1.0,
+"texture": ExtResource("246_inn0s")
+}, {
+"duration": 1.0,
+"texture": ExtResource("247_e7mx8")
+}, {
+"duration": 1.0,
+"texture": ExtResource("248_7givv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("249_eyu6c")
+}, {
+"duration": 1.0,
+"texture": ExtResource("250_tbs4a")
+}, {
+"duration": 1.0,
+"texture": ExtResource("251_id78p")
+}, {
+"duration": 1.0,
+"texture": ExtResource("252_ywd4g")
+}, {
+"duration": 1.0,
+"texture": ExtResource("253_blbf0")
+}, {
+"duration": 1.0,
+"texture": ExtResource("254_thuef")
+}, {
+"duration": 1.0,
+"texture": ExtResource("255_rrtoj")
+}, {
+"duration": 1.0,
+"texture": ExtResource("256_mipbr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("257_2p702")
+}, {
+"duration": 1.0,
+"texture": ExtResource("258_ryh11")
+}, {
+"duration": 1.0,
+"texture": ExtResource("259_5bssh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("260_s615e")
+}, {
+"duration": 1.0,
+"texture": ExtResource("261_jokgw")
+}, {
+"duration": 1.0,
+"texture": ExtResource("262_hrumg")
+}, {
+"duration": 1.0,
+"texture": ExtResource("263_kp4ru")
+}, {
+"duration": 1.0,
+"texture": ExtResource("264_uhh86")
+}, {
+"duration": 1.0,
+"texture": ExtResource("265_ale8t")
+}, {
+"duration": 1.0,
+"texture": ExtResource("266_vxtth")
+}],
+"loop": 0,
+"name": &"shoot",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("267_cxs8c")
+}, {
+"duration": 1.0,
+"texture": ExtResource("268_tbf8d")
+}, {
+"duration": 1.0,
+"texture": ExtResource("269_vcxoy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("270_hroa3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("271_eq7k6")
+}, {
+"duration": 1.0,
+"texture": ExtResource("272_lggnr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("273_83ywp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("274_gsd4g")
+}, {
+"duration": 1.0,
+"texture": ExtResource("275_qi1vb")
+}, {
+"duration": 1.0,
+"texture": ExtResource("276_effwl")
+}, {
+"duration": 1.0,
+"texture": ExtResource("277_cenqp")
+}, {
+"duration": 1.0,
+"texture": ExtResource("278_sduck")
+}, {
+"duration": 1.0,
+"texture": ExtResource("279_gwjsh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("280_brmb2")
+}, {
+"duration": 1.0,
+"texture": ExtResource("281_61bqe")
+}, {
+"duration": 1.0,
+"texture": ExtResource("282_p0mrw")
+}, {
+"duration": 1.0,
+"texture": ExtResource("283_e2r62")
+}, {
+"duration": 1.0,
+"texture": ExtResource("284_dkxq3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("285_vbv50")
+}, {
+"duration": 1.0,
+"texture": ExtResource("286_m00mi")
+}, {
+"duration": 1.0,
+"texture": ExtResource("287_65xpr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("288_verhv")
+}, {
+"duration": 1.0,
+"texture": ExtResource("289_1m504")
+}, {
+"duration": 1.0,
+"texture": ExtResource("290_2fo0u")
+}, {
+"duration": 1.0,
+"texture": ExtResource("291_mo2rk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("292_p71qu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("293_723j5")
+}, {
+"duration": 1.0,
+"texture": ExtResource("294_gxvfa")
+}, {
+"duration": 1.0,
+"texture": ExtResource("295_2wmoh")
+}, {
+"duration": 1.0,
+"texture": ExtResource("296_tx6u6")
+}],
+"loop": 1,
+"name": &"walk",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("297_rvm22")
+}, {
+"duration": 1.0,
+"texture": ExtResource("298_2eq25")
+}, {
+"duration": 1.0,
+"texture": ExtResource("299_uyuu1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("300_uoc70")
+}, {
+"duration": 1.0,
+"texture": ExtResource("301_an881")
+}, {
+"duration": 1.0,
+"texture": ExtResource("302_ng5mj")
+}, {
+"duration": 1.0,
+"texture": ExtResource("303_bx2ui")
+}, {
+"duration": 1.0,
+"texture": ExtResource("304_kio3d")
+}, {
+"duration": 1.0,
+"texture": ExtResource("305_kqar1")
+}, {
+"duration": 1.0,
+"texture": ExtResource("306_m50t3")
+}, {
+"duration": 1.0,
+"texture": ExtResource("307_k7i6t")
+}, {
+"duration": 1.0,
+"texture": ExtResource("308_fc22j")
+}, {
+"duration": 1.0,
+"texture": ExtResource("309_fwx80")
+}, {
+"duration": 1.0,
+"texture": ExtResource("310_8amy7")
+}, {
+"duration": 1.0,
+"texture": ExtResource("311_ve3kd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("312_yrytw")
+}, {
+"duration": 1.0,
+"texture": ExtResource("313_34mlc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("314_nkrri")
+}, {
+"duration": 1.0,
+"texture": ExtResource("315_ukp1y")
+}, {
+"duration": 1.0,
+"texture": ExtResource("316_ui3fm")
+}, {
+"duration": 1.0,
+"texture": ExtResource("317_whx4q")
+}, {
+"duration": 1.0,
+"texture": ExtResource("318_rm18c")
+}, {
+"duration": 1.0,
+"texture": ExtResource("319_u5lwy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("320_751hd")
+}, {
+"duration": 1.0,
+"texture": ExtResource("321_0ppqb")
+}, {
+"duration": 1.0,
+"texture": ExtResource("322_xjd46")
+}, {
+"duration": 1.0,
+"texture": ExtResource("323_glfsu")
+}, {
+"duration": 1.0,
+"texture": ExtResource("324_ktlee")
+}, {
+"duration": 1.0,
+"texture": ExtResource("325_u62vk")
+}, {
+"duration": 1.0,
+"texture": ExtResource("326_e60fu")
+}],
+"loop": 0,
+"name": &"win",
+"speed": 20.0
+}]

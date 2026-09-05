@@ -1,0 +1,51 @@
+Terrain:
+☐ Different biome types
+    ☐ heavens
+    ☐ mountains (heavens 2)
+    ☐ cave
+☐ Switch biomes
+☐ stacked platforms
+☐ block types have different properties
+    ☐ snow is slippery
+    ☐ desert is burning hot
+    ☐ astro is falling
+    ☐ metal has spikes
+    ☐ Water drowns
+Player:
+☐ spawn player/enemies
+    ☐ spawn helper method
+☐ small obstacles on top of platforms
+☐ rolling
+    ☐ mechanics
+    ☐ animation
+☐ climbing
+    ☐ mechanics
+    ☐ animation
+☐ Health bar
+Stats:
+☐ Health
+☐ Defense (Damage taken)
+☐ Jump
+Abilities:
+Essential:
+☐ Move
+☐ Jump
+☐ Roll 
+Extra:
+☐ Movement
+    ☐ Jump (double jump, triple jump)
+    ☐ Climb (double climb)
+    ☐ Glide/hang (reverse gravity, fly)
+    ☐ Dash (fatal dash, teleport, pull enemy to itself, pass through walls)
+☐ Attack 
+    ☐ Shoot forward (arbitrary, shooting speed, num ammo to shoot) 
+    ☐ Explode
+☐ Misc 
+    ☐ Slow down time (duration)
+    ☐ invisible
+    ☐ transform to tapped enemy
+Enemy:
+Collectibles:
+✔ Spawned @done(26-08-02 08:40)
+✔ Moving @done(26-08-02 08:40)
+✔ Attracted @done(26-08-02 08:40)
