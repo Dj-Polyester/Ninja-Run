@@ -14,6 +14,7 @@ const FALLING_TILE_SCRIPT := preload("res://src/gameplay/hazards/falling_tile.gd
 const SPIKE_HAZARD_SCRIPT := preload("res://src/gameplay/hazards/spike_hazard.gd")
 const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
 const DAMAGEABLE_CONTRACT_SCRIPT := preload("res://src/gameplay/combat/damageable_contract.gd")
+const PLAYER_PROFILE_SCRIPT := preload("res://src/core/player_profile.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -60,8 +61,14 @@ func _run() -> void:
 	await test_revive_restores_checkpoint()
 	await test_countdown_without_potion_ends_run()
 	await test_stuck_detection_is_suspended_during_revival()
+	test_profile_defaults_cover_phase5_progression()
+	test_profile_and_run_state_are_separate()
+	await test_run_state_is_not_persisted()
 	await test_save_profile_round_trip()
 	test_missing_save_creates_defaults()
+	test_corrupted_save_creates_defaults()
+	test_unsupported_save_version_creates_defaults()
+	test_legacy_v1_profile_backfills_phase5_defaults()
 	test_phase3_biome_metadata()
 	test_snow_modifier_is_seeded_and_bounded()
 	test_snow_generator_uses_effective_jump()
@@ -77,7 +84,7 @@ func _run() -> void:
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
 
-	print("\nPhase 1+2+3+4 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -597,31 +604,168 @@ func test_stuck_detection_is_suspended_during_revival() -> void:
 	_expect(is_equal_approx(level.stuck_elapsed, 1.25), "stuck detection must not advance while revival/game-over processing has halted the run")
 	await _free_node(level)
 
-func test_save_profile_round_trip() -> void:
-	const TEST_SAVE_PATH := "user://phase1_test_save.json"
+func test_profile_defaults_cover_phase5_progression() -> void:
+	GameState.reset_profile()
+	var required_keys := [
+		"save_version",
+		"gold",
+		"unlocked_characters",
+		"selected_character",
+		"stat_levels",
+		"unlocked_abilities",
+		"equipped_abilities",
+		"ability_levels",
+		"unlocked_weapons",
+		"equipped_weapons",
+		"consumables",
+		"settings",
+	]
+	for key in required_keys:
+		_expect(GameState.profile.has(key), "Phase 5 profile must define '%s'" % key)
+	_expect(int(GameState.profile.save_version) == PLAYER_PROFILE_SCRIPT.CURRENT_SAVE_VERSION, "default profile must use the current save version")
+	_expect(int(GameState.profile.gold) == 0, "new profiles must start with zero gold")
+	_expect(GameState.profile.unlocked_characters == [PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID], "default character must start unlocked")
+	_expect(int(GameState.profile.selected_character) == PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID, "default character must start selected")
+	_expect(GameState.profile.unlocked_abilities == [PLAYER_PROFILE_SCRIPT.DEFAULT_ABILITY_ID], "Jump must be the default unlocked ability")
+	_expect(GameState.profile.equipped_abilities == [PLAYER_PROFILE_SCRIPT.DEFAULT_ABILITY_ID], "Jump must be equipped by default")
+	_expect(GameState.profile.unlocked_weapons.is_empty() and GameState.profile.equipped_weapons.is_empty(), "weapons must begin locked/unequipped")
+	_expect(GameState.revival_potion_count() == 1, "default consumables must include one revival potion")
+	_expect(String(GameState.profile.settings.action_button_side) == PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT, "mobile action buttons must default to the right side")
+
+func test_profile_and_run_state_are_separate() -> void:
+	GameState.reset_profile()
+	GameState.profile.gold = 37
+	GameState.reset_run(9191)
+	GameState.set_distance_tiles(42)
+	GameState.set_current_biome(BiomeData.Id.DESERT)
+	GameState.set_temporary_effect(&"test_effect", {"duration": 1.5})
+	GameState.set_safe_checkpoint({"valid": true, "tile_index": 39})
+	_expect(int(GameState.run.seed) == 9191, "RunState must retain the injected run seed")
+	_expect(int(GameState.run.distance_tiles) == 42, "RunState must own horizontal run distance")
+	_expect(int(GameState.run.current_biome) == BiomeData.Id.DESERT, "RunState must own current biome")
+	_expect(GameState.run.temporary_effects.has("test_effect"), "RunState must own temporary effects")
+	_expect(int(GameState.run.checkpoint.tile_index) == 39, "RunState must own the current checkpoint")
+	_expect(not GameState.run.has("gold"), "persistent gold must not leak into RunState")
+	_expect(not GameState.profile.has("distance_tiles"), "transient run distance must not leak into PlayerProfile")
+	_expect(int(GameState.profile.gold) == 37, "resetting RunState must not reset persistent profile progression")
+
+func test_run_state_is_not_persisted() -> void:
+	const TEST_SAVE_PATH := "user://phase5_profile_only_save.json"
 	_remove_test_save(TEST_SAVE_PATH)
 	GameState.reset_profile()
+	GameState.profile.gold = 123
+	GameState.reset_run(8080)
+	GameState.set_distance_tiles(77)
+	GameState.set_current_biome(BiomeData.Id.FORT)
+	_expect(SaveManager.save_profile(TEST_SAVE_PATH), "profile-only save fixture must be writable")
+	var file := FileAccess.open(TEST_SAVE_PATH, FileAccess.READ)
+	_expect(file != null, "profile-only save fixture must be readable")
+	if file != null:
+		var parsed = JSON.parse_string(file.get_as_text())
+		file.close()
+		_expect(parsed is Dictionary, "saved profile must be a JSON dictionary")
+		if parsed is Dictionary:
+			_expect(not parsed.has("distance_tiles"), "save data must not serialize transient run distance")
+			_expect(not parsed.has("seed"), "save data must not serialize the run seed")
+			_expect(not parsed.has("current_biome"), "save data must not serialize current biome")
+	GameState.set_distance_tiles(88)
+	_expect(SaveManager.load_profile(TEST_SAVE_PATH), "profile-only save fixture must load")
+	_expect(int(GameState.profile.gold) == 123, "profile load must restore persistent progression")
+	_expect(int(GameState.run.distance_tiles) == 88, "profile load must not overwrite live RunState")
+	_expect(int(GameState.run.seed) == 8080, "profile load must not overwrite the live run seed")
+	_remove_test_save(TEST_SAVE_PATH)
+	await get_tree().process_frame
+
+func test_save_profile_round_trip() -> void:
+	const TEST_SAVE_PATH := "user://phase5_test_save.json"
+	_remove_test_save(TEST_SAVE_PATH)
+	GameState.reset_profile()
+	GameState.profile.gold = 987
+	GameState.profile.unlocked_characters = [1, 7, 12]
 	GameState.profile.selected_character = 7
+	GameState.profile.stat_levels = {
+		"maximum_health": 2,
+		"defense_multiplier": 3,
+		"melee_power": 4,
+		"enemy_fire_interval_multiplier": 1,
+		"invisibility_duration": 2,
+		"slow_down_duration": 1,
+	}
+	GameState.profile.unlocked_abilities = ["jump", "dash", "invisibility"]
+	GameState.profile.equipped_abilities = ["jump", "dash"]
+	GameState.profile.ability_levels = {"jump": 3, "dash": 1, "invisibility": 2}
+	GameState.profile.unlocked_weapons = ["shuriken", "magic_orb"]
+	GameState.profile.equipped_weapons = ["shuriken"]
+	GameState.profile.settings = {"action_button_side": "left"}
 	GameState.profile.maximum_health = 125.0
 	GameState.profile.defense_multiplier = 0.8
-	GameState.profile.revival_potions = 4
+	GameState.set_consumable_count(&"revival_potion", 4)
 	_expect(SaveManager.save_profile(TEST_SAVE_PATH), "SaveManager must write a valid profile")
 	GameState.reset_profile()
 	_expect(SaveManager.load_profile(TEST_SAVE_PATH), "SaveManager must load a valid profile")
+	_expect(int(GameState.profile.gold) == 987, "gold must survive a save/load round trip")
+	_expect(GameState.profile.unlocked_characters == [1, 7, 12], "unlocked characters must survive a save/load round trip")
 	_expect(int(GameState.profile.selected_character) == 7, "selected character must survive a save/load round trip")
+	_expect(int(GameState.profile.stat_levels.melee_power) == 4, "stat levels must survive a save/load round trip")
+	_expect(GameState.profile.unlocked_abilities == ["jump", "dash", "invisibility"], "unlocked abilities must survive a save/load round trip")
+	_expect(GameState.profile.equipped_abilities == ["jump", "dash"], "equipped abilities must survive a save/load round trip")
+	_expect(int(GameState.profile.ability_levels.jump) == 3, "ability levels must survive a save/load round trip")
+	_expect(GameState.profile.unlocked_weapons == ["shuriken", "magic_orb"], "unlocked weapons must survive a save/load round trip")
+	_expect(GameState.profile.equipped_weapons == ["shuriken"], "equipped weapons must survive a save/load round trip")
+	_expect(String(GameState.profile.settings.action_button_side) == "left", "settings must survive a save/load round trip")
 	_expect(is_equal_approx(float(GameState.profile.maximum_health), 125.0), "maximum health must survive a save/load round trip")
 	_expect(is_equal_approx(float(GameState.profile.defense_multiplier), 0.8), "defense multiplier must survive a save/load round trip")
 	_expect(int(GameState.profile.revival_potions) == 4, "revival potion inventory must survive a save/load round trip")
+	_expect(int(GameState.profile.consumables.revival_potion) == 4, "nested consumable inventory must survive a save/load round trip")
 	_remove_test_save(TEST_SAVE_PATH)
 	await get_tree().process_frame
 
 func test_missing_save_creates_defaults() -> void:
-	const MISSING_SAVE_PATH := "user://phase1_missing_save.json"
+	const MISSING_SAVE_PATH := "user://phase5_missing_save.json"
 	_remove_test_save(MISSING_SAVE_PATH)
 	GameState.profile.maximum_health = 999.0
 	_expect(not SaveManager.load_profile(MISSING_SAVE_PATH), "loading a missing save must report that no save was loaded")
 	_expect(is_equal_approx(float(GameState.profile.maximum_health), 100.0), "missing saves must restore default profile values")
 	_expect(GameState.revival_potion_count() == 1, "missing saves must restore the default revival potion inventory")
+	_expect(int(GameState.profile.gold) == 0, "missing saves must restore default persistent progression")
+
+func test_corrupted_save_creates_defaults() -> void:
+	const CORRUPTED_SAVE_PATH := "user://phase5_corrupted_save.json"
+	_remove_test_save(CORRUPTED_SAVE_PATH)
+	_write_test_save(CORRUPTED_SAVE_PATH, "{ this is not valid json")
+	GameState.profile.gold = 555
+	_expect(not SaveManager.load_profile(CORRUPTED_SAVE_PATH), "corrupted JSON saves must be rejected")
+	_expect(int(GameState.profile.gold) == 0, "corrupted saves must restore a safe default profile")
+	_expect(GameState.profile.unlocked_abilities == [PLAYER_PROFILE_SCRIPT.DEFAULT_ABILITY_ID], "corrupted saves must restore default ability progression")
+	_remove_test_save(CORRUPTED_SAVE_PATH)
+
+func test_unsupported_save_version_creates_defaults() -> void:
+	const FUTURE_SAVE_PATH := "user://phase5_future_save.json"
+	_remove_test_save(FUTURE_SAVE_PATH)
+	_write_test_save(FUTURE_SAVE_PATH, JSON.stringify({"save_version": PLAYER_PROFILE_SCRIPT.CURRENT_SAVE_VERSION + 1, "gold": 999}))
+	GameState.profile.gold = 555
+	_expect(not SaveManager.load_profile(FUTURE_SAVE_PATH), "unsupported save versions must be rejected instead of guessed")
+	_expect(int(GameState.profile.gold) == 0, "unsupported save versions must restore safe defaults")
+	_remove_test_save(FUTURE_SAVE_PATH)
+
+func test_legacy_v1_profile_backfills_phase5_defaults() -> void:
+	const LEGACY_SAVE_PATH := "user://phase5_legacy_save.json"
+	_remove_test_save(LEGACY_SAVE_PATH)
+	var legacy_profile := {
+		"save_version": 1,
+		"selected_character": 1,
+		"maximum_health": 150.0,
+		"defense_multiplier": 0.75,
+		"revival_potions": 3,
+	}
+	_write_test_save(LEGACY_SAVE_PATH, JSON.stringify(legacy_profile))
+	_expect(SaveManager.load_profile(LEGACY_SAVE_PATH), "the additive Phase 5 schema must load existing version-1 profiles")
+	_expect(is_equal_approx(float(GameState.profile.maximum_health), 150.0), "legacy v1 maximum health must be preserved")
+	_expect(GameState.revival_potion_count() == 3, "legacy v1 potion inventory must migrate into consumables")
+	_expect(int(GameState.profile.consumables.revival_potion) == 3, "legacy potion inventory must populate the Phase 5 consumables dictionary")
+	_expect(int(GameState.profile.gold) == 0, "missing Phase 5 gold must backfill its default")
+	_expect(GameState.profile.unlocked_abilities == [PLAYER_PROFILE_SCRIPT.DEFAULT_ABILITY_ID], "missing Phase 5 abilities must backfill defaults")
+	_remove_test_save(LEGACY_SAVE_PATH)
 
 func test_phase3_biome_metadata() -> void:
 	var expected_hazards := [
@@ -868,6 +1012,14 @@ func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(absolute_path)
+
+func _write_test_save(path: String, contents: String) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	_expect(file != null, "test fixture must be able to write '%s'" % path)
+	if file == null:
+		return
+	file.store_string(contents)
+	file.close()
 
 func _mandatory_segments(spec: Dictionary) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []

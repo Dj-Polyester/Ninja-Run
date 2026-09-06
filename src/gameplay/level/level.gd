@@ -70,6 +70,8 @@ func apply_biome_for_tile(tile_x: int) -> void:
 	if current_biome_id == biome.id:
 		return
 	current_biome_id = biome.id
+	GameState.set_current_biome(biome.id)
+	GameState.set_temporary_effect(&"snow_jump_modifier", jump_modifier if biome.id == BiomeData.Id.SNOW else null)
 	background.color = biome.background_color
 	biome_label.text = "Biome: %s" % biome.display_name
 

@@ -1,6 +1,6 @@
 # Ninja Run
 
-Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)**, **Phase 2 (procedural world generation)**, **Phase 3 (biome mechanics)**, and **Phase 4 (health, damage, stuck detection, and revival/game-over loop)** are implemented in this branch.
+Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)**, **Phase 2 (procedural world generation)**, **Phase 3 (biome mechanics)**, **Phase 4 (health, damage, stuck detection, and revival/game-over loop)**, and **Phase 5 (persistent player progression)** are implemented in this branch.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ Desktop controls:
 
 The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, and the camera follows horizontal progress with look-ahead. Falling below the kill plane, losing all health, or failing to make horizontal progress for `GAME_OVER_NUMBER_OF_SECS` starts the Phase 4 revival countdown. A revival potion returns the player to the most recent safe checkpoint with restored health, cleared statuses, and brief invulnerability; otherwise the countdown ends in final game-over. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
 
-## Phase 1–4 architecture
+## Phase 1–5 architecture
 
 ```text
 scenes/
@@ -42,6 +42,8 @@ src/
   core/
     game_config.gd
     game_state.gd
+    player_profile.gd
+    run_state.gd
     save_manager.gd
   data/
     biome_data.gd
@@ -77,11 +79,11 @@ tests/
   test_runner.gd
 ```
 
-Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `GameState` owns current run/profile state, `SaveManager` owns persistence, `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
+Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
 
 ## Configuration
 
-The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–4 actively use the following values:
+The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–5 actively use the following values:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
@@ -178,7 +180,7 @@ Run the headless test suite with:
 godot --headless --path . tests/test_runner.tscn
 ```
 
-Phase 1–4 test inventory:
+Phase 1–5 test inventory:
 
 - `test_config_values_are_valid`
 - `test_game_state_reset_is_seeded`
@@ -218,8 +220,14 @@ Phase 1–4 test inventory:
 - `test_revive_restores_checkpoint`
 - `test_countdown_without_potion_ends_run`
 - `test_stuck_detection_is_suspended_during_revival`
+- `test_profile_defaults_cover_phase5_progression`
+- `test_profile_and_run_state_are_separate`
+- `test_run_state_is_not_persisted`
 - `test_save_profile_round_trip`
 - `test_missing_save_creates_defaults`
+- `test_corrupted_save_creates_defaults`
+- `test_unsupported_save_version_creates_defaults`
+- `test_legacy_v1_profile_backfills_phase5_defaults`
 - `test_phase3_biome_metadata`
 - `test_snow_modifier_is_seeded_and_bounded`
 - `test_snow_generator_uses_effective_jump`
@@ -235,15 +243,30 @@ Phase 1–4 test inventory:
 - `test_streamer_cleans_runtime_hazards`
 - `test_level_applies_biome_context`
 
-Physics-sensitive tests instantiate the real player and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival.
+Physics-sensitive tests instantiate the real player and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile.
 
 ## Save data
 
-`SaveManager` reserves `user://save.json` with `save_version = 1`. The current minimal profile persists selected character, maximum health, defense multiplier, and revival-potion inventory. The larger profile/run-state split and remaining progression fields are added in the dedicated persistence/progression phase.
+`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 5 keeps version 1 because the schema expansion is additive: older Phase 4 version-1 saves are loaded, sanitized, and backfilled with the new defaults instead of being discarded.
 
-## Scope after Phase 4
+Persistent `PlayerProfile` data now includes:
 
-The following requested systems are intentionally not claimed as implemented yet: upgrades, enemies, automatic melee, weapons, abilities, collectible spawning/drop tables, character shop, full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard and Phase 4 health/revival foundation now in place.
+- gold
+- unlocked and selected characters
+- stat levels
+- unlocked/equipped abilities and ability levels
+- unlocked/equipped weapons
+- consumables, including revival potions
+- settings, including the mobile action-button side
+- the Phase 4 maximum-health/defense values retained until Phase 6 derives them from stat definitions
+
+Transient `RunState` is intentionally not written to the profile save. It owns current health, horizontal distance, current biome, temporary effects, run seed, checkpoint data, and revival/game-over fields. Loading a profile therefore cannot resurrect or overwrite an in-progress run by accident.
+
+Save loading validates the root type and `save_version`, sanitizes collection/scalar types, clamps non-negative progression values, removes invalid equipped entries, enforces configured equipment limits during deserialization, and restores a safe default profile when the file is missing, malformed, or uses an unsupported version.
+
+## Scope after Phase 5
+
+The following requested systems are intentionally not claimed as implemented yet: stat upgrade transactions, enemies, automatic melee, weapon gameplay, ability gameplay, collectible spawning/drop tables, character shop, full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard, Phase 4 health/revival foundation, and Phase 5 persistence schema now in place.
 
 ## Assets
 
