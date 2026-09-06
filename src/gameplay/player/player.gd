@@ -27,6 +27,7 @@ var melee_animation_remaining := 0.0
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var burn_particles: GPUParticles2D = $BurnParticles
 @onready var melee_controller = $MeleeDetector
+@onready var weapon_controller = $WeaponController
 
 func _ready() -> void:
 	maximum_health = float(GameState.stat_value(&"maximum_health"))
@@ -175,6 +176,9 @@ func jump_speed_pixels() -> float:
 
 func melee_power() -> float:
 	return maxf(0.0, float(GameState.stat_value(&"melee_power")))
+
+func can_use_weapons() -> bool:
+	return state != State.DEAD and state != State.REVIVAL_WAIT
 
 func _try_automatic_melee() -> void:
 	var target: Node = melee_controller.try_attack(self, melee_power())

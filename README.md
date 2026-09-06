@@ -1,6 +1,6 @@
 # Ninja Run
 
-Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 7 (automatic melee combat)** are implemented in this branch.
+Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 8 (weapons)** are implemented in this branch.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ Desktop controls:
 
 The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, and the camera follows horizontal progress with look-ahead. Falling below the kill plane, losing all health, or failing to make horizontal progress for `GAME_OVER_NUMBER_OF_SECS` starts the Phase 4 revival countdown. A revival potion returns the player to the most recent safe checkpoint with restored health, cleared statuses, and brief invulnerability; otherwise the countdown ends in final game-over. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
 
-## Phase 1–7 architecture
+## Phase 1–8 architecture
 
 ```text
 scenes/
@@ -36,6 +36,8 @@ scenes/
     desert_hazard.tscn
     falling_tile.tscn
     spike_hazard.tscn
+  combat/
+    weapon_projectile.tscn
   player/
     player.tscn
 src/
@@ -49,11 +51,16 @@ src/
     biome_data.gd
     stat_catalog.gd
     stat_data.gd
+    weapon_catalog.gd
+    weapon_data.gd
   gameplay/
     combat/
       automatic_melee_controller.gd
       damage_info.gd
       damageable_contract.gd
+      weapon_controller.gd
+      weapon_inventory_service.gd
+      weapon_projectile.gd
     hazards/
       desert_hazard.gd
       falling_tile.gd
@@ -86,17 +93,23 @@ data/
     enemy_fire_interval_multiplier.tres
     invisibility_duration.tres
     slow_down_duration.tres
+  weapons/
+    shuriken.tres
+    shuriken_fan.tres
+    arrow.tres
+    magic_orb.tres
+    throwing_blade.tres
 tests/
   fixtures/
     melee_dummy_enemy.gd
   test_runner.gd
 ```
 
-Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `StatData` resources define upgradeable stat ranges/costs/locks, `StatCatalog` resolves those resources and derives values from persisted levels, and `StatUpgradeService` owns the atomic upgrade transaction. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, and `AutomaticMeleeController` owns proximity filtering, nearest-target selection, attack cooldown, and shared melee damage dispatch. `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status/attack-animation feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
+Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `StatData` resources define upgradeable stat ranges/costs/locks, `StatCatalog` resolves those resources and derives values from persisted levels, and `StatUpgradeService` owns the atomic upgrade transaction. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, and `AutomaticMeleeController` owns proximity filtering, nearest-target selection, attack cooldown, and shared melee damage dispatch. Phase 8 keeps ranged combat similarly data-driven: `WeaponData` describes each weapon, `WeaponCatalog` resolves definitions, `WeaponInventoryService` owns atomic purchase/equip transactions, `WeaponController` owns on-screen target selection/cooldowns/trajectory construction, and `WeaponProjectile` owns movement and shared projectile damage dispatch. `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status/attack-animation feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
 
 ## Configuration
 
-The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–7 actively use the following values:
+The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–8 actively use the following values:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
@@ -107,6 +120,14 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `ENEMY_COLLISION_MASK` | 4 (physics layer 3) | Enemy body/hurtbox layer queried by automatic melee |
 | `MELEE_RANGE_TILES` | 1.25 tiles | Radius of the player melee proximity detector |
 | `MELEE_ATTACK_INTERVAL` | 0.55 s | Minimum time between automatic melee hits |
+| `NUM_EQUIPPABLE_WEAPONS` | 3 | Maximum number of simultaneously equipped weapons |
+| `SHOOTING_ABILITY_ID` | `shooting` | Ability id required before weapons can be bought, equipped, or fired |
+| `WEAPON_PROJECTILE_COLLISION_RADIUS` | 10 px | Shared projectile damage-query radius |
+| `WEAPON_PROJECTILE_LIFETIME` | 5 s | Maximum projectile lifetime before cleanup |
+| `WEAPON_PROJECTILE_GRAVITY` | 1050 px/s² | Shared ballistic projectile acceleration |
+| `WEAPON_HOMING_TURN_RATE` | 7.5 rad/s | Maximum homing steering rate |
+| `WEAPON_RANDOM_AIM_MAX_DEGREES` | 70° | Random-aim half-angle around the forward runner direction |
+| `WEAPON_SCREEN_MARGIN_PIXELS` | 48 px | Small viewport margin used for on-screen enemy eligibility |
 | `BIOME_INTERVAL` | 48 tiles | Horizontal length of each biome encounter |
 | `GENERATION_DISTANCE_AHEAD` | 36 tiles | Terrain kept generated ahead |
 | `CLEANUP_DISTANCE_BEHIND` | 18 tiles | Terrain retention behind the player |
@@ -153,7 +174,7 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `MIN_SLOW_DOWN_DURATION` / `MAX_SLOW_DOWN_DURATION` | 2.0 / 6.0 s | Slow-down-duration upgrade bounds |
 | `SLOW_DOWN_DURATION_UPGRADE` / `SLOW_DOWN_DURATION_UPGRADE_GOLDS` | +0.5 s / 100 gold | Slow-down-duration step and fixed cost |
 
-The remaining task-level variables (equipment limits, glide/dash/explode/cooldown values) are centralized now so later phases do not scatter them across gameplay scripts.
+The remaining task-level ability variables (glide/dash/explode/cooldown values) are centralized now so later phases do not scatter them across gameplay scripts.
 
 ## Stats and upgrades
 
@@ -174,6 +195,24 @@ Damage uses the common `take_damage(amount, damage_info)` entry point and the sh
 The player scene contains a circular `MeleeDetector` `Area2D`. It monitors only `ENEMY_COLLISION_MASK`, resolves overlapping bodies or hurtboxes upward to an object implementing `DamageableContract`, ignores invalid/dead targets that opt out through `can_receive_melee_attack()`, and chooses the nearest remaining target by world-space distance. When the controller is ready, it applies the current `melee_power` stat through a `DamageInfo` payload tagged `MELEE`, then starts `MELEE_ATTACK_INTERVAL`. A target that remains nearby is attacked again only after that cooldown expires.
 
 Melee is automatic and needs no input binding. The player plays the bundled character `Shoot` frames as the Phase 7 melee attack animation because every one of the 45 supplied character sets contains that attack-capable sequence; normal run/jump/fall/roll/dead state animation resumes afterward. Dead and revival-wait players do not invoke the melee controller. Future enemy scenes only need to use the reserved enemy collision layer and implement the shared damage contract; the player does not depend on an enemy-specific class.
+
+## Weapons
+
+Weapons remain unavailable until the profile unlocks the `shooting` ability. `GameState.unlock_weapon()`, `equip_weapon()`, and `unequip_weapon()` delegate to `WeaponInventoryService`, which validates the weapon id and Shooting gate before mutating the profile. Purchases are atomic: insufficient gold, duplicate purchases, locked Shooting, and unknown ids leave both currency and inventory unchanged. Equipment is restricted to unlocked weapons and cannot exceed `NUM_EQUIPPABLE_WEAPONS`.
+
+The initial Phase 8 catalog uses all four supplied `Props/Weapons` categories and deliberately varies damage, cadence, trajectory, aim, and target count:
+
+| Weapon | Damage | Interval | Trajectory | Aim | Targets | Unlock cost |
+| --- | ---: | ---: | --- | --- | ---: | ---: |
+| Shuriken | 18 | 0.55 s | Straight | Targeted | 1 | 120 |
+| Shuriken Fan | 11 | 0.80 s | Straight | Fixed pattern | 3 | 220 |
+| Arrow | 34 | 0.95 s | Straight | Forward | 1 | 260 |
+| Magic Orb | 24 | 1.15 s | Homing | Targeted | 2 | 360 |
+| Throwing Blade | 42 | 1.40 s | Ballistic | Random | 1 | 420 |
+
+`WeaponController` runs automatically while the player is alive and Shooting is unlocked. It gathers damageable enemy nodes from the `enemies` group and the level's `EnemyContainer`, converts their world coordinates through the active viewport/camera transform, and only considers nodes within the visible screen plus a small margin. Targeted weapons choose nearest enemies; random selection uses a seeded `RandomNumberGenerator`; fixed-pattern weapons emit deterministic spread angles; forward weapons always fire along the runner direction. The controller supports `STRAIGHT`, `BALLISTIC`, `ARC`, and `HOMING` motion without hard-coding weapon ids, so later weapon resources can reuse the same simulation code.
+
+Projectiles are independent `Area2D` scenes placed into the level's `ProjectileContainer` when available. They use the reserved enemy collision mask, normalize the widely varying source-art dimensions for display, expire after a bounded lifetime, and call the same damage contract used by melee with `DamageInfo.DamageType.PROJECTILE`. Homing shots steer at a bounded turn rate; ballistic and arc shots use gravity; aim mode remains independent from trajectory, so a ballistic random-aim weapon does not silently become targeted.
 
 ## Health, stuck detection, revival, and game-over
 
@@ -222,7 +261,7 @@ Run the headless test suite with:
 godot --headless --path . tests/test_runner.tscn
 ```
 
-Phase 1–7 test inventory:
+Phase 1–8 test inventory:
 
 - `test_config_values_are_valid`
 - `test_game_state_reset_is_seeded`
@@ -288,6 +327,22 @@ Phase 1–7 test inventory:
 - `test_automatic_melee_respects_cooldown`
 - `test_automatic_melee_ignores_invalid_targets`
 - `test_automatic_melee_stops_when_player_is_dead`
+- `test_weapon_definitions_are_valid`
+- `test_weapon_requires_shooting`
+- `test_weapon_unlock_costs_gold_atomically`
+- `test_weapon_equipment_limit`
+- `test_weapon_target_count`
+- `test_weapon_forward_aim`
+- `test_weapon_targeted_aim`
+- `test_weapon_random_aim_is_seeded`
+- `test_weapon_fixed_pattern_aim`
+- `test_weapon_ballistic_trajectory`
+- `test_weapon_controller_requires_shooting`
+- `test_weapon_automatic_firing_and_interval`
+- `test_weapon_automatic_target_count`
+- `test_weapon_ignores_offscreen_enemy`
+- `test_weapon_projectile_damage`
+- `test_homing_projectile_steers_to_target`
 - `test_phase3_biome_metadata`
 - `test_snow_modifier_is_seeded_and_bounded`
 - `test_snow_generator_uses_effective_jump`
@@ -303,11 +358,11 @@ Phase 1–7 test inventory:
 - `test_streamer_cleans_runtime_hazards`
 - `test_level_applies_biome_context`
 
-Physics-sensitive tests instantiate the real player and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile. Phase 6 tests verify every stat definition, increasing/decreasing value derivation, fixed upgrade cost, transactional failure behavior, upper/lower clamps, ability-gated stats, persisted-level sanitization, runtime player health/defense integration, and upgraded starting run health. Phase 7 tests instantiate real `Area2D`/physics overlaps and verify detector configuration, nearest valid-target selection, contract filtering, upgraded melee damage, `MELEE` `DamageInfo`, cooldown repeat timing, attack animation selection, and dead-state suppression.
+Physics-sensitive tests instantiate the real player, projectile, and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile. Phase 6 tests verify every stat definition, increasing/decreasing value derivation, fixed upgrade cost, transactional failure behavior, upper/lower clamps, ability-gated stats, persisted-level sanitization, runtime player health/defense integration, and upgraded starting run health. Phase 7 tests instantiate real `Area2D`/physics overlaps and verify detector configuration, nearest valid-target selection, contract filtering, upgraded melee damage, `MELEE` `DamageInfo`, cooldown repeat timing, attack animation selection, and dead-state suppression. Phase 8 tests verify resource validity and supplied assets, Shooting-gated purchases, atomic gold handling, the equipment cap, target counts, all four aim modes, deterministic random aim, ballistic reachability math, automatic on-screen firing/cooldowns, off-screen suppression, real projectile collision damage, and homing steering.
 
 ## Save data
 
-`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 7 does not change the persistence schema: melee consumes the `melee_power` stat level already introduced additively in Phase 5/6. Older Phase 4 version-1 saves that contain only numeric maximum-health/defense fields are still migrated to the nearest valid stat levels, while current saves derive numeric compatibility fields from the persisted levels.
+`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 8 does not change the persistence schema: it activates the `unlocked_weapons` and `equipped_weapons` profile fields that were added in Phase 5, while melee continues to consume the `melee_power` level introduced in Phase 6. Older Phase 4 version-1 saves that contain only numeric maximum-health/defense fields are still migrated to the nearest valid stat levels, while current saves derive numeric compatibility fields from the persisted levels.
 
 Persistent `PlayerProfile` data now includes:
 
@@ -324,10 +379,10 @@ Transient `RunState` is intentionally not written to the profile save. It owns c
 
 Save loading validates the root type and `save_version`, sanitizes collection/scalar types, clamps non-negative progression values, removes invalid equipped entries, enforces configured equipment limits during deserialization, and restores a safe default profile when the file is missing, malformed, or uses an unsupported version.
 
-## Scope after Phase 7
+## Scope after Phase 8
 
-The following requested systems are intentionally not claimed as implemented yet: the enemy framework/spawning, weapon gameplay, ability gameplay, collectible spawning/drop tables, character shop, the Stats/menu UI, the rest of the full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation, health/revival loop, persistence/stat transaction model, and Phase 7 contract-based automatic melee now in place.
+The following requested systems are intentionally not claimed as implemented yet: the enemy framework/spawning, ability gameplay, collectible spawning/drop tables, character shop, the Stats/menu UI, the rest of the full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation, health/revival loop, persistence/stat transaction model, automatic melee, and the Phase 8 data-driven weapon/projectile framework now in place.
 
 ## Assets
 
-The project uses the assets already bundled under `assets/`, including the character animation sets (with their `Shoot` sequence reused for Phase 7 melee feedback), `spritesheet-tiles-double.png`, `assets/Props/Spikes.png`, and the bundled flame particle frames. No additional third-party assets were introduced by the implementation. Before redistribution, use the licensing/attribution terms supplied with the original asset pack/repository; this implementation does not invent licensing claims where metadata is absent.
+The project uses the assets already bundled under `assets/`, including the character animation sets (with their `Shoot` sequence reused for Phase 7 melee feedback), `spritesheet-tiles-double.png`, `assets/Props/Spikes.png`, the bundled flame particle frames, and Phase 8 weapon props from `Props/Weapons/Mage`, `Ranged`, `Shuriken`, and `Swords`. No additional third-party assets were introduced by the implementation. Before redistribution, use the licensing/attribution terms supplied with the original asset pack/repository; this implementation does not invent licensing claims where metadata is absent.

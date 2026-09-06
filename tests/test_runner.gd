@@ -19,6 +19,10 @@ const STAT_DATA_SCRIPT := preload("res://src/data/stat_data.gd")
 const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
 const MELEE_DUMMY_ENEMY_SCRIPT := preload("res://tests/fixtures/melee_dummy_enemy.gd")
+const WEAPON_DATA_SCRIPT := preload("res://src/data/weapon_data.gd")
+const WEAPON_CATALOG_SCRIPT := preload("res://src/data/weapon_catalog.gd")
+const WEAPON_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/combat/weapon_inventory_service.gd")
+const WEAPON_PROJECTILE_SCENE := preload("res://scenes/combat/weapon_projectile.tscn")
 
 var failures: Array[String] = []
 var passed := 0
@@ -91,6 +95,22 @@ func _run() -> void:
 	await test_automatic_melee_respects_cooldown()
 	await test_automatic_melee_ignores_invalid_targets()
 	await test_automatic_melee_stops_when_player_is_dead()
+	test_weapon_definitions_are_valid()
+	test_weapon_requires_shooting()
+	test_weapon_unlock_costs_gold_atomically()
+	test_weapon_equipment_limit()
+	await test_weapon_target_count()
+	await test_weapon_forward_aim()
+	await test_weapon_targeted_aim()
+	await test_weapon_random_aim_is_seeded()
+	await test_weapon_fixed_pattern_aim()
+	await test_weapon_ballistic_trajectory()
+	await test_weapon_controller_requires_shooting()
+	await test_weapon_automatic_firing_and_interval()
+	await test_weapon_automatic_target_count()
+	await test_weapon_ignores_offscreen_enemy()
+	await test_weapon_projectile_damage()
+	await test_homing_projectile_steers_to_target()
 	test_phase3_biome_metadata()
 	test_snow_modifier_is_seeded_and_bounded()
 	test_snow_generator_uses_effective_jump()
@@ -106,7 +126,7 @@ func _run() -> void:
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
 
-	print("\nPhase 1+2+3+4+5+6+7 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7+8 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -1058,6 +1078,292 @@ func test_automatic_melee_stops_when_player_is_dead() -> void:
 	await _free_node(enemy)
 	await _free_node(player)
 
+func test_weapon_definitions_are_valid() -> void:
+	var weapons: Array = WEAPON_CATALOG_SCRIPT.all()
+	_expect(weapons.size() >= 5, "Phase 8 must provide several genuinely different weapons")
+	var ids: Dictionary = {}
+	var trajectories: Dictionary = {}
+	var aim_modes: Dictionary = {}
+	var asset_categories: Dictionary = {}
+	for weapon in weapons:
+		_expect(weapon != null and weapon.is_valid(), "every WeaponData resource must be structurally valid")
+		if weapon == null:
+			continue
+		var id := String(weapon.id)
+		_expect(not ids.has(id), "weapon ids must be unique: %s" % id)
+		ids[id] = true
+		_expect(FileAccess.file_exists(weapon.texture_path), "%s must reference a supplied weapon PNG" % weapon.display_name)
+		_expect(weapon.damage > 0.0, "%s must deal positive damage" % weapon.display_name)
+		_expect(weapon.fire_interval > 0.0, "%s must define a positive firing interval" % weapon.display_name)
+		_expect(weapon.target_count >= 1, "%s must target at least one enemy" % weapon.display_name)
+		_expect(weapon.projectile_speed_tiles > 0.0, "%s must define projectile speed in tiles/sec" % weapon.display_name)
+		trajectories[int(weapon.trajectory)] = true
+		aim_modes[int(weapon.aim_mode)] = true
+		for category in ["/Mage/", "/Ranged/", "/Shuriken/", "/Swords/"]:
+			if String(weapon.texture_path).contains(category):
+				asset_categories[category] = true
+	_expect(WEAPON_CATALOG_SCRIPT.get_by_id(&"shuriken") != null, "Shuriken must be available as a weapon definition")
+	_expect(WEAPON_CATALOG_SCRIPT.get_by_id(&"magic_orb") != null, "Magic Orb must preserve the persisted Phase 5 weapon id")
+	_expect(trajectories.has(WEAPON_DATA_SCRIPT.Trajectory.STRAIGHT), "weapon catalog must include a straight trajectory")
+	_expect(trajectories.has(WEAPON_DATA_SCRIPT.Trajectory.BALLISTIC), "weapon catalog must include a ballistic trajectory")
+	_expect(trajectories.has(WEAPON_DATA_SCRIPT.Trajectory.HOMING), "weapon catalog must include a homing trajectory")
+	for aim_mode in [WEAPON_DATA_SCRIPT.AimMode.FORWARD, WEAPON_DATA_SCRIPT.AimMode.TARGETED, WEAPON_DATA_SCRIPT.AimMode.RANDOM, WEAPON_DATA_SCRIPT.AimMode.FIXED_PATTERN]:
+		_expect(aim_modes.has(aim_mode), "weapon catalog must exercise aim mode %d" % aim_mode)
+	_expect(asset_categories.size() == 4, "Phase 8 weapons must use supplied Mage, Ranged, Shuriken, and Swords asset categories")
+
+func test_weapon_requires_shooting() -> void:
+	GameState.reset_profile()
+	GameState.profile.gold = 1000
+	var before_gold := int(GameState.profile.gold)
+	_expect(not GameState.shooting_unlocked(), "Shooting must start locked")
+	_expect(GameState.unlock_weapon(&"shuriken") == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SHOOTING_LOCKED, "weapon purchase must be unavailable before Shooting is unlocked")
+	_expect(int(GameState.profile.gold) == before_gold, "Shooting-locked weapon purchase must not spend gold")
+	_expect(not GameState.is_weapon_unlocked(&"shuriken"), "Shooting-locked purchase must not unlock the weapon")
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	_expect(GameState.shooting_unlocked(), "adding Shooting to unlocked abilities must expose weapon progression")
+
+func test_weapon_unlock_costs_gold_atomically() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	var weapon = WEAPON_CATALOG_SCRIPT.SHURIKEN
+	GameState.profile.gold = weapon.unlock_cost - 1
+	var before_gold := int(GameState.profile.gold)
+	_expect(GameState.unlock_weapon(weapon.id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.NOT_ENOUGH_GOLD, "weapon unlock must reject insufficient gold")
+	_expect(int(GameState.profile.gold) == before_gold and not GameState.is_weapon_unlocked(weapon.id), "failed weapon purchase must be atomic")
+	GameState.profile.gold = weapon.unlock_cost + 50
+	_expect(GameState.unlock_weapon(weapon.id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "affordable weapon must unlock")
+	_expect(int(GameState.profile.gold) == 50, "successful weapon unlock must deduct exactly unlock_cost")
+	_expect(GameState.is_weapon_unlocked(weapon.id), "successful weapon purchase must persist the unlocked id")
+	var gold_after_unlock := int(GameState.profile.gold)
+	_expect(GameState.unlock_weapon(weapon.id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.ALREADY_UNLOCKED, "already-unlocked weapon must not be purchased twice")
+	_expect(int(GameState.profile.gold) == gold_after_unlock, "duplicate weapon unlock must not spend gold")
+
+func test_weapon_equipment_limit() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	GameState.profile.gold = 100000
+	var weapons: Array = WEAPON_CATALOG_SCRIPT.all()
+	for index in range(GameConfig.NUM_EQUIPPABLE_WEAPONS + 1):
+		var weapon = weapons[index]
+		_expect(GameState.unlock_weapon(weapon.id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "equipment-limit fixture weapon %s must unlock" % weapon.display_name)
+		if index < GameConfig.NUM_EQUIPPABLE_WEAPONS:
+			_expect(GameState.equip_weapon(weapon.id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "weapon %s must equip below the configured limit" % weapon.display_name)
+		else:
+			_expect(GameState.equip_weapon(weapon.id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.EQUIPMENT_LIMIT, "equipping beyond NUM_EQUIPPABLE_WEAPONS must be rejected")
+	_expect(GameState.profile.equipped_weapons.size() == GameConfig.NUM_EQUIPPABLE_WEAPONS, "equipped weapon count must never exceed NUM_EQUIPPABLE_WEAPONS")
+	var first_id := StringName(GameState.profile.equipped_weapons[0])
+	_expect(GameState.unequip_weapon(first_id) == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "equipped weapon must be unequippable")
+	_expect(GameState.profile.equipped_weapons.size() == GameConfig.NUM_EQUIPPABLE_WEAPONS - 1, "unequip must free one weapon slot")
+
+func test_weapon_target_count() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var enemies: Array = []
+	for offset in [Vector2(220, 0), Vector2(260, 20), Vector2(300, -20), Vector2(340, 0)]:
+		enemies.append(_spawn_melee_enemy(player.global_position + offset, 1000.0))
+	var targets: Array[Node2D] = player.weapon_controller.select_targets(WEAPON_CATALOG_SCRIPT.MAGIC_ORB, enemies)
+	_expect(targets.size() == WEAPON_CATALOG_SCRIPT.MAGIC_ORB.target_count, "weapon target selection must clamp to WeaponData.target_count")
+	_expect(targets[0] == enemies[0] and targets[1] == enemies[1], "targeted multi-target weapon must choose nearest enemies first")
+	for enemy in enemies:
+		await _free_node(enemy)
+	await _free_node(player)
+
+func test_weapon_forward_aim() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(-120.0, -90.0), 1000.0)
+	var direction: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.ARROW, enemy)
+	_expect(direction.is_equal_approx(Vector2.RIGHT), "forward-aim weapon must fire forward even when a target is elsewhere on-screen")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_weapon_targeted_aim() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.weapon_controller.global_position + Vector2(180.0, -70.0), 1000.0)
+	var expected: Vector2 = player.weapon_controller.global_position.direction_to(enemy.global_position)
+	var actual: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.SHURIKEN, enemy)
+	_expect(actual.is_equal_approx(expected), "targeted weapon aim must point directly at the selected enemy")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_weapon_random_aim_is_seeded() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(250.0, 0.0), 1000.0)
+	player.weapon_controller.set_rng_seed(8675309)
+	var first: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.THROWING_BLADE, enemy)
+	player.weapon_controller.set_rng_seed(8675309)
+	var repeat: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.THROWING_BLADE, enemy)
+	_expect(first.is_equal_approx(repeat), "random weapon aim must be reproducible with an injected seed")
+	_expect(first.x > 0.0 and not is_zero_approx(first.y), "random aim must produce a forward-hemisphere direction that differs from fixed forward aim")
+	player.weapon_controller.set_rng_seed(24680)
+	var first_launch: Dictionary = player.weapon_controller.launch_parameters(WEAPON_CATALOG_SCRIPT.THROWING_BLADE, enemy)
+	player.weapon_controller.set_rng_seed(24680)
+	var repeated_launch: Dictionary = player.weapon_controller.launch_parameters(WEAPON_CATALOG_SCRIPT.THROWING_BLADE, enemy)
+	player.weapon_controller.set_rng_seed(13579)
+	var different_launch: Dictionary = player.weapon_controller.launch_parameters(WEAPON_CATALOG_SCRIPT.THROWING_BLADE, enemy)
+	_expect((first_launch.velocity as Vector2).is_equal_approx(repeated_launch.velocity), "ballistic random-aim launch must remain deterministic for the same RNG seed")
+	_expect(not (first_launch.velocity as Vector2).is_equal_approx(different_launch.velocity), "ballistic trajectory must preserve RANDOM aim instead of retargeting every shot")
+	_expect(is_equal_approx(float(first_launch.gravity), GameConfig.WEAPON_PROJECTILE_GRAVITY), "ballistic random-aim weapon must still apply projectile gravity")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_weapon_fixed_pattern_aim() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(280.0, 0.0), 1000.0)
+	var left: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.SHURIKEN_FAN, enemy, 0, 3)
+	var center: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.SHURIKEN_FAN, enemy, 1, 3)
+	var right: Vector2 = player.weapon_controller.aim_direction(WEAPON_CATALOG_SCRIPT.SHURIKEN_FAN, enemy, 2, 3)
+	_expect(left.y < 0.0 and right.y > 0.0, "fixed pattern must spread shots on both sides of the forward axis")
+	_expect(center.is_equal_approx(Vector2.RIGHT), "odd fixed-pattern fan must include a centered forward shot")
+	_expect(is_equal_approx(absf(left.angle()), absf(right.angle())), "fixed pattern spread must be symmetric")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_weapon_ballistic_trajectory() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var controller = player.weapon_controller
+	var origin: Vector2 = controller.global_position
+	var target: Vector2 = origin + Vector2(340.0, 45.0)
+	var speed: float = WEAPON_CATALOG_SCRIPT.THROWING_BLADE.projectile_speed_pixels()
+	var gravity := GameConfig.WEAPON_PROJECTILE_GRAVITY
+	var velocity: Vector2 = controller.ballistic_velocity(origin, target, speed, gravity)
+	_expect(velocity.x > 0.0, "ballistic solution must move toward a target ahead")
+	_expect(velocity.y < 0.0, "ballistic solution must initially arc upward for the representative target")
+	if velocity.x > 0.0:
+		var flight_time: float = (target.x - origin.x) / velocity.x
+		var simulated_y: float = origin.y + velocity.y * flight_time + 0.5 * gravity * flight_time * flight_time
+		_expect(absf(simulated_y - target.y) < 0.75, "ballistic solution must intersect the target height at its horizontal position")
+	await _free_node(player)
+
+func test_weapon_controller_requires_shooting() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_weapons = ["shuriken"]
+	GameState.profile.equipped_weapons = ["shuriken"]
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(260.0, 0.0), 1000.0, true)
+	for _index in 4:
+		enemy.global_position = player.global_position + Vector2(260.0, 0.0)
+		await get_tree().physics_frame
+	_expect(_count_group_descendants(self, &"weapon_projectiles") == 0, "equipped weapons must not fire while Shooting is locked")
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	for _index in 4:
+		enemy.global_position = player.global_position + Vector2(260.0, 0.0)
+		await get_tree().physics_frame
+		if _count_group_descendants(self, &"weapon_projectiles") > 0:
+			break
+	_expect(_count_group_descendants(self, &"weapon_projectiles") > 0, "equipped weapon must begin automatic fire after Shooting is unlocked")
+	await _free_node(enemy)
+	await _free_node(player)
+	await _free_group_nodes(&"weapon_projectiles")
+
+func test_weapon_automatic_firing_and_interval() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	GameState.profile.unlocked_weapons = ["arrow"]
+	GameState.profile.equipped_weapons = ["arrow"]
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(360.0, 0.0), 10000.0, true)
+	var fired_count := [0]
+	player.weapon_controller.weapon_fired.connect(func(_weapon, _projectile, _target): fired_count[0] += 1)
+	for _index in 5:
+		enemy.global_position = player.global_position + Vector2(360.0, 0.0)
+		await get_tree().physics_frame
+		if fired_count[0] > 0:
+			break
+	_expect(fired_count[0] == 1, "visible enemy must trigger one immediate automatic weapon shot")
+	_expect(player.weapon_controller.cooldown_remaining(&"arrow") > 0.0, "successful automatic fire must start the weapon-specific interval")
+	var first_count: int = fired_count[0]
+	await _follow_weapon_target_for_seconds(player, enemy, WEAPON_CATALOG_SCRIPT.ARROW.fire_interval * 0.45)
+	_expect(fired_count[0] == first_count, "automatic weapon must not fire again before its fire_interval expires")
+	await _follow_weapon_target_for_seconds(player, enemy, WEAPON_CATALOG_SCRIPT.ARROW.fire_interval * 0.7 + 0.12)
+	_expect(fired_count[0] >= first_count + 1, "automatic weapon must fire again after its fire_interval expires while enemies remain on-screen")
+	await _free_node(enemy)
+	await _free_node(player)
+	await _free_group_nodes(&"weapon_projectiles")
+
+func test_weapon_automatic_target_count() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	GameState.profile.unlocked_weapons = ["shuriken_fan"]
+	GameState.profile.equipped_weapons = ["shuriken_fan"]
+	var player = await _spawn_player(false)
+	var enemies: Array = []
+	for offset in [Vector2(260.0, 70.0), Vector2(300.0, 120.0), Vector2(340.0, 170.0)]:
+		enemies.append(_spawn_melee_enemy(player.global_position + offset, 1000.0, true))
+	var fired_count := [0]
+	player.weapon_controller.weapon_fired.connect(func(_weapon, _projectile, _target): fired_count[0] += 1)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_expect(fired_count[0] == WEAPON_CATALOG_SCRIPT.SHURIKEN_FAN.target_count, "automatic fixed-pattern weapon must fire one projectile per configured on-screen target")
+	for enemy in enemies:
+		await _free_node(enemy)
+	await _free_node(player)
+	await _free_group_nodes(&"weapon_projectiles")
+
+func test_weapon_ignores_offscreen_enemy() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities.append(String(GameConfig.SHOOTING_ABILITY_ID))
+	GameState.profile.unlocked_weapons = ["shuriken"]
+	GameState.profile.equipped_weapons = ["shuriken"]
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(Vector2(5000.0, 200.0), 1000.0, true)
+	var fired_count := [0]
+	player.weapon_controller.weapon_fired.connect(func(_weapon, _projectile, _target): fired_count[0] += 1)
+	for _index in 5:
+		await get_tree().physics_frame
+	_expect(fired_count[0] == 0, "off-screen enemies must not trigger automatic weapon fire")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_weapon_projectile_damage() -> void:
+	GameState.reset_profile()
+	var holder := Node2D.new()
+	add_child(holder)
+	var source := Node2D.new()
+	holder.add_child(source)
+	var enemy = _spawn_melee_enemy(Vector2(120.0, 220.0), 1000.0)
+	enemy.reparent(holder)
+	var projectile = WEAPON_PROJECTILE_SCENE.instantiate()
+	holder.add_child(projectile)
+	projectile.global_position = Vector2(20.0, 220.0)
+	projectile.configure(source, WEAPON_CATALOG_SCRIPT.SHURIKEN, Vector2.RIGHT * WEAPON_CATALOG_SCRIPT.SHURIKEN.projectile_speed_pixels())
+	var before: float = enemy.current_health
+	for _index in 20:
+		await get_tree().physics_frame
+		if enemy.damage_events > 0:
+			break
+	_expect(enemy.damage_events == 1, "weapon projectile must damage a collided enemy exactly once")
+	_expect(is_equal_approx(enemy.current_health, before - WEAPON_CATALOG_SCRIPT.SHURIKEN.damage), "projectile collision damage must come from WeaponData.damage")
+	_expect(enemy.last_damage_info != null, "projectile hit must use shared DamageInfo")
+	if enemy.last_damage_info != null:
+		_expect(enemy.last_damage_info.source == source, "projectile DamageInfo must preserve the firing source")
+		_expect(enemy.last_damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.PROJECTILE, "weapon projectile must tag damage as PROJECTILE")
+	await _free_node(holder)
+
+func test_homing_projectile_steers_to_target() -> void:
+	GameState.reset_profile()
+	var holder := Node2D.new()
+	add_child(holder)
+	var source := Node2D.new()
+	holder.add_child(source)
+	var target := Node2D.new()
+	target.position = Vector2(600.0, 260.0)
+	holder.add_child(target)
+	var projectile = WEAPON_PROJECTILE_SCENE.instantiate()
+	holder.add_child(projectile)
+	projectile.position = Vector2(40.0, 80.0)
+	var speed: float = WEAPON_CATALOG_SCRIPT.MAGIC_ORB.projectile_speed_pixels()
+	projectile.configure(source, WEAPON_CATALOG_SCRIPT.MAGIC_ORB, Vector2.RIGHT * speed, 0.0, target, GameConfig.WEAPON_HOMING_TURN_RATE)
+	for _index in 8:
+		await get_tree().physics_frame
+	_expect(projectile.velocity.y > 0.0, "homing projectile must steer vertically toward an offset target")
+	_expect(absf(projectile.velocity.length() - speed) < 0.1, "homing steering must preserve projectile speed")
+	await _free_node(holder)
+
 func test_phase3_biome_metadata() -> void:
 	var expected_hazards := [
 		BiomeData.HazardType.NONE,
@@ -1361,7 +1667,7 @@ func _spawn_grounded_player() -> Dictionary:
 		await get_tree().physics_frame
 	return {"root": holder, "player": player}
 
-func _spawn_melee_enemy(position: Vector2, health: float = 200.0):
+func _spawn_melee_enemy(position: Vector2, health: float = 200.0, register_as_enemy: bool = false):
 	var enemy = MELEE_DUMMY_ENEMY_SCRIPT.new()
 	enemy.maximum_health = health
 	enemy.current_health = health
@@ -1373,6 +1679,8 @@ func _spawn_melee_enemy(position: Vector2, health: float = 200.0):
 	collision.shape = shape
 	enemy.add_child(collision)
 	enemy.global_position = position
+	if register_as_enemy:
+		enemy.add_to_group(&"enemies")
 	add_child(enemy)
 	return enemy
 
@@ -1391,6 +1699,20 @@ func _follow_melee_target_for_seconds(player: Node2D, enemy: Node2D, seconds: fl
 		enemy.global_position = player.global_position + Vector2(32.0, 0.0)
 		await get_tree().physics_frame
 		elapsed += tick
+
+func _follow_weapon_target_for_seconds(player: Node2D, enemy: Node2D, seconds: float) -> void:
+	var elapsed := 0.0
+	var tick := 1.0 / float(Engine.physics_ticks_per_second)
+	while elapsed < seconds:
+		enemy.global_position = player.global_position + Vector2(360.0, 0.0)
+		await get_tree().physics_frame
+		elapsed += tick
+
+func _free_group_nodes(group_name: StringName) -> void:
+	for node in get_tree().get_nodes_in_group(group_name):
+		if node != null and is_instance_valid(node):
+			node.queue_free()
+	await get_tree().process_frame
 
 func _free_node(node: Node) -> void:
 	if is_instance_valid(node):

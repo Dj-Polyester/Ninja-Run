@@ -5,6 +5,7 @@ const RUN_STATE_SCRIPT := preload("res://src/core/run_state.gd")
 const BIOME_DATA_SCRIPT := preload("res://src/data/biome_data.gd")
 const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
+const WEAPON_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/combat/weapon_inventory_service.gd")
 
 signal profile_changed
 signal run_changed
@@ -93,6 +94,30 @@ func is_stat_unlocked(stat_id: StringName) -> bool:
 func upgrade_stat(stat_id: StringName) -> int:
 	var result: int = STAT_UPGRADE_SERVICE_SCRIPT.upgrade(profile, stat_id)
 	if result == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func shooting_unlocked() -> bool:
+	return WEAPON_INVENTORY_SERVICE_SCRIPT.shooting_unlocked(profile)
+
+func is_weapon_unlocked(weapon_id: StringName) -> bool:
+	return WEAPON_INVENTORY_SERVICE_SCRIPT.is_unlocked(profile, weapon_id)
+
+func unlock_weapon(weapon_id: StringName) -> int:
+	var result: int = WEAPON_INVENTORY_SERVICE_SCRIPT.unlock(profile, weapon_id)
+	if result == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func equip_weapon(weapon_id: StringName) -> int:
+	var result: int = WEAPON_INVENTORY_SERVICE_SCRIPT.equip(profile, weapon_id)
+	if result == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func unequip_weapon(weapon_id: StringName) -> int:
+	var result: int = WEAPON_INVENTORY_SERVICE_SCRIPT.unequip(profile, weapon_id)
+	if result == WEAPON_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
 		profile_changed.emit()
 	return result
 

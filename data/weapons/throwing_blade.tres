@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"throwing_blade"
+display_name = "Throwing Blade"
+texture_path = "res://assets/Props/Weapons/Swords/Barbarian Warrior.png"
+damage = 42.0
+fire_interval = 1.4
+trajectory = 1
+aim_mode = 2
+target_count = 1
+projectile_speed_tiles = 9.5
+unlock_cost = 420
+fixed_pattern_spread_degrees = 30.0

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"arrow"
+display_name = "Arrow"
+texture_path = "res://assets/Props/Weapons/Ranged/Arrow.png"
+damage = 34.0
+fire_interval = 0.95
+trajectory = 0
+aim_mode = 0
+target_count = 1
+projectile_speed_tiles = 15.0
+unlock_cost = 260
+fixed_pattern_spread_degrees = 18.0

@@ -11,6 +11,9 @@ var statuses: Array[Dictionary] = []
 func can_receive_melee_attack() -> bool:
 	return active and not dead and current_health > 0.0
 
+func can_receive_projectile_attack() -> bool:
+	return active and not dead and current_health > 0.0
+
 func take_damage(amount: float, damage_info = null) -> void:
 	if not can_receive_melee_attack() or amount <= 0.0:
 		return

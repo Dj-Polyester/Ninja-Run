@@ -72,6 +72,17 @@ const ENEMY_COLLISION_MASK := 1 << 2
 const MELEE_RANGE_TILES := 1.25
 const MELEE_ATTACK_INTERVAL := 0.55
 
+# Phase 8 automatic weapon combat. Weapon-specific damage, cadence, aim,
+# target count, speed, and unlock cost live in WeaponData resources; these are
+# shared simulation/runtime limits that apply to every weapon projectile.
+const SHOOTING_ABILITY_ID := &"shooting"
+const WEAPON_PROJECTILE_COLLISION_RADIUS := 10.0
+const WEAPON_PROJECTILE_LIFETIME := 5.0
+const WEAPON_PROJECTILE_GRAVITY := 1050.0
+const WEAPON_HOMING_TURN_RATE := 7.5
+const WEAPON_RANDOM_AIM_MAX_DEGREES := 70.0
+const WEAPON_SCREEN_MARGIN_PIXELS := 48.0
+
 const START_PLATFORM_START_TILE := -4
 const START_PLATFORM_WIDTH := 20
 const BASE_PLATFORM_HEIGHT := 8

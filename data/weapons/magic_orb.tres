@@ -1,0 +1,17 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"magic_orb"
+display_name = "Magic Orb"
+texture_path = "res://assets/Props/Weapons/Mage/Medieval Mage.png"
+damage = 24.0
+fire_interval = 1.15
+trajectory = 3
+aim_mode = 1
+target_count = 2
+projectile_speed_tiles = 8.5
+unlock_cost = 360
+fixed_pattern_spread_degrees = 25.0
