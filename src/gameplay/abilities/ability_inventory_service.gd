@@ -13,6 +13,7 @@ enum Result {
 	EQUIPMENT_LIMIT,
 	INCOMPATIBLE,
 	MAX_LEVEL,
+	NOT_ENOUGH_GOLD,
 }
 
 static func is_unlocked(profile: Dictionary, ability_id: StringName) -> bool:
@@ -24,16 +25,21 @@ static func is_equipped(profile: Dictionary, ability_id: StringName) -> bool:
 	return equipped is Array and equipped.has(String(ability_id))
 
 static func unlock(profile: Dictionary, ability_id: StringName) -> int:
-	if ABILITY_CATALOG_SCRIPT.get_by_id(ability_id) == null:
+	var ability = ABILITY_CATALOG_SCRIPT.get_by_id(ability_id)
+	if ability == null:
 		return Result.UNKNOWN_ABILITY
 	if is_unlocked(profile, ability_id):
 		return Result.ALREADY_UNLOCKED
+	var gold := maxi(0, int(profile.get("gold", 0)))
+	if gold < int(ability.unlock_cost):
+		return Result.NOT_ENOUGH_GOLD
 	var unlocked: Array = profile.get("unlocked_abilities", []).duplicate()
 	unlocked.append(String(ability_id))
 	profile["unlocked_abilities"] = unlocked
 	var levels: Dictionary = profile.get("ability_levels", {}).duplicate(true)
 	levels[String(ability_id)] = maxi(1, int(levels.get(String(ability_id), 1)))
 	profile["ability_levels"] = levels
+	profile["gold"] = gold - int(ability.unlock_cost)
 	return Result.SUCCESS
 static func equip(profile: Dictionary, ability_id: StringName) -> int:
 	if ABILITY_CATALOG_SCRIPT.get_by_id(ability_id) == null:

@@ -7,3 +7,4 @@ script = ExtResource("1")
 id = &"shooting"
 display_name = "Shooting"
 has_cooldown = false
+unlock_cost = 300

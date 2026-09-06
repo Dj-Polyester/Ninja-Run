@@ -11,6 +11,8 @@ const SAFE_CHECKPOINT_SCRIPT := preload("res://src/gameplay/level/safe_checkpoin
 @onready var health_label: Label = $HUD/MarginContainer/VBoxContainer/HealthLabel
 @onready var distance_label: Label = $HUD/MarginContainer/VBoxContainer/DistanceLabel
 @onready var gold_label: Label = $HUD/MarginContainer/VBoxContainer/GoldLabel
+@onready var potion_label: Label = $HUD/MarginContainer/VBoxContainer/PotionLabel
+@onready var weapon_label: Label = $HUD/MarginContainer/VBoxContainer/WeaponLabel
 @onready var biome_label: Label = $HUD/MarginContainer/VBoxContainer/BiomeLabel
 @onready var ability_mapping_label: Label = $HUD/AbilityMappingPanel/AbilityMappingLabel
 @onready var mobile_action_controls: MobileActionControls = $HUD/MobileActionControls
@@ -210,6 +212,8 @@ func _update_hud() -> void:
 	health_label.text = "Health: %d / %d" % [roundi(player.current_health), roundi(player.maximum_health)]
 	distance_label.text = "Distance: %d tiles" % int(GameState.run.get("distance_tiles", 0))
 	gold_label.text = "Gold: %d" % GameState.gold_count()
+	potion_label.text = "Revival potions: %d" % GameState.revival_potion_count()
+	weapon_label.text = _weapon_hud_text()
 	_update_ability_mapping()
 
 func _update_ability_mapping() -> void:
@@ -221,8 +225,23 @@ func _update_ability_mapping() -> void:
 		if ability_id == &"":
 			lines.append("%d —" % (slot + 1))
 		else:
-			lines.append("%d — %s" % [slot + 1, player.input_router.ability_display_name_for_slot(slot)])
+			var cooldown: float = player.input_router.ability_cooldown_remaining_for_slot(slot)
+			var suffix := "  (%.1fs)" % cooldown if cooldown > 0.05 else ""
+			lines.append("%d — %s%s" % [slot + 1, player.input_router.ability_display_name_for_slot(slot), suffix])
 	ability_mapping_label.text = "\n".join(lines)
+
+func _weapon_hud_text() -> String:
+	if not GameState.shooting_unlocked():
+		return "Weapons: Shooting locked"
+	var equipped = GameState.profile.get("equipped_weapons", [])
+	if not equipped is Array or equipped.is_empty():
+		return "Weapons: None equipped"
+	var names: Array[String] = []
+	for raw_id in equipped:
+		var weapon = WeaponCatalog.get_by_id(StringName(raw_id))
+		if weapon != null:
+			names.append(weapon.display_name)
+	return "Weapons: %s" % (", ".join(names) if not names.is_empty() else "None equipped")
 
 func _on_health_changed(_current: float, _maximum: float) -> void:
 	_update_hud()

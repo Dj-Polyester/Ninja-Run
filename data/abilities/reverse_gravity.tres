@@ -7,3 +7,4 @@ script = ExtResource("1")
 id = &"reverse_gravity"
 display_name = "Reverse Gravity"
 has_cooldown = false
+unlock_cost = 350

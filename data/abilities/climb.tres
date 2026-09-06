@@ -8,3 +8,4 @@ id = &"climb"
 display_name = "Climb"
 has_cooldown = false
 max_level = 2
+unlock_cost = 150

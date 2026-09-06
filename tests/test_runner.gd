@@ -48,6 +48,7 @@ const CHARACTER_DATA_SCRIPT := preload("res://src/data/character_data.gd")
 const CHARACTER_CATALOG_SCRIPT := preload("res://src/data/character_catalog.gd")
 const CHARACTER_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/progression/character_inventory_service.gd")
 const MOBILE_ACTION_CONTROLS_SCENE := preload("res://scenes/ui/mobile_action_controls.tscn")
+const MAIN_MENU_SCENE := preload("res://scenes/main.tscn")
 
 var failures: Array[String] = []
 var passed := 0
@@ -151,6 +152,7 @@ func _run() -> void:
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
 	test_ability_definitions_are_valid()
+	test_ability_unlock_costs_gold_atomically()
 	test_ability_equipment_limit_and_conflict()
 	await test_jump_air_jump_levels()
 	test_climb_wall_jump_count()
@@ -207,8 +209,15 @@ func _run() -> void:
 	await test_mobile_action_buttons_follow_equipped_slots()
 	await test_action_button_side_setting_updates_mobile_cluster()
 	test_level_has_phase14_input_hud()
+	await test_phase15_main_menu_navigation()
+	await test_phase15_character_screen()
+	await test_phase15_stats_screen()
+	await test_phase15_abilities_screen()
+	await test_phase15_weapons_screen()
+	await test_phase15_settings_screen()
+	await test_level_has_phase15_hud()
 
-	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12+13+14 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12+13+14+15 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -1734,6 +1743,8 @@ func test_ability_definitions_are_valid() -> void:
 		_expect(ability.is_valid(), "ability resource '%s' must be valid" % ability.display_name)
 		_expect(String(ability.id) == expected_ids[index], "ability catalog order must remain deterministic at index %d" % index)
 		_expect(not seen.has(String(ability.id)), "ability ids must be unique")
+		if ability.id != &"jump":
+			_expect(ability.unlock_cost > 0, "buyable ability '%s' must define a positive unlock cost" % ability.display_name)
 		seen[String(ability.id)] = true
 	_expect(ABILITY_CATALOG_SCRIPT.JUMP.max_level == 3, "Jump must expose three upgrade levels")
 	_expect(ABILITY_CATALOG_SCRIPT.CLIMB.max_level == 2, "Climb must expose two upgrade levels")
@@ -1742,8 +1753,27 @@ func test_ability_definitions_are_valid() -> void:
 	_expect(ABILITY_CATALOG_SCRIPT.DASH.has_cooldown, "Dash must use the common cooldown")
 	_expect(ABILITY_CATALOG_SCRIPT.EXPLODE.has_cooldown, "Explode must use the common cooldown")
 
+func test_ability_unlock_costs_gold_atomically() -> void:
+	var profile: Dictionary = PLAYER_PROFILE_SCRIPT.create_default()
+	var ability = ABILITY_CATALOG_SCRIPT.DASH
+	profile.gold = ability.unlock_cost - 1
+	var before := profile.duplicate(true)
+	_expect(
+		ABILITY_INVENTORY_SERVICE_SCRIPT.unlock(profile, ability.id) == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.NOT_ENOUGH_GOLD,
+		"ability unlock must reject insufficient gold"
+	)
+	_expect(profile == before, "failed ability unlock must not mutate gold, unlocks, or levels")
+	profile.gold = ability.unlock_cost
+	_expect(
+		ABILITY_INVENTORY_SERVICE_SCRIPT.unlock(profile, ability.id) == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS,
+		"ability unlock must succeed when exact unlock cost is available"
+	)
+	_expect(int(profile.gold) == 0, "ability unlock must deduct its configured unlock cost exactly once")
+	_expect(profile.unlocked_abilities.has(String(ability.id)), "successful ability purchase must add the ability to unlocked_abilities")
+
 func test_ability_equipment_limit_and_conflict() -> void:
 	var profile: Dictionary = PLAYER_PROFILE_SCRIPT.create_default()
+	profile.gold = 5000
 	_expect(
 		ABILITY_INVENTORY_SERVICE_SCRIPT.unlock(profile, &"reverse_gravity") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS,
 		"Reverse Gravity must be unlockable through the ability inventory model"
@@ -2841,6 +2871,163 @@ func test_level_has_phase14_input_hud() -> void:
 	_expect(level.has_node("HUD/MobileActionControls/TouchInputAdapter"), "Phase 14 HUD must provide a separate touch input adapter")
 	_expect(level.has_node("HUD/MobileActionControls/ActionCluster"), "Phase 14 HUD must provide a configurable mobile action-button cluster")
 	level.free()
+
+func test_phase15_main_menu_navigation() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	_expect(menu.find_child("StartButton", true, false) != null, "Phase 15 main menu must expose a Start Run action")
+	_expect(menu.find_child("CharacterButton", true, false) != null, "Phase 15 main menu must navigate to Character")
+	_expect(menu.find_child("StatsButton", true, false) != null, "Phase 15 main menu must navigate to Stats")
+	_expect(menu.find_child("AbilitiesButton", true, false) != null, "Phase 15 main menu must navigate to Abilities")
+	_expect(menu.find_child("WeaponsButton", true, false) != null, "Phase 15 main menu must navigate to Weapons")
+	_expect(menu.find_child("SettingsButton", true, false) != null, "Phase 15 main menu must navigate to Settings")
+	_expect(menu.find_child("ProfileSummary", true, false) != null, "Phase 15 main menu must summarize selected character and gold")
+	await _free_node(menu)
+
+func test_phase15_character_screen() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	menu.show_screen(&"character")
+	await get_tree().process_frame
+	var grid := menu.find_child("CharacterGrid", true, false) as GridContainer
+	_expect(grid != null, "Character screen must contain a scrollable character grid")
+	if grid != null:
+		_expect(grid.get_child_count() == CHARACTER_CATALOG_SCRIPT.all().size(), "Character screen must render every catalog character")
+	for character in CHARACTER_CATALOG_SCRIPT.all():
+		var card := menu.find_child("Character_%02d" % int(character.id), true, false)
+		_expect(card != null, "Character screen must expose character %d" % int(character.id))
+		if card != null:
+			_expect(card.find_child("StateLabel", true, false) != null, "character %d card must show locked/unlocked/selected state" % int(character.id))
+			_expect(card.find_child("ActionButton", true, false) != null, "character %d card must expose unlock/select action" % int(character.id))
+	await _free_node(menu)
+
+func test_phase15_stats_screen() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	menu.show_screen(&"stats")
+	await get_tree().process_frame
+	var list := menu.find_child("StatsList", true, false) as VBoxContainer
+	_expect(list != null, "Stats screen must contain a stat list")
+	if list != null:
+		_expect(list.get_child_count() == STAT_CATALOG_SCRIPT.all().size(), "Stats screen must render every persistent stat")
+	for stat in STAT_CATALOG_SCRIPT.all():
+		var row := menu.find_child("Stat_%s" % String(stat.id), true, false)
+		_expect(row != null, "Stats screen must expose '%s'" % stat.display_name)
+		if row != null:
+			_expect(row.find_child("ValueLabel", true, false) != null, "stat row must show level/current value")
+			_expect(row.find_child("RequirementLabel", true, false) != null, "stat row must show next value/cost or unlock requirement")
+			_expect(row.find_child("UpgradeButton", true, false) != null, "stat row must expose upgrade action")
+	await _free_node(menu)
+
+func test_phase15_abilities_screen() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	menu.show_screen(&"abilities")
+	await get_tree().process_frame
+	var grid := menu.find_child("AbilitiesGrid", true, false) as GridContainer
+	_expect(grid != null, "Abilities screen must contain an ability grid")
+	if grid != null:
+		_expect(grid.get_child_count() == ABILITY_CATALOG_SCRIPT.ORDERED.size(), "Abilities screen must render every ability definition")
+	for ability in ABILITY_CATALOG_SCRIPT.ORDERED:
+		var card := menu.find_child("Ability_%s" % String(ability.id), true, false)
+		_expect(card != null, "Abilities screen must expose '%s'" % ability.display_name)
+		if card != null:
+			var metadata := card.find_child("MetadataLabel", true, false) as Label
+			_expect(metadata != null, "ability card must show level/cooldown/price metadata")
+			if metadata != null:
+				_expect(metadata.text.contains("Price: %d gold" % int(ability.unlock_cost)), "ability card must show its configured unlock price")
+	_expect(menu.find_child("AbilityEquipmentSummary", true, false) != null, "Abilities screen must show the current equipped loadout")
+	await _free_node(menu)
+
+func test_phase15_weapons_screen() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	menu.show_screen(&"weapons")
+	await get_tree().process_frame
+	var list := menu.find_child("WeaponsList", true, false) as VBoxContainer
+	_expect(list != null, "Weapons screen must contain a weapon list")
+	if list != null:
+		_expect(list.get_child_count() == WEAPON_CATALOG_SCRIPT.all().size(), "Weapons screen must render every weapon definition")
+	for weapon in WEAPON_CATALOG_SCRIPT.all():
+		var card := menu.find_child("Weapon_%s" % String(weapon.id), true, false)
+		_expect(card != null, "Weapons screen must expose '%s'" % weapon.display_name)
+		if card == null:
+			continue
+		var damage := card.find_child("DamageLabel", true, false) as Label
+		var trajectory := card.find_child("TrajectoryLabel", true, false) as Label
+		var aim := card.find_child("AimLabel", true, false) as Label
+		var targets := card.find_child("TargetsLabel", true, false) as Label
+		var price := card.find_child("PriceLabel", true, false) as Label
+		_expect(damage != null and not damage.text.is_empty(), "weapon card must show Damage")
+		_expect(trajectory != null and trajectory.text == weapon.trajectory_description(), "weapon card must show Trajectory")
+		_expect(aim != null and aim.text == weapon.aim_description(), "weapon card must show Aim mode")
+		_expect(targets != null and targets.text == str(weapon.target_count), "weapon card must show targeted entity count")
+		_expect(price != null and price.text.contains(str(weapon.unlock_cost)), "weapon card must show unlock Price")
+	var requirement := menu.find_child("ShootingRequirement", true, false) as Label
+	_expect(requirement != null and requirement.text.contains("Shooting"), "Weapons screen must explain the Shooting prerequisite")
+	await _free_node(menu)
+
+func test_phase15_settings_screen() -> void:
+	GameState.reset_profile()
+	_expect(GameState.set_action_button_side(PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_LEFT), "settings test fixture must accept LEFT")
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	menu.show_screen(&"settings")
+	await get_tree().process_frame
+	var left := menu.find_child("BottomLeftButton", true, false) as Button
+	var right := menu.find_child("BottomRightButton", true, false) as Button
+	_expect(left != null and right != null, "Settings screen must expose LEFT and RIGHT mobile cluster choices")
+	if left != null and right != null:
+		_expect(left.button_pressed and not right.button_pressed, "Settings screen must reflect the persisted action-button side")
+	_expect(menu.find_child("InputReference", true, false) != null, "Settings screen must show desktop and mobile control reference")
+	GameState.set_action_button_side(PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT)
+	await _free_node(menu)
+
+func test_level_has_phase15_hud() -> void:
+	var profile := PLAYER_PROFILE_SCRIPT.create_default()
+	profile.unlocked_abilities = ["jump", "dash", "shooting"]
+	profile.equipped_abilities = ["jump", "dash", "shooting"]
+	profile.ability_levels = {"jump": 1, "dash": 1, "shooting": 1}
+	profile.unlocked_weapons = ["shuriken"]
+	profile.equipped_weapons = ["shuriken"]
+	GameState.set_profile(profile)
+	GameState.reset_run(1515)
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var hud_root := "HUD/MarginContainer/VBoxContainer/"
+	var health := level.get_node_or_null(hud_root + "HealthBar") as ProgressBar
+	var gold := level.get_node_or_null(hud_root + "GoldLabel") as Label
+	var potions := level.get_node_or_null(hud_root + "PotionLabel") as Label
+	var distance := level.get_node_or_null(hud_root + "DistanceLabel") as Label
+	var weapons := level.get_node_or_null(hud_root + "WeaponLabel") as Label
+	var ability_mapping := level.get_node_or_null("HUD/AbilityMappingPanel/AbilityMappingLabel") as Label
+	_expect(health != null, "Phase 15 HUD must show player health")
+	_expect(gold != null and gold.text.contains("Gold"), "Phase 15 HUD must show gold")
+	_expect(potions != null and potions.text.contains(str(GameState.revival_potion_count())), "Phase 15 HUD must show consumable count")
+	_expect(distance != null and distance.text.contains("tiles"), "Phase 15 HUD must show horizontal tiles travelled")
+	_expect(weapons != null and weapons.text.contains("Shuriken"), "Phase 15 HUD must show equipped weapon state")
+	_expect(ability_mapping != null and ability_mapping.text.contains("Dash"), "Phase 15 HUD must show equipped direct-action abilities")
+	var player = level.get_node("Player")
+	_expect(player.input_router.press_ability_slot(0), "Phase 15 cooldown fixture must activate Dash through the displayed slot")
+	await get_tree().process_frame
+	level._update_hud()
+	var cooldown: float = player.input_router.ability_cooldown_remaining_for_slot(0)
+	_expect(cooldown > 0.0, "input router must expose live ability cooldown state to UI")
+	_expect(ability_mapping.text.contains("s)"), "desktop ability HUD must render live cooldown text")
+	await _free_node(level)
+	GameState.reset_profile()
 
 func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)

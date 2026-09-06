@@ -7,3 +7,4 @@ script = ExtResource("1")
 id = &"fly"
 display_name = "Fly"
 has_cooldown = false
+unlock_cost = 450

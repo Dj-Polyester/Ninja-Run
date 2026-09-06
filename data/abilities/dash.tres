@@ -6,3 +6,4 @@
 script = ExtResource("1")
 id = &"dash"
 display_name = "Dash"
+unlock_cost = 250

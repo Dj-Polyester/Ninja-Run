@@ -6,3 +6,4 @@
 script = ExtResource("1")
 id = &"slow_down_time"
 display_name = "Slow Down Time"
+unlock_cost = 350

@@ -77,6 +77,14 @@ text = "Distance: 0 tiles"
 layout_mode = 2
 text = "Gold: 0"
 
+[node name="PotionLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Revival potions: 1"
+
+[node name="WeaponLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Weapons: Shooting locked"
+
 [node name="BiomeLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Biome: Grass"

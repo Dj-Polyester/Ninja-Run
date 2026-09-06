@@ -11,6 +11,10 @@ func _ready() -> void:
 	if not GameState.profile_changed.is_connected(_on_profile_changed):
 		GameState.profile_changed.connect(_on_profile_changed)
 	_apply_action_button_side()
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	_update_button_cooldowns()
 
 func _exit_tree() -> void:
 	if input_router != null and input_router.ability_slots_changed.is_connected(_refresh_buttons):
@@ -40,8 +44,23 @@ func _refresh_buttons() -> void:
 		button.text = "%d  %s" % [slot + 1, input_router.ability_display_name_for_slot(slot)]
 		button.custom_minimum_size = Vector2(GameConfig.MOBILE_ACTION_BUTTON_WIDTH, GameConfig.MOBILE_ACTION_BUTTON_HEIGHT)
 		button.focus_mode = Control.FOCUS_NONE
+		button.set_meta("ability_slot", slot)
 		button.pressed.connect(_on_ability_button_pressed.bind(slot))
 		action_cluster.add_child(button)
+	_update_button_cooldowns()
+
+func _update_button_cooldowns() -> void:
+	if input_router == null or action_cluster == null:
+		return
+	for child in action_cluster.get_children():
+		var button := child as Button
+		if button == null or not button.has_meta("ability_slot"):
+			continue
+		var slot := int(button.get_meta("ability_slot"))
+		var remaining: float = input_router.ability_cooldown_remaining_for_slot(slot)
+		var display_name: String = input_router.ability_display_name_for_slot(slot)
+		button.text = "%d  %s%s" % [slot + 1, display_name, "  %.1fs" % remaining if remaining > 0.05 else ""]
+		button.disabled = remaining > 0.05
 
 func _apply_action_button_side() -> void:
 	if action_cluster == null:

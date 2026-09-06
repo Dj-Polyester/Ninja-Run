@@ -91,6 +91,12 @@ func ability_display_name_for_slot(slot: int) -> String:
 	var data = ABILITY_CATALOG_SCRIPT.get_by_id(ability_id)
 	return data.display_name if data != null else String(ability_id)
 
+func ability_cooldown_remaining_for_slot(slot: int) -> float:
+	var ability_id := ability_id_for_slot(slot)
+	if ability_id == &"" or player == null or not player.has_method(&"ability_cooldown_remaining"):
+		return 0.0
+	return maxf(0.0, float(player.call(&"ability_cooldown_remaining", ability_id)))
+
 func mobile_button_slots() -> Array[int]:
 	var result: Array[int] = []
 	for slot in _ability_slots.size():

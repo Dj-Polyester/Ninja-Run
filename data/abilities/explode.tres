@@ -6,3 +6,4 @@
 script = ExtResource("1")
 id = &"explode"
 display_name = "Explode"
+unlock_cost = 400

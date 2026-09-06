@@ -7,3 +7,4 @@ script = ExtResource("1")
 id = &"glide"
 display_name = "Glide / Hang"
 has_cooldown = false
+unlock_cost = 180
