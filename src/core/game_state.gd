@@ -3,6 +3,8 @@ extends Node
 const PLAYER_PROFILE_SCRIPT := preload("res://src/core/player_profile.gd")
 const RUN_STATE_SCRIPT := preload("res://src/core/run_state.gd")
 const BIOME_DATA_SCRIPT := preload("res://src/data/biome_data.gd")
+const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
+const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
 
 signal profile_changed
 signal run_changed
@@ -24,12 +26,13 @@ func set_profile(loaded_profile: Dictionary) -> void:
 
 func profile_snapshot() -> Dictionary:
 	_sync_legacy_profile_fields()
+	STAT_CATALOG_SCRIPT.sync_derived_values(profile)
 	return profile.duplicate(true)
 
 func reset_run(seed_value: int = -1) -> void:
 	if seed_value < 0:
 		seed_value = int(Time.get_unix_time_from_system())
-	run = RUN_STATE_SCRIPT.create(float(profile.get("maximum_health", 100.0)), seed_value)
+	run = RUN_STATE_SCRIPT.create(float(stat_value(&"maximum_health")), seed_value)
 	run_changed.emit()
 
 func set_run_health(value: float) -> void:
@@ -72,6 +75,26 @@ func add_gold(amount: int) -> int:
 	profile["gold"] = gold_count() + amount
 	profile_changed.emit()
 	return int(profile.gold)
+
+func stat_level(stat_id: StringName) -> int:
+	var stat = STAT_CATALOG_SCRIPT.get_by_id(stat_id)
+	if stat == null:
+		return 0
+	var levels = profile.get("stat_levels", {})
+	return clampi(int(levels.get(String(stat.id), 0)), 0, stat.max_level()) if levels is Dictionary else 0
+
+func stat_value(stat_id: StringName):
+	return STAT_CATALOG_SCRIPT.value_for_profile(profile, stat_id)
+
+func is_stat_unlocked(stat_id: StringName) -> bool:
+	var stat = STAT_CATALOG_SCRIPT.get_by_id(stat_id)
+	return stat != null and stat.is_unlocked(profile)
+
+func upgrade_stat(stat_id: StringName) -> int:
+	var result: int = STAT_UPGRADE_SERVICE_SCRIPT.upgrade(profile, stat_id)
+	if result == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
 
 func consumable_count(consumable_id: StringName) -> int:
 	if String(consumable_id) == PLAYER_PROFILE_SCRIPT.REVIVAL_POTION_ID and profile.has("revival_potions"):

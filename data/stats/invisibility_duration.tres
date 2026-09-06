@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/stat_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"invisibility_duration"
+display_name = "Invisibility Duration"
+direction = 0
+minimum_value = 2.0
+maximum_value = 6.0
+upgrade_step = 0.5
+upgrade_golds = 100
+required_ability = &"invisibility"

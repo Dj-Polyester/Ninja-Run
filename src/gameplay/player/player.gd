@@ -26,8 +26,8 @@ var last_damage_info
 @onready var burn_particles: GPUParticles2D = $BurnParticles
 
 func _ready() -> void:
-	maximum_health = float(GameState.profile.get("maximum_health", 100.0))
-	defense_multiplier = maxf(0.0, float(GameState.profile.get("defense_multiplier", 1.0)))
+	maximum_health = float(GameState.stat_value(&"maximum_health"))
+	defense_multiplier = maxf(0.0, float(GameState.stat_value(&"defense_multiplier")))
 	current_health = maximum_health
 	_configure_collision_shapes()
 	_configure_burn_particles()

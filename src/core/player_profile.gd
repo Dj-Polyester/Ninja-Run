@@ -2,6 +2,7 @@ class_name PlayerProfile
 extends RefCounted
 
 const GAME_CONFIG_SCRIPT := preload("res://src/core/game_config.gd")
+const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 
 const CURRENT_SAVE_VERSION := 1
 const DEFAULT_CHARACTER_ID := 1
@@ -34,6 +35,10 @@ const DEFAULT_DATA := {
 	# from stat definitions/levels while retaining the persisted progression.
 	"maximum_health": 100.0,
 	"defense_multiplier": 1.0,
+	"melee_power": 10,
+	"enemy_fire_interval_multiplier": 1.0,
+	"invisibility_duration": 2.0,
+	"slow_down_duration": 2.0,
 	# Compatibility alias for Phase 4 callers. GameState keeps this synchronized
 	# with consumables.revival_potion through its consumable API.
 	"revival_potions": 1,
@@ -58,7 +63,21 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 		selected_character = DEFAULT_CHARACTER_ID
 	result["selected_character"] = selected_character
 
-	result["stat_levels"] = _sanitize_level_dictionary(raw.get("stat_levels"), result.stat_levels)
+	var raw_stat_levels = raw.get("stat_levels")
+	var stat_levels := STAT_CATALOG_SCRIPT.sanitize_levels(raw_stat_levels, result.stat_levels)
+	# Phase 4/5 profiles may predate stat_levels and persist only the two
+	# gameplay values that existed then. Infer their levels once so those saves
+	# retain equivalent progression under the Phase 6 data-driven model.
+	if not raw_stat_levels is Dictionary:
+		var maximum_health_stat = STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH
+		var defense_stat = STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER
+		stat_levels["maximum_health"] = maximum_health_stat.level_for_value(
+			_safe_float(raw.get("maximum_health"), float(result.maximum_health))
+		)
+		stat_levels["defense_multiplier"] = defense_stat.level_for_value(
+			_safe_float(raw.get("defense_multiplier"), float(result.defense_multiplier))
+		)
+	result["stat_levels"] = stat_levels
 
 	var unlocked_abilities := _sanitize_string_array(raw.get("unlocked_abilities"), [DEFAULT_ABILITY_ID])
 	if not unlocked_abilities.has(DEFAULT_ABILITY_ID):
@@ -104,8 +123,7 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 			settings["action_button_side"] = side
 	result["settings"] = settings
 
-	result["maximum_health"] = maxf(1.0, _safe_float(raw.get("maximum_health"), float(result.maximum_health)))
-	result["defense_multiplier"] = maxf(0.0, _safe_float(raw.get("defense_multiplier"), float(result.defense_multiplier)))
+	STAT_CATALOG_SCRIPT.sync_derived_values(result)
 	return result
 
 static func _sanitize_int_array(value, fallback: Array, minimum: int) -> Array:

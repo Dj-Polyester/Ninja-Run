@@ -15,6 +15,9 @@ const SPIKE_HAZARD_SCRIPT := preload("res://src/gameplay/hazards/spike_hazard.gd
 const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
 const DAMAGEABLE_CONTRACT_SCRIPT := preload("res://src/gameplay/combat/damageable_contract.gd")
 const PLAYER_PROFILE_SCRIPT := preload("res://src/core/player_profile.gd")
+const STAT_DATA_SCRIPT := preload("res://src/data/stat_data.gd")
+const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
+const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -69,6 +72,18 @@ func _run() -> void:
 	test_corrupted_save_creates_defaults()
 	test_unsupported_save_version_creates_defaults()
 	test_legacy_v1_profile_backfills_phase5_defaults()
+	test_stat_definitions_are_valid()
+	test_stat_values_follow_levels()
+	test_upgrade_costs_gold()
+	test_each_stat_upgrade_uses_definition()
+	test_upgrade_requires_enough_gold_is_atomic()
+	test_unknown_stat_upgrade_is_atomic()
+	test_upgrade_clamped_to_maximum()
+	test_decreasing_stat_clamped_to_minimum()
+	test_locked_stat_cannot_upgrade()
+	test_stat_levels_sanitize_to_limits()
+	await test_runtime_player_uses_upgraded_stats()
+	test_run_health_uses_upgraded_maximum_health()
 	test_phase3_biome_metadata()
 	test_snow_modifier_is_seeded_and_bounded()
 	test_snow_generator_uses_effective_jump()
@@ -84,7 +99,7 @@ func _run() -> void:
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
 
-	print("\nPhase 1+2+3+4+5 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -420,12 +435,12 @@ func test_common_damage_contract() -> void:
 	await _free_node(player)
 
 func test_damage_applies_defense() -> void:
-	GameState.profile.defense_multiplier = 0.5
+	GameState.reset_profile()
+	GameState.profile.stat_levels.defense_multiplier = STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER.max_level()
 	var player = await _spawn_player(false)
 	var before: float = player.current_health
 	player.take_damage(20.0)
 	_expect(is_equal_approx(player.current_health, before - 10.0), "damage must be multiplied by defense_multiplier")
-	GameState.profile.defense_multiplier = 1.0
 	await _free_node(player)
 
 func test_damage_invulnerability_window() -> void:
@@ -697,8 +712,8 @@ func test_save_profile_round_trip() -> void:
 	GameState.profile.unlocked_weapons = ["shuriken", "magic_orb"]
 	GameState.profile.equipped_weapons = ["shuriken"]
 	GameState.profile.settings = {"action_button_side": "left"}
-	GameState.profile.maximum_health = 125.0
-	GameState.profile.defense_multiplier = 0.8
+	GameState.profile.maximum_health = 150.0
+	GameState.profile.defense_multiplier = 0.85
 	GameState.set_consumable_count(&"revival_potion", 4)
 	_expect(SaveManager.save_profile(TEST_SAVE_PATH), "SaveManager must write a valid profile")
 	GameState.reset_profile()
@@ -713,8 +728,8 @@ func test_save_profile_round_trip() -> void:
 	_expect(GameState.profile.unlocked_weapons == ["shuriken", "magic_orb"], "unlocked weapons must survive a save/load round trip")
 	_expect(GameState.profile.equipped_weapons == ["shuriken"], "equipped weapons must survive a save/load round trip")
 	_expect(String(GameState.profile.settings.action_button_side) == "left", "settings must survive a save/load round trip")
-	_expect(is_equal_approx(float(GameState.profile.maximum_health), 125.0), "maximum health must survive a save/load round trip")
-	_expect(is_equal_approx(float(GameState.profile.defense_multiplier), 0.8), "defense multiplier must survive a save/load round trip")
+	_expect(is_equal_approx(float(GameState.profile.maximum_health), 150.0), "maximum health must be re-derived from its persisted level")
+	_expect(is_equal_approx(float(GameState.profile.defense_multiplier), 0.85), "defense multiplier must be re-derived from its persisted level")
 	_expect(int(GameState.profile.revival_potions) == 4, "revival potion inventory must survive a save/load round trip")
 	_expect(int(GameState.profile.consumables.revival_potion) == 4, "nested consumable inventory must survive a save/load round trip")
 	_remove_test_save(TEST_SAVE_PATH)
@@ -761,11 +776,176 @@ func test_legacy_v1_profile_backfills_phase5_defaults() -> void:
 	_write_test_save(LEGACY_SAVE_PATH, JSON.stringify(legacy_profile))
 	_expect(SaveManager.load_profile(LEGACY_SAVE_PATH), "the additive Phase 5 schema must load existing version-1 profiles")
 	_expect(is_equal_approx(float(GameState.profile.maximum_health), 150.0), "legacy v1 maximum health must be preserved")
+	_expect(int(GameState.profile.stat_levels.maximum_health) == 2, "legacy v1 maximum health must migrate to the equivalent stat level")
+	_expect(int(GameState.profile.stat_levels.defense_multiplier) == 5, "legacy v1 defense must migrate to the equivalent stat level")
 	_expect(GameState.revival_potion_count() == 3, "legacy v1 potion inventory must migrate into consumables")
 	_expect(int(GameState.profile.consumables.revival_potion) == 3, "legacy potion inventory must populate the Phase 5 consumables dictionary")
 	_expect(int(GameState.profile.gold) == 0, "missing Phase 5 gold must backfill its default")
 	_expect(GameState.profile.unlocked_abilities == [PLAYER_PROFILE_SCRIPT.DEFAULT_ABILITY_ID], "missing Phase 5 abilities must backfill defaults")
 	_remove_test_save(LEGACY_SAVE_PATH)
+
+func test_stat_definitions_are_valid() -> void:
+	var expected_ids := [
+		&"maximum_health",
+		&"defense_multiplier",
+		&"melee_power",
+		&"enemy_fire_interval_multiplier",
+		&"invisibility_duration",
+		&"slow_down_duration",
+	]
+	_expect(STAT_CATALOG_SCRIPT.ORDERED.size() == expected_ids.size(), "Phase 6 must define all six requested player stats")
+	for index in expected_ids.size():
+		var stat = STAT_CATALOG_SCRIPT.ORDERED[index]
+		_expect(stat.id == expected_ids[index], "stat catalog order/id must remain deterministic at index %d" % index)
+		_expect(stat.is_valid(), "%s must define a valid range, step, and gold cost" % stat.display_name)
+		_expect(stat.max_level() > 0, "%s must expose at least one upgrade level" % stat.display_name)
+	_expect(STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.direction == STAT_DATA_SCRIPT.Direction.INCREASING, "maximum health must be increasing")
+	_expect(STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER.direction == STAT_DATA_SCRIPT.Direction.DECREASING, "defense multiplier must be decreasing")
+	_expect(STAT_CATALOG_SCRIPT.ENEMY_FIRE_INTERVAL_MULTIPLIER.direction == STAT_DATA_SCRIPT.Direction.INCREASING, "enemy firing interval multiplier must increase as a beneficial upgrade")
+	_expect(STAT_CATALOG_SCRIPT.INVISIBILITY_DURATION.required_ability == &"invisibility", "invisibility duration must require invisibility unlock")
+	_expect(STAT_CATALOG_SCRIPT.SLOW_DOWN_DURATION.required_ability == &"slow_down_time", "slow-down duration must require slow-down-time unlock")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.minimum_value, GameConfig.MIN_MAXIMUM_HEALTH), "maximum-health resource minimum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.maximum_value, GameConfig.MAX_MAXIMUM_HEALTH), "maximum-health resource maximum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.upgrade_step, GameConfig.MAXIMUM_HEALTH_UPGRADE), "maximum-health resource step must match GameConfig")
+	_expect(STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.upgrade_golds == GameConfig.MAXIMUM_HEALTH_UPGRADE_GOLDS, "maximum-health resource cost must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER.minimum_value, GameConfig.MIN_DEFENSE_MULTIPLIER), "defense resource minimum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER.maximum_value, GameConfig.MAX_DEFENSE_MULTIPLIER), "defense resource maximum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER.upgrade_step, GameConfig.DEFENSE_MULTIPLIER_UPGRADE), "defense resource step must match GameConfig")
+	_expect(STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER.upgrade_golds == GameConfig.DEFENSE_MULTIPLIER_UPGRADE_GOLDS, "defense resource cost must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.MELEE_POWER.minimum_value, GameConfig.MIN_MELEE_POWER), "melee resource minimum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.MELEE_POWER.maximum_value, GameConfig.MAX_MELEE_POWER), "melee resource maximum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.MELEE_POWER.upgrade_step, GameConfig.MELEE_POWER_UPGRADE), "melee resource step must match GameConfig")
+	_expect(STAT_CATALOG_SCRIPT.MELEE_POWER.upgrade_golds == GameConfig.MELEE_POWER_UPGRADE_GOLDS, "melee resource cost must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.ENEMY_FIRE_INTERVAL_MULTIPLIER.minimum_value, GameConfig.MIN_ENEMY_FIRE_INTERVAL_MULTIPLIER), "enemy-fire interval resource minimum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.ENEMY_FIRE_INTERVAL_MULTIPLIER.maximum_value, GameConfig.MAX_ENEMY_FIRE_INTERVAL_MULTIPLIER), "enemy-fire interval resource maximum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.ENEMY_FIRE_INTERVAL_MULTIPLIER.upgrade_step, GameConfig.ENEMY_FIRE_INTERVAL_MULTIPLIER_UPGRADE), "enemy-fire interval resource step must match GameConfig")
+	_expect(STAT_CATALOG_SCRIPT.ENEMY_FIRE_INTERVAL_MULTIPLIER.upgrade_golds == GameConfig.ENEMY_FIRE_INTERVAL_MULTIPLIER_UPGRADE_GOLDS, "enemy-fire interval resource cost must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.INVISIBILITY_DURATION.minimum_value, GameConfig.MIN_INVISIBILITY_DURATION), "invisibility duration resource minimum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.INVISIBILITY_DURATION.maximum_value, GameConfig.MAX_INVISIBILITY_DURATION), "invisibility duration resource maximum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.INVISIBILITY_DURATION.upgrade_step, GameConfig.INVISIBILITY_DURATION_UPGRADE), "invisibility duration resource step must match GameConfig")
+	_expect(STAT_CATALOG_SCRIPT.INVISIBILITY_DURATION.upgrade_golds == GameConfig.INVISIBILITY_DURATION_UPGRADE_GOLDS, "invisibility duration resource cost must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.SLOW_DOWN_DURATION.minimum_value, GameConfig.MIN_SLOW_DOWN_DURATION), "slow-down duration resource minimum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.SLOW_DOWN_DURATION.maximum_value, GameConfig.MAX_SLOW_DOWN_DURATION), "slow-down duration resource maximum must match GameConfig")
+	_expect(is_equal_approx(STAT_CATALOG_SCRIPT.SLOW_DOWN_DURATION.upgrade_step, GameConfig.SLOW_DOWN_DURATION_UPGRADE), "slow-down duration resource step must match GameConfig")
+	_expect(STAT_CATALOG_SCRIPT.SLOW_DOWN_DURATION.upgrade_golds == GameConfig.SLOW_DOWN_DURATION_UPGRADE_GOLDS, "slow-down duration resource cost must match GameConfig")
+
+func test_stat_values_follow_levels() -> void:
+	GameState.reset_profile()
+	GameState.profile.stat_levels.maximum_health = 2
+	GameState.profile.stat_levels.defense_multiplier = 3
+	GameState.profile.stat_levels.melee_power = 4
+	GameState.profile.stat_levels.enemy_fire_interval_multiplier = 5
+	_expect(int(GameState.stat_value(&"maximum_health")) == 150, "maximum health must increase by 25 per level")
+	_expect(is_equal_approx(float(GameState.stat_value(&"defense_multiplier")), 0.85), "defense multiplier must decrease by 0.05 per level")
+	_expect(int(GameState.stat_value(&"melee_power")) == 30, "melee power must increase by 5 per level")
+	_expect(is_equal_approx(float(GameState.stat_value(&"enemy_fire_interval_multiplier")), 1.5), "enemy firing interval multiplier must increase by 0.1 per level")
+
+func test_upgrade_costs_gold() -> void:
+	GameState.reset_profile()
+	GameState.profile.gold = GameConfig.MAXIMUM_HEALTH_UPGRADE_GOLDS
+	var result := GameState.upgrade_stat(&"maximum_health")
+	_expect(result == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS, "an unlocked stat with enough gold must upgrade")
+	_expect(int(GameState.profile.gold) == 0, "successful stat upgrade must deduct its fixed gold cost exactly once")
+	_expect(int(GameState.stat_level(&"maximum_health")) == 1, "successful stat upgrade must increment level exactly once")
+	_expect(int(GameState.stat_value(&"maximum_health")) == 125, "successful maximum-health upgrade must update the derived value")
+	_expect(int(GameState.profile.maximum_health) == 125, "successful upgrade must synchronize compatibility value fields")
+
+func test_each_stat_upgrade_uses_definition() -> void:
+	for stat in STAT_CATALOG_SCRIPT.ORDERED:
+		GameState.reset_profile()
+		if stat.required_ability != &"":
+			GameState.profile.unlocked_abilities.append(String(stat.required_ability))
+		GameState.profile.gold = stat.upgrade_golds
+		var result := GameState.upgrade_stat(stat.id)
+		_expect(result == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS, "%s must upgrade when its own preconditions are satisfied" % stat.display_name)
+		_expect(int(GameState.profile.gold) == 0, "%s must deduct its configured fixed cost" % stat.display_name)
+		_expect(GameState.stat_level(stat.id) == 1, "%s must advance exactly one level per purchase" % stat.display_name)
+		var expected_value = stat.value_for_level(1)
+		if expected_value is int:
+			_expect(int(GameState.stat_value(stat.id)) == expected_value, "%s must derive its configured first-level integer value" % stat.display_name)
+		else:
+			_expect(is_equal_approx(float(GameState.stat_value(stat.id)), float(expected_value)), "%s must derive its configured first-level value" % stat.display_name)
+
+func test_upgrade_requires_enough_gold_is_atomic() -> void:
+	GameState.reset_profile()
+	GameState.profile.gold = GameConfig.MELEE_POWER_UPGRADE_GOLDS - 1
+	var before_levels: Dictionary = GameState.profile.stat_levels.duplicate(true)
+	var result := GameState.upgrade_stat(&"melee_power")
+	_expect(result == STAT_UPGRADE_SERVICE_SCRIPT.Result.NOT_ENOUGH_GOLD, "stat upgrade must reject insufficient gold")
+	_expect(int(GameState.profile.gold) == GameConfig.MELEE_POWER_UPGRADE_GOLDS - 1, "failed upgrade must not deduct gold")
+	_expect(GameState.profile.stat_levels == before_levels, "failed upgrade must not mutate stat levels")
+
+func test_unknown_stat_upgrade_is_atomic() -> void:
+	GameState.reset_profile()
+	GameState.profile.gold = 500
+	var before_profile: Dictionary = GameState.profile.duplicate(true)
+	var result := GameState.upgrade_stat(&"not_a_real_stat")
+	_expect(result == STAT_UPGRADE_SERVICE_SCRIPT.Result.UNKNOWN_STAT, "unknown stat ids must be rejected explicitly")
+	_expect(GameState.profile == before_profile, "unknown-stat rejection must not mutate any profile field")
+
+func test_upgrade_clamped_to_maximum() -> void:
+	GameState.reset_profile()
+	var stat = STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH
+	GameState.profile.stat_levels.maximum_health = stat.max_level() - 1
+	GameState.profile.gold = stat.upgrade_golds * 2
+	_expect(GameState.upgrade_stat(stat.id) == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS, "penultimate increasing-stat level must upgrade to its maximum")
+	_expect(int(GameState.stat_level(stat.id)) == stat.max_level(), "increasing stat must reach but not exceed max level")
+	_expect(is_equal_approx(float(GameState.stat_value(stat.id)), stat.maximum_value), "increasing stat must clamp exactly to maximum value")
+	var gold_at_limit := int(GameState.profile.gold)
+	_expect(GameState.upgrade_stat(stat.id) == STAT_UPGRADE_SERVICE_SCRIPT.Result.AT_LIMIT, "upgrade at maximum level must be rejected")
+	_expect(int(GameState.profile.gold) == gold_at_limit, "rejected at-limit upgrade must not spend gold")
+
+func test_decreasing_stat_clamped_to_minimum() -> void:
+	GameState.reset_profile()
+	var stat = STAT_CATALOG_SCRIPT.DEFENSE_MULTIPLIER
+	GameState.profile.stat_levels.defense_multiplier = stat.max_level() - 1
+	GameState.profile.gold = stat.upgrade_golds * 2
+	_expect(GameState.upgrade_stat(stat.id) == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS, "penultimate decreasing-stat level must upgrade to its limit")
+	_expect(is_equal_approx(float(GameState.stat_value(stat.id)), stat.minimum_value), "decreasing stat must clamp exactly to minimum value")
+	var gold_at_limit := int(GameState.profile.gold)
+	_expect(GameState.upgrade_stat(stat.id) == STAT_UPGRADE_SERVICE_SCRIPT.Result.AT_LIMIT, "decreasing stat must reject upgrades after its minimum is reached")
+	_expect(int(GameState.profile.gold) == gold_at_limit, "at-limit decreasing stat must not spend gold")
+
+func test_locked_stat_cannot_upgrade() -> void:
+	GameState.reset_profile()
+	GameState.profile.gold = 1000
+	var before_gold := int(GameState.profile.gold)
+	_expect(not GameState.is_stat_unlocked(&"invisibility_duration"), "invisibility duration must start locked")
+	_expect(GameState.upgrade_stat(&"invisibility_duration") == STAT_UPGRADE_SERVICE_SCRIPT.Result.LOCKED, "locked invisibility duration must not upgrade")
+	_expect(int(GameState.profile.gold) == before_gold and int(GameState.stat_level(&"invisibility_duration")) == 0, "locked upgrade rejection must be atomic")
+	GameState.profile.unlocked_abilities.append("invisibility")
+	_expect(GameState.is_stat_unlocked(&"invisibility_duration"), "unlocking invisibility must make its duration stat available")
+	_expect(GameState.upgrade_stat(&"invisibility_duration") == STAT_UPGRADE_SERVICE_SCRIPT.Result.SUCCESS, "unlocked invisibility duration must become upgradeable")
+	_expect(not GameState.is_stat_unlocked(&"slow_down_duration"), "slow-down duration must remain independently locked")
+
+func test_stat_levels_sanitize_to_limits() -> void:
+	var raw := PLAYER_PROFILE_SCRIPT.create_default()
+	raw.stat_levels.maximum_health = 999
+	raw.stat_levels.defense_multiplier = -12
+	raw.stat_levels.melee_power = 999
+	var sanitized := PLAYER_PROFILE_SCRIPT.sanitize(raw)
+	_expect(int(sanitized.stat_levels.maximum_health) == STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.max_level(), "persisted increasing stat level must clamp to its maximum")
+	_expect(int(sanitized.stat_levels.defense_multiplier) == 0, "negative persisted stat level must clamp to zero")
+	_expect(int(sanitized.stat_levels.melee_power) == STAT_CATALOG_SCRIPT.MELEE_POWER.max_level(), "every persisted stat level must clamp using its own definition")
+	_expect(int(sanitized.maximum_health) == int(STAT_CATALOG_SCRIPT.MAXIMUM_HEALTH.maximum_value), "sanitization must derive compatibility values from clamped levels")
+
+func test_runtime_player_uses_upgraded_stats() -> void:
+	GameState.reset_profile()
+	GameState.profile.stat_levels.maximum_health = 2
+	GameState.profile.stat_levels.defense_multiplier = 5
+	var player = await _spawn_player(false)
+	_expect(is_equal_approx(player.maximum_health, 150.0), "new player instances must derive maximum health from stat progression")
+	_expect(is_equal_approx(player.defense_multiplier, 0.75), "new player instances must derive defense multiplier from stat progression")
+	var before: float = player.current_health
+	player.take_damage(20.0)
+	_expect(is_equal_approx(player.current_health, before - 15.0), "runtime damage must use the upgraded defense multiplier")
+	await _free_node(player)
+
+func test_run_health_uses_upgraded_maximum_health() -> void:
+	GameState.reset_profile()
+	GameState.profile.stat_levels.maximum_health = 4
+	GameState.reset_run(6060)
+	_expect(is_equal_approx(float(GameState.run.health), 200.0), "new RunState health must start from the derived maximum-health stat")
 
 func test_phase3_biome_metadata() -> void:
 	var expected_hazards := [

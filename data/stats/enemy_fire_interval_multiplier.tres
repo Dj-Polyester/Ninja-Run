@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/stat_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"enemy_fire_interval_multiplier"
+display_name = "Enemy Fire Interval Multiplier"
+direction = 0
+minimum_value = 1.0
+maximum_value = 2.0
+upgrade_step = 0.1
+upgrade_golds = 80

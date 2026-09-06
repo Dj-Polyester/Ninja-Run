@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/stat_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"maximum_health"
+display_name = "Maximum Health"
+direction = 0
+minimum_value = 100.0
+maximum_value = 250.0
+upgrade_step = 25.0
+upgrade_golds = 50
+integer_value = true
