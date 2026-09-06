@@ -230,6 +230,27 @@ func revival_potion_count() -> int:
 func consume_revival_potion() -> bool:
 	return consume_consumable(PLAYER_PROFILE_SCRIPT.REVIVAL_POTION_ID)
 
+func action_button_side() -> String:
+	var settings = profile.get("settings", {})
+	if not settings is Dictionary:
+		return PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT
+	var side := String(settings.get("action_button_side", PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT)).to_lower()
+	if side != PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_LEFT and side != PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT:
+		return PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT
+	return side
+
+func set_action_button_side(side: String) -> bool:
+	var normalized := side.strip_edges().to_lower()
+	if normalized != PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_LEFT and normalized != PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT:
+		return false
+	if normalized == action_button_side():
+		return true
+	var settings: Dictionary = profile.get("settings", {}).duplicate(true)
+	settings["action_button_side"] = normalized
+	profile["settings"] = settings
+	profile_changed.emit()
+	return true
+
 func end_run() -> void:
 	run["revival_active"] = false
 	run["revival_countdown"] = 0.0

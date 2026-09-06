@@ -12,6 +12,8 @@ const SAFE_CHECKPOINT_SCRIPT := preload("res://src/gameplay/level/safe_checkpoin
 @onready var distance_label: Label = $HUD/MarginContainer/VBoxContainer/DistanceLabel
 @onready var gold_label: Label = $HUD/MarginContainer/VBoxContainer/GoldLabel
 @onready var biome_label: Label = $HUD/MarginContainer/VBoxContainer/BiomeLabel
+@onready var ability_mapping_label: Label = $HUD/AbilityMappingPanel/AbilityMappingLabel
+@onready var mobile_action_controls: MobileActionControls = $HUD/MobileActionControls
 @onready var game_over_panel: PanelContainer = $HUD/GameOverPanel
 @onready var game_over_title: Label = $HUD/GameOverPanel/VBoxContainer/Title
 @onready var game_over_reason: Label = $HUD/GameOverPanel/VBoxContainer/Reason
@@ -42,6 +44,9 @@ func _ready() -> void:
 	last_progress_x = start_x
 	player.died.connect(_on_player_died)
 	player.health_changed.connect(_on_health_changed)
+	mobile_action_controls.configure(player.input_router)
+	if not player.input_router.ability_slots_changed.is_connected(_update_ability_mapping):
+		player.input_router.ability_slots_changed.connect(_update_ability_mapping)
 	if not GameState.profile_changed.is_connected(_update_hud):
 		GameState.profile_changed.connect(_update_hud)
 	game_over_panel.visible = false
@@ -49,6 +54,7 @@ func _ready() -> void:
 	apply_biome_for_tile(floori(GameConfig.pixels_to_tiles(player.global_position.x)))
 	_capture_checkpoint(player.global_position, floori(GameConfig.pixels_to_tiles(player.global_position.x)))
 	_update_hud()
+	_update_ability_mapping()
 
 func _process(delta: float) -> void:
 	if not revival_active:
@@ -204,6 +210,19 @@ func _update_hud() -> void:
 	health_label.text = "Health: %d / %d" % [roundi(player.current_health), roundi(player.maximum_health)]
 	distance_label.text = "Distance: %d tiles" % int(GameState.run.get("distance_tiles", 0))
 	gold_label.text = "Gold: %d" % GameState.gold_count()
+	_update_ability_mapping()
+
+func _update_ability_mapping() -> void:
+	if ability_mapping_label == null or player == null or player.input_router == null:
+		return
+	var lines: Array[String] = ["Abilities"]
+	for slot in range(GameConfig.NUM_EQUIPABLE_ABILITIES):
+		var ability_id: StringName = player.input_router.ability_id_for_slot(slot)
+		if ability_id == &"":
+			lines.append("%d —" % (slot + 1))
+		else:
+			lines.append("%d — %s" % [slot + 1, player.input_router.ability_display_name_for_slot(slot)])
+	ability_mapping_label.text = "\n".join(lines)
 
 func _on_health_changed(_current: float, _maximum: float) -> void:
 	_update_hud()

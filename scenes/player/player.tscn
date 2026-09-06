@@ -1,10 +1,11 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://src/gameplay/combat/automatic_melee_controller.gd" id="2_melee"]
 [ext_resource type="Script" path="res://src/gameplay/combat/weapon_controller.gd" id="3_weapon"]
 [ext_resource type="Script" path="res://src/gameplay/abilities/ability_controller.gd" id="4_abilities"]
 [ext_resource type="Script" path="res://src/gameplay/status/status_effect_controller.gd" id="5_status"]
+[ext_resource type="Script" path="res://src/gameplay/input/player_input_router.gd" id="6_input"]
 
 [sub_resource type="RectangleShape2D" id="RectangleStanding"]
 size = Vector2(34, 58)
@@ -55,3 +56,6 @@ script = ExtResource("4_abilities")
 
 [node name="StatusEffectController" type="Node" parent="."]
 script = ExtResource("5_status")
+
+[node name="InputRouter" type="Node" parent="."]
+script = ExtResource("6_input")

@@ -47,6 +47,7 @@ const COLLECTIBLE_SPAWNER_SCRIPT := preload("res://src/gameplay/items/collectibl
 const CHARACTER_DATA_SCRIPT := preload("res://src/data/character_data.gd")
 const CHARACTER_CATALOG_SCRIPT := preload("res://src/data/character_catalog.gd")
 const CHARACTER_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/progression/character_inventory_service.gd")
+const MOBILE_ACTION_CONTROLS_SCENE := preload("res://scenes/ui/mobile_action_controls.tscn")
 
 var failures: Array[String] = []
 var passed := 0
@@ -199,8 +200,15 @@ func _run() -> void:
 	test_character_selection_requires_unlock()
 	test_character_profile_sanitizes_unknown_ids()
 	await test_selected_character_drives_player_presentation()
+	await test_keyboard_ability_slot_routes_equipped_ability()
+	await test_touch_tap_maps_to_jump()
+	await test_touch_hold_preserves_jump_hold_semantics()
+	await test_swipe_down_maps_to_roll_without_jump()
+	await test_mobile_action_buttons_follow_equipped_slots()
+	await test_action_button_side_setting_updates_mobile_cluster()
+	test_level_has_phase14_input_hud()
 
-	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12+13 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12+13+14 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -248,6 +256,12 @@ func test_input_actions_configured() -> void:
 	_expect(not InputMap.action_get_events("roll").is_empty(), "roll input action must have a key binding")
 	_expect(_action_has_physical_key("jump", KEY_UP), "jump must be mapped to the physical Up arrow key")
 	_expect(_action_has_physical_key("roll", KEY_DOWN), "roll must be mapped to the physical Down arrow key")
+	var ability_keys := [KEY_1, KEY_2, KEY_3, KEY_4]
+	for index in ability_keys.size():
+		var action := StringName("ability_%d" % (index + 1))
+		_expect(InputMap.has_action(action), "%s input action must exist" % action)
+		_expect(not InputMap.action_get_events(action).is_empty(), "%s must have a keyboard binding" % action)
+		_expect(_action_has_physical_key(action, ability_keys[index]), "%s must use physical number key %d" % [action, index + 1])
 
 func test_phase1_assets_exist() -> void:
 	const TERRAIN_PATH := "res://assets/Spritesheets/spritesheet-tiles-double.png"
@@ -2683,6 +2697,150 @@ func test_selected_character_drives_player_presentation() -> void:
 	for animation_name in CHARACTER_DATA_SCRIPT.REQUIRED_ANIMATIONS.keys():
 		_expect(player.sprite.sprite_frames.has_animation(animation_name), "selected player SpriteFrames must include '%s'" % animation_name)
 	await _free_node(player)
+
+func test_keyboard_ability_slot_routes_equipped_ability() -> void:
+	var raw := PLAYER_PROFILE_SCRIPT.create_default()
+	raw.unlocked_abilities = ["jump", "invisibility"]
+	raw.equipped_abilities = ["invisibility"]
+	raw.ability_levels = {"jump": 1, "invisibility": 1}
+	GameState.set_profile(raw)
+	var player = await _spawn_player(false)
+	_expect(player.input_router.ability_id_for_slot(0) == &"invisibility", "ability slot 1 must resolve the first equipped ability")
+	var event := InputEventAction.new()
+	event.action = &"ability_1"
+	event.pressed = true
+	_expect(player.input_router.handle_input_event(event), "ability_1 keyboard action must be consumed by PlayerInputRouter")
+	_expect(not player.detectable, "ability_1 must activate the equipped Invisibility ability through the logical input router")
+	await _free_node(player)
+
+func test_touch_tap_maps_to_jump() -> void:
+	var setup := await _spawn_grounded_player()
+	var player = setup.player
+	var controls = MOBILE_ACTION_CONTROLS_SCENE.instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	controls.configure(player.input_router)
+	var adapter: TouchInputAdapter = controls.touch_input_adapter
+	var touch_down := InputEventScreenTouch.new()
+	touch_down.index = 7
+	touch_down.pressed = true
+	touch_down.position = Vector2(120.0, 220.0)
+	var touch_up := InputEventScreenTouch.new()
+	touch_up.index = 7
+	touch_up.pressed = false
+	touch_up.position = Vector2(124.0, 224.0)
+	_expect(adapter.handle_touch_event(touch_down), "touch adapter must claim the first touch in a gesture")
+	_expect(adapter.handle_touch_event(touch_up), "touch adapter must consume a completed tap")
+	_expect(player.velocity.y < 0.0, "mobile tap must dispatch the same logical jump action used by desktop")
+	_expect(adapter.active_touch_index == -1, "completed tap must reset touch gesture state")
+	await _free_node(controls)
+	await _free_node(setup.root)
+
+func test_touch_hold_preserves_jump_hold_semantics() -> void:
+	var raw := PLAYER_PROFILE_SCRIPT.create_default()
+	raw.unlocked_abilities = ["jump", "glide"]
+	raw.equipped_abilities = ["jump", "glide"]
+	raw.ability_levels = {"jump": 1, "glide": 1}
+	GameState.set_profile(raw)
+	var setup := await _spawn_grounded_player(false)
+	var player = setup.player
+	var controls = MOBILE_ACTION_CONTROLS_SCENE.instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	controls.configure(player.input_router)
+	var adapter: TouchInputAdapter = controls.touch_input_adapter
+	var touch_down := InputEventScreenTouch.new()
+	touch_down.index = 11
+	touch_down.pressed = true
+	touch_down.position = Vector2(240.0, 200.0)
+	adapter.handle_touch_event(touch_down)
+	adapter._process(GameConfig.MOBILE_JUMP_HOLD_DELAY + 0.01)
+	_expect(player.ability_controller.jump_held, "holding a stationary touch must preserve jump-held semantics for Glide")
+	_expect(player.velocity.y < 0.0, "touch hold must still dispatch the initial jump")
+	var touch_up := InputEventScreenTouch.new()
+	touch_up.index = 11
+	touch_up.pressed = false
+	touch_up.position = touch_down.position
+	adapter.handle_touch_event(touch_up)
+	_expect(not player.ability_controller.jump_held, "releasing a held touch must release the logical jump action")
+	await _free_node(controls)
+	await _free_node(setup.root)
+
+func test_swipe_down_maps_to_roll_without_jump() -> void:
+	var setup := await _spawn_grounded_player()
+	var player = setup.player
+	var controls = MOBILE_ACTION_CONTROLS_SCENE.instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	controls.configure(player.input_router)
+	var adapter: TouchInputAdapter = controls.touch_input_adapter
+	var touch_down := InputEventScreenTouch.new()
+	touch_down.index = 3
+	touch_down.pressed = true
+	touch_down.position = Vector2(180.0, 120.0)
+	var drag := InputEventScreenDrag.new()
+	drag.index = 3
+	drag.position = touch_down.position + Vector2(8.0, GameConfig.MOBILE_SWIPE_MIN_DISTANCE + 12.0)
+	var touch_up := InputEventScreenTouch.new()
+	touch_up.index = 3
+	touch_up.pressed = false
+	touch_up.position = drag.position
+	adapter.handle_touch_event(touch_down)
+	_expect(adapter.handle_touch_event(drag), "touch adapter must consume an active downward drag")
+	_expect(player.state == PLAYER_SCRIPT.State.ROLLING, "downward swipe must dispatch the logical roll action")
+	_expect(is_zero_approx(player.velocity.y), "a consumed downward swipe must not also dispatch a tap jump")
+	adapter.handle_touch_event(touch_up)
+	_expect(player.state == PLAYER_SCRIPT.State.ROLLING, "releasing a consumed swipe must not replace roll with jump")
+	await _free_node(controls)
+	await _free_node(setup.root)
+
+func test_mobile_action_buttons_follow_equipped_slots() -> void:
+	var raw := PLAYER_PROFILE_SCRIPT.create_default()
+	raw.unlocked_abilities = ["jump", "dash", "shooting", "explode"]
+	raw.equipped_abilities = ["jump", "dash", "shooting", "explode"]
+	raw.ability_levels = {"jump": 1, "dash": 1, "shooting": 1, "explode": 1}
+	GameState.set_profile(raw)
+	var player = await _spawn_player(false)
+	var controls = MOBILE_ACTION_CONTROLS_SCENE.instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	controls.configure(player.input_router)
+	var buttons: Array[Node] = controls.action_cluster.get_children()
+	_expect(buttons.size() == 2, "mobile action cluster must only render active abilities not already represented by gestures/passive behavior")
+	if buttons.size() == 2:
+		_expect(String(buttons[0].text).begins_with("1  Dash"), "mobile Dash button must use the first direct-action slot")
+		_expect(String(buttons[1].text).begins_with("2  Explode"), "mobile Explode button must use the second direct-action slot")
+	_expect(player.input_router.ability_slots() == [&"dash", &"explode"], "numbered mappings must exclude Jump-family actions and passive Shooting")
+	_expect(player.input_router.mobile_button_slots() == [0, 1], "mobile buttons must use the same dense active-action slots as desktop")
+	await _free_node(controls)
+	await _free_node(player)
+
+func test_action_button_side_setting_updates_mobile_cluster() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var controls = MOBILE_ACTION_CONTROLS_SCENE.instantiate()
+	add_child(controls)
+	await get_tree().process_frame
+	controls.configure(player.input_router)
+	_expect(GameState.action_button_side() == PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT, "mobile action cluster must default to RIGHT")
+	_expect(is_equal_approx(controls.action_cluster.anchor_left, 1.0), "RIGHT setting must anchor mobile action buttons to the right")
+	_expect(GameState.set_action_button_side("LEFT"), "action button side API must accept LEFT case-insensitively")
+	_expect(GameState.action_button_side() == PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_LEFT, "LEFT setting must be stored in normalized form")
+	_expect(is_zero_approx(controls.action_cluster.anchor_left), "LEFT setting must move the mobile action cluster to the left")
+	_expect(not GameState.set_action_button_side("center"), "invalid action button side must be rejected")
+	_expect(GameState.action_button_side() == PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_LEFT, "invalid side must not mutate the current setting")
+	_expect(GameState.set_action_button_side("right"), "action button side API must allow switching back to RIGHT")
+	_expect(is_equal_approx(controls.action_cluster.anchor_left, 1.0), "RIGHT setting must move the mobile action cluster back to the right")
+	await _free_node(controls)
+	await _free_node(player)
+
+func test_level_has_phase14_input_hud() -> void:
+	var level = LEVEL_SCENE.instantiate()
+	_expect(level.has_node("Player/InputRouter"), "Phase 14 player scene must contain a source-agnostic InputRouter")
+	_expect(level.has_node("HUD/AbilityMappingPanel/AbilityMappingLabel"), "Phase 14 HUD must show equipped desktop ability slots in the lower-left")
+	_expect(level.has_node("HUD/MobileActionControls/TouchInputAdapter"), "Phase 14 HUD must provide a separate touch input adapter")
+	_expect(level.has_node("HUD/MobileActionControls/ActionCluster"), "Phase 14 HUD must provide a configurable mobile action-button cluster")
+	level.free()
 
 func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)

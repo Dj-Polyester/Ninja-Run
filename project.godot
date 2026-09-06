@@ -39,6 +39,22 @@ roll={
 "deadzone": 0.5,
 "events": [Object(InputEventKey,"physical_keycode":4194322)]
 }
+ability_1={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":49)]
+}
+ability_2={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":50)]
+}
+ability_3={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":51)]
+}
+ability_4={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"physical_keycode":52)]
+}
 
 [physics]
 

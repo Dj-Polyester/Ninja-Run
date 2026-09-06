@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/level/level.gd" id="1_level"]
 [ext_resource type="Script" path="res://src/gameplay/world/world_streamer.gd" id="2_streamer"]
 [ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
 [ext_resource type="Script" path="res://src/gameplay/enemies/enemy_spawner.gd" id="4_enemy_spawner"]
 [ext_resource type="Script" path="res://src/gameplay/items/collectible_spawner.gd" id="5_collectible_spawner"]
+[ext_resource type="PackedScene" path="res://scenes/ui/mobile_action_controls.tscn" id="6_mobile_controls"]
 
 [node name="Level" type="Node2D"]
 process_physics_priority = 1
@@ -82,7 +83,23 @@ text = "Biome: Grass"
 
 [node name="ControlsLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
 layout_mode = 2
-text = "↑ Jump    ↓ Roll"
+text = "↑ Jump    ↓ Roll    1–4 Abilities"
+
+[node name="AbilityMappingPanel" type="PanelContainer" parent="HUD"]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = -174.0
+offset_right = 250.0
+offset_bottom = -20.0
+grow_vertical = 0
+
+[node name="AbilityMappingLabel" type="Label" parent="HUD/AbilityMappingPanel"]
+layout_mode = 2
+text = "Abilities\n1 — Jump"
+
+[node name="MobileActionControls" parent="HUD" instance=ExtResource("6_mobile_controls")]
 
 [node name="GameOverPanel" type="PanelContainer" parent="HUD"]
 offset_left = 470.0

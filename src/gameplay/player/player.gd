@@ -44,6 +44,7 @@ var active_statuses: Dictionary:
 @onready var weapon_controller = $WeaponController
 @onready var ability_controller: AbilityController = $AbilityController
 @onready var status_controller = $StatusEffectController
+@onready var input_router = $InputRouter
 
 func _ready() -> void:
 	maximum_health = float(GameState.stat_value(&"maximum_health"))
@@ -285,14 +286,6 @@ func _update_melee_animation(delta: float) -> void:
 func _finish_roll() -> void:
 	_set_roll_collision(false)
 	_set_state(State.RUNNING if is_supported() else State.FALLING)
-
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("jump"):
-		trigger_jump()
-	elif event.is_action_released("jump"):
-		release_jump()
-	elif event.is_action_pressed("roll"):
-		trigger_roll()
 
 func _set_roll_collision(rolling: bool) -> void:
 	standing_collision.disabled = rolling

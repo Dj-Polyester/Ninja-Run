@@ -23,6 +23,18 @@ const WALL_JUMP_HORIZONTAL_SPEED := 3.0
 const WALL_JUMP_PUSH_DURATION := 0.18
 const INVISIBILITY_ALPHA := 0.35
 
+# Phase 14 touch-input thresholds. Gesture recognition lives in the mobile
+# adapter; gameplay only receives the same logical jump/roll/ability actions
+# used by desktop input.
+const MOBILE_TAP_MAX_DISTANCE := 28.0
+const MOBILE_JUMP_HOLD_DELAY := 0.12
+const MOBILE_SWIPE_MIN_DISTANCE := 72.0
+const MOBILE_SWIPE_DIRECTION_RATIO := 1.25
+const MOBILE_ACTION_BUTTON_WIDTH := 168.0
+const MOBILE_ACTION_BUTTON_HEIGHT := 52.0
+const MOBILE_ACTION_BUTTON_MARGIN := 24.0
+const MOBILE_ACTION_BUTTON_CLUSTER_HEIGHT := 300.0
+
 # Slow-down uses explicit subsystem multipliers instead of Engine.time_scale,
 # keeping UI/cooldowns deterministic while later enemy systems can consume the
 # same movement/fire/projectile knobs.
