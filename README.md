@@ -1,6 +1,6 @@
 # Ninja Run
 
-Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 8 (weapons)** are implemented in this branch.
+Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 9 (abilities)** are implemented in this branch.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ Desktop controls:
 
 The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, and the camera follows horizontal progress with look-ahead. Falling below the kill plane, losing all health, or failing to make horizontal progress for `GAME_OVER_NUMBER_OF_SECS` starts the Phase 4 revival countdown. A revival potion returns the player to the most recent safe checkpoint with restored health, cleared statuses, and brief invulnerability; otherwise the countdown ends in final game-over. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
 
-## Phase 1–8 architecture
+## Phase 1–9 architecture
 
 ```text
 scenes/
@@ -48,12 +48,28 @@ src/
     run_state.gd
     save_manager.gd
   data/
+    ability_catalog.gd
+    ability_data.gd
     biome_data.gd
     stat_catalog.gd
     stat_data.gd
     weapon_catalog.gd
     weapon_data.gd
   gameplay/
+    abilities/
+      ability.gd
+      ability_controller.gd
+      ability_inventory_service.gd
+      jump_ability.gd
+      climb_ability.gd
+      glide_ability.gd
+      reverse_gravity_ability.gd
+      fly_ability.gd
+      dash_ability.gd
+      explode_ability.gd
+      slow_down_time_ability.gd
+      invisibility_ability.gd
+      world_speed_controller.gd
     combat/
       automatic_melee_controller.gd
       damage_info.gd
@@ -79,6 +95,17 @@ src/
     world/world_streamer.gd
   ui/main.gd
 data/
+  abilities/
+    jump.tres
+    climb.tres
+    glide.tres
+    reverse_gravity.tres
+    fly.tres
+    dash.tres
+    shooting.tres
+    explode.tres
+    slow_down_time.tres
+    invisibility.tres
   biomes/
     grass.tres
     tundra.tres
@@ -105,11 +132,11 @@ tests/
   test_runner.gd
 ```
 
-Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `StatData` resources define upgradeable stat ranges/costs/locks, `StatCatalog` resolves those resources and derives values from persisted levels, and `StatUpgradeService` owns the atomic upgrade transaction. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, and `AutomaticMeleeController` owns proximity filtering, nearest-target selection, attack cooldown, and shared melee damage dispatch. Phase 8 keeps ranged combat similarly data-driven: `WeaponData` describes each weapon, `WeaponCatalog` resolves definitions, `WeaponInventoryService` owns atomic purchase/equip transactions, `WeaponController` owns on-screen target selection/cooldowns/trajectory construction, and `WeaponProjectile` owns movement and shared projectile damage dispatch. `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status/attack-animation feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
+Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `StatData` resources define upgradeable stat ranges/costs/locks, `StatCatalog` resolves those resources and derives values from persisted levels, and `StatUpgradeService` owns the atomic upgrade transaction. `AbilityData` resources define the ability catalog and upgrade bounds, `AbilityInventoryService` owns unlock/equip/upgrade validation (including the four-slot cap and Jump/Reverse Gravity incompatibility), and the player's `AbilityController` composes independent runtime ability objects rather than embedding every mechanic in `player.gd`. `WorldSpeed` is a project autoload that exposes explicit subsystem multipliers for slow-time effects without touching `Engine.time_scale`. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, and `AutomaticMeleeController` owns proximity filtering, nearest-target selection, attack cooldown, and shared melee damage dispatch. Phase 8 keeps ranged combat similarly data-driven: `WeaponData` describes each weapon, `WeaponCatalog` resolves definitions, `WeaponInventoryService` owns atomic purchase/equip transactions, `WeaponController` owns on-screen target selection/cooldowns/trajectory construction, and `WeaponProjectile` owns movement and shared projectile damage dispatch. `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status/attack-animation feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
 
 ## Configuration
 
-The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–8 actively use the following values:
+The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–9 actively use the following values:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
@@ -121,6 +148,21 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `MELEE_RANGE_TILES` | 1.25 tiles | Radius of the player melee proximity detector |
 | `MELEE_ATTACK_INTERVAL` | 0.55 s | Minimum time between automatic melee hits |
 | `NUM_EQUIPPABLE_WEAPONS` | 3 | Maximum number of simultaneously equipped weapons |
+| `NUM_EQUIPABLE_ABILITIES` | 4 | Maximum number of simultaneously equipped abilities |
+| `MAX_GLIDE_DURATION` | 2.0 s | Maximum continuous Glide/Hang duration per landing cycle |
+| `GLIDE_GRAVITY_FACTOR` | 0.22 | Gravity multiplier while Glide is active |
+| `DASH_SPEED` | 14 tiles/s | Dash movement speed |
+| `DASH_TILES` | 4 tiles | Exact target distance for one Dash |
+| `WALL_JUMP_HORIZONTAL_SPEED` | 3 tiles/s | Horizontal push away from a contacted wall |
+| `WALL_JUMP_PUSH_DURATION` | 0.18 s | Time the wall-jump push overrides automatic running |
+| `EXPLODE_RADIUS` | 3 tiles | Enemy/terrain query radius for Explode |
+| `EXPLODE_DAMAGE` | 40 | Damage applied by Explode inside its radius |
+| `COOLDOWN_PERIOD` | 8.0 s | Shared cooldown used by action abilities |
+| `INVISIBILITY_ALPHA` | 0.35 | Visual alpha while gameplay detectability is disabled |
+| `SLOW_TIME_PLAYER_SPEED_MULTIPLIER` | 0.60 | Player run-speed multiplier during Slow Down Time |
+| `SLOW_TIME_ENEMY_MOVE_MULTIPLIER` | 0.60 | Enemy movement multiplier exposed for the enemy phase |
+| `SLOW_TIME_ENEMY_FIRE_INTERVAL_MULTIPLIER` | 1.50 | Enemy firing-interval multiplier exposed for the enemy phase |
+| `SLOW_TIME_PROJECTILE_SPEED_MULTIPLIER` | 0.65 | Projectile-speed multiplier exposed for the enemy/projectile phase |
 | `SHOOTING_ABILITY_ID` | `shooting` | Ability id required before weapons can be bought, equipped, or fired |
 | `WEAPON_PROJECTILE_COLLISION_RADIUS` | 10 px | Shared projectile damage-query radius |
 | `WEAPON_PROJECTILE_LIFETIME` | 5 s | Maximum projectile lifetime before cleanup |
@@ -174,7 +216,7 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `MIN_SLOW_DOWN_DURATION` / `MAX_SLOW_DOWN_DURATION` | 2.0 / 6.0 s | Slow-down-duration upgrade bounds |
 | `SLOW_DOWN_DURATION_UPGRADE` / `SLOW_DOWN_DURATION_UPGRADE_GOLDS` | +0.5 s / 100 gold | Slow-down-duration step and fixed cost |
 
-The remaining task-level ability variables (glide/dash/explode/cooldown values) are centralized now so later phases do not scatter them across gameplay scripts.
+Ability tuning remains centralized here so runtime ability scripts contain behavior rather than duplicated balance values.
 
 ## Stats and upgrades
 
@@ -182,11 +224,11 @@ Phase 6 makes the six requested player stats data-driven. Persistent saves store
 
 `GameState.upgrade_stat(stat_id)` delegates to `StatUpgradeService`, which checks every precondition before mutation: the stat must exist, its required ability must be unlocked, the stat must not be at its limit, and the profile must have enough gold. A successful transaction increments exactly one level, deducts exactly the resource's fixed `upgrade_golds` cost, refreshes derived compatibility values, and emits `profile_changed`. Failed transactions leave both gold and levels unchanged. `invisibility_duration` requires the `invisibility` ability; `slow_down_duration` independently requires `slow_down_time`. The other four stats are available without an ability gate.
 
-Maximum health and defense are consumed by runtime player creation, new `RunState` health starts from the current derived maximum-health value, and Phase 7 automatic melee reads the current derived melee-power value for every hit. Enemy firing interval, invisibility duration, and slow-down duration remain persisted and exposed for their later combat/ability phases without requiring another save-schema change.
+Maximum health and defense are consumed by runtime player creation, new `RunState` health starts from the current derived maximum-health value, and Phase 7 automatic melee reads the current derived melee-power value for every hit. Phase 9 now consumes the persisted invisibility and slow-down durations directly; the enemy firing-interval stat and `WorldSpeed` enemy multipliers remain ready for the enemy phase without another save-schema change.
 
 ## Player states
 
-`NinjaPlayer` defines the planned state vocabulary (`RUNNING`, `JUMPING`, `FALLING`, `ROLLING`, `GLIDING`, `DASHING`, `DEAD`, `REVIVAL_WAIT`). Running, jumping, falling, rolling, dead, and revival-wait states are active through Phase 4; glide and dash remain reserved for their later ability phases.
+`NinjaPlayer` uses the full state vocabulary (`RUNNING`, `JUMPING`, `FALLING`, `ROLLING`, `GLIDING`, `DASHING`, `DEAD`, `REVIVAL_WAIT`). Phase 9 activates `GLIDING` and `DASHING` through `AbilityController`; death/revival cancels transient ability effects, restores normal gravity/detectability, and resets movement ability runtime state before the run resumes.
 
 Damage uses the common `take_damage(amount, damage_info)` entry point and the shared `DamageInfo` payload (`source`, `damage_type`, `status_effect`, `knockback`). The player exposes the full `take_damage`, `heal`, `apply_status`, and `die` contract intended for future enemies as well. Incoming damage applies `raw_damage * defense_multiplier`, gives a short invulnerability window, applies status/knockback metadata, flashes the character red, updates health state, and emits health changes for the HUD.
 
@@ -213,6 +255,23 @@ The initial Phase 8 catalog uses all four supplied `Props/Weapons` categories an
 `WeaponController` runs automatically while the player is alive and Shooting is unlocked. It gathers damageable enemy nodes from the `enemies` group and the level's `EnemyContainer`, converts their world coordinates through the active viewport/camera transform, and only considers nodes within the visible screen plus a small margin. Targeted weapons choose nearest enemies; random selection uses a seeded `RandomNumberGenerator`; fixed-pattern weapons emit deterministic spread angles; forward weapons always fire along the runner direction. The controller supports `STRAIGHT`, `BALLISTIC`, `ARC`, and `HOMING` motion without hard-coding weapon ids, so later weapon resources can reuse the same simulation code.
 
 Projectiles are independent `Area2D` scenes placed into the level's `ProjectileContainer` when available. They use the reserved enemy collision mask, normalize the widely varying source-art dimensions for display, expire after a bounded lifetime, and call the same damage contract used by melee with `DamageInfo.DamageType.PROJECTILE`. Homing shots steer at a bounded turn rate; ballistic and arc shots use gravity; aim mode remains independent from trajectory, so a ballistic random-aim weapon does not silently become targeted.
+
+## Abilities
+
+Phase 9 adds a common runtime ability interface and keeps each mechanic in a dedicated class owned by `AbilityController`. The persistent profile stores unlocked/equipped ids and upgrade levels; `AbilityInventoryService` validates changes before mutation. At most `NUM_EQUIPABLE_ABILITIES` can be equipped, and Jump plus Reverse Gravity are rejected as an incompatible pair both during equipment transactions and save sanitization.
+
+- **Jump** is unlocked/equipped by default. Its level is the number of extra air jumps available before landing: levels 1, 2, and 3 allow one, two, and three air jumps respectively. Landing resets the budget.
+- **Climb** converts wall contact into wall jumps. Level 1 allows one wall jump before landing and level 2 allows two; the horizontal wall-normal push briefly overrides automatic running so the player actually detaches from the wall.
+- **Glide / Hang** reduces gravity to `GLIDE_GRAVITY_FACTOR` while jump remains held during a fall, for at most `MAX_GLIDE_DURATION` per landing cycle.
+- **Reverse Gravity** replaces normal jump behavior when equipped. Each jump activation toggles gravity direction and flips `CharacterBody2D.up_direction`, so floor/ceiling support semantics invert consistently with physics.
+- **Fly** permits effectively unlimited air jumps while equipped.
+- **Dash** travels exactly `DASH_TILES` at `DASH_SPEED`; its implementation tracks actual X distance after each physics move and ends early on a blocking wall instead of approximating distance with a timer.
+- **Explode** applies shared `DamageInfo` explosion damage to damageable enemies inside `EXPLODE_RADIUS`, emits a one-shot particle effect, and removes nearby generated terrain explicitly marked breakable. The authored starting platform is protected.
+- **Slow Down Time** uses the `WorldSpeed` autoload rather than `Engine.time_scale`. It applies explicit player/enemy/projectile multipliers for the upgraded `slow_down_duration`; later enemy code can consume the already-defined enemy movement/fire multipliers without coupling UI or cooldown clocks to global time scale.
+- **Invisibility** sets `player.detectable = false` for the upgraded `invisibility_duration`. Transparency is feedback only; gameplay systems can query `is_detectable()` / `detectable` directly. Detectability is restored on expiry, death, revival, or unequip.
+- **Shooting** remains the passive unlock gate introduced in Phase 8; weapon firing depends on it being unlocked rather than creating a separate active runtime effect.
+
+Dash, Explode, Slow Down Time, and Invisibility use the shared `COOLDOWN_PERIOD`. Movement/passive abilities that need immediate continuous input do not consume that action cooldown.
 
 ## Health, stuck detection, revival, and game-over
 
@@ -261,7 +320,7 @@ Run the headless test suite with:
 godot --headless --path . tests/test_runner.tscn
 ```
 
-Phase 1–8 test inventory:
+Phase 1–9 test inventory:
 
 - `test_config_values_are_valid`
 - `test_game_state_reset_is_seeded`
@@ -357,12 +416,23 @@ Phase 1–8 test inventory:
 - `test_hazard_placement_is_seeded`
 - `test_streamer_cleans_runtime_hazards`
 - `test_level_applies_biome_context`
+- `test_ability_definitions_are_valid`
+- `test_ability_equipment_limit_and_conflict`
+- `test_jump_air_jump_levels`
+- `test_climb_wall_jump_count`
+- `test_glide_duration`
+- `test_reverse_gravity_semantics`
+- `test_fly_allows_unlimited_air_jumps`
+- `test_dash_distance_and_cooldown`
+- `test_explode_damage_and_destructible_terrain`
+- `test_slow_down_uses_world_multipliers`
+- `test_invisibility_detectability_and_duration`
 
-Physics-sensitive tests instantiate the real player, projectile, and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile. Phase 6 tests verify every stat definition, increasing/decreasing value derivation, fixed upgrade cost, transactional failure behavior, upper/lower clamps, ability-gated stats, persisted-level sanitization, runtime player health/defense integration, and upgraded starting run health. Phase 7 tests instantiate real `Area2D`/physics overlaps and verify detector configuration, nearest valid-target selection, contract filtering, upgraded melee damage, `MELEE` `DamageInfo`, cooldown repeat timing, attack animation selection, and dead-state suppression. Phase 8 tests verify resource validity and supplied assets, Shooting-gated purchases, atomic gold handling, the equipment cap, target counts, all four aim modes, deterministic random aim, ballistic reachability math, automatic on-screen firing/cooldowns, off-screen suppression, real projectile collision damage, and homing steering.
+Physics-sensitive tests instantiate the real player, projectile, and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile. Phase 6 tests verify every stat definition, increasing/decreasing value derivation, fixed upgrade cost, transactional failure behavior, upper/lower clamps, ability-gated stats, persisted-level sanitization, runtime player health/defense integration, and upgraded starting run health. Phase 7 tests instantiate real `Area2D`/physics overlaps and verify detector configuration, nearest valid-target selection, contract filtering, upgraded melee damage, `MELEE` `DamageInfo`, cooldown repeat timing, attack animation selection, and dead-state suppression. Phase 8 tests verify resource validity and supplied assets, Shooting-gated purchases, atomic gold handling, the equipment cap, target counts, all four aim modes, deterministic random aim, ballistic reachability math, automatic on-screen firing/cooldowns, off-screen suppression, real projectile collision damage, and homing steering. Phase 9 tests verify every ability resource, equipment caps/conflicts, all Jump levels and landing reset, Climb wall-jump budgets, Glide duration, Reverse Gravity support semantics, unlimited Fly jumps, exact travelled Dash distance/cooldown, explosion radius plus protected/destructible terrain, explicit slow-time subsystem multipliers without `Engine.time_scale`, and Invisibility's gameplay detectability/expiry.
 
 ## Save data
 
-`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 8 does not change the persistence schema: it activates the `unlocked_weapons` and `equipped_weapons` profile fields that were added in Phase 5, while melee continues to consume the `melee_power` level introduced in Phase 6. Older Phase 4 version-1 saves that contain only numeric maximum-health/defense fields are still migrated to the nearest valid stat levels, while current saves derive numeric compatibility fields from the persisted levels.
+`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 9 does not change the persistence schema: it activates the `unlocked_abilities`, `equipped_abilities`, and `ability_levels` fields added in Phase 5, while Phase 8 continues to use the weapon fields and melee continues to consume the Phase 6 stat model. Older Phase 4 version-1 saves that contain only numeric maximum-health/defense fields are still migrated to the nearest valid stat levels, while current saves derive numeric compatibility fields from the persisted levels.
 
 Persistent `PlayerProfile` data now includes:
 
@@ -379,9 +449,9 @@ Transient `RunState` is intentionally not written to the profile save. It owns c
 
 Save loading validates the root type and `save_version`, sanitizes collection/scalar types, clamps non-negative progression values, removes invalid equipped entries, enforces configured equipment limits during deserialization, and restores a safe default profile when the file is missing, malformed, or uses an unsupported version.
 
-## Scope after Phase 8
+## Scope after Phase 9
 
-The following requested systems are intentionally not claimed as implemented yet: the enemy framework/spawning, ability gameplay, collectible spawning/drop tables, character shop, the Stats/menu UI, the rest of the full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation, health/revival loop, persistence/stat transaction model, automatic melee, and the Phase 8 data-driven weapon/projectile framework now in place.
+The following requested systems are intentionally not claimed as implemented yet: the enemy framework/spawning, collectible spawning/drop tables, character shop, the Stats/menu UI, the rest of the full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation, health/revival loop, persistence/stat transaction model, automatic melee, the Phase 8 data-driven weapon/projectile framework, and the Phase 9 composable ability framework now in place.
 
 ## Assets
 

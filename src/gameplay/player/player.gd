@@ -6,6 +6,7 @@ const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
 signal died(reason: String)
 signal health_changed(current: float, maximum: float)
 signal melee_attacked(target: Node, damage: float)
+signal detectability_changed(detectable: bool)
 
 enum State { RUNNING, JUMPING, FALLING, ROLLING, GLIDING, DASHING, DEAD, REVIVAL_WAIT }
 
@@ -21,6 +22,10 @@ var temporary_jump_modifier := 0.0
 var active_statuses: Dictionary = {}
 var last_damage_info
 var melee_animation_remaining := 0.0
+var gravity_direction := 1.0
+var detectable := true
+var wall_jump_push_remaining := 0.0
+var wall_jump_velocity_x := 0.0
 
 @onready var standing_collision: CollisionShape2D = $StandingCollision
 @onready var rolling_collision: CollisionShape2D = $RollingCollision
@@ -28,6 +33,7 @@ var melee_animation_remaining := 0.0
 @onready var burn_particles: GPUParticles2D = $BurnParticles
 @onready var melee_controller = $MeleeDetector
 @onready var weapon_controller = $WeaponController
+@onready var ability_controller: AbilityController = $AbilityController
 
 func _ready() -> void:
 	maximum_health = float(GameState.stat_value(&"maximum_health"))
@@ -36,6 +42,8 @@ func _ready() -> void:
 	_configure_collision_shapes()
 	_configure_burn_particles()
 	_build_animations(int(GameState.profile.get("selected_character", 1)))
+	set_gravity_direction(1.0)
+	set_detectable(true)
 	_set_roll_collision(false)
 	_play_animation("run")
 	health_changed.emit(current_health, maximum_health)
@@ -43,25 +51,43 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	_update_feedback(delta)
 	_update_melee_animation(delta)
+	ability_controller.tick(delta)
 	if state == State.DEAD or state == State.REVIVAL_WAIT:
 		velocity = Vector2.ZERO
 		return
 
-	velocity.x = run_speed_pixels()
-	if not is_on_floor():
-		velocity.y += GameConfig.GRAVITY * delta
+	var previous_position := global_position
+	var dash_speed := ability_controller.horizontal_speed(delta)
+	if dash_speed > 0.0:
+		velocity.x = dash_speed
+	elif wall_jump_push_remaining > 0.0:
+		velocity.x = wall_jump_velocity_x
+		wall_jump_push_remaining = maxf(0.0, wall_jump_push_remaining - delta)
+	else:
+		velocity.x = run_speed_pixels()
+	if not is_supported():
+		var gravity_multiplier := ability_controller.gravity_multiplier(delta)
+		velocity.y += GameConfig.GRAVITY * gravity_direction * gravity_multiplier * delta
 	move_and_slide()
+	ability_controller.after_move(previous_position)
+	var supported := is_supported()
+	ability_controller.update_support_state(supported)
 
 	if state == State.ROLLING:
 		roll_time_remaining -= delta
 		if roll_time_remaining <= 0.0:
 			_finish_roll()
-	elif is_on_floor():
-		_set_state(State.RUNNING)
-	elif velocity.y < 0.0:
-		_set_state(State.JUMPING)
-	else:
-		_set_state(State.FALLING)
+	if state != State.ROLLING:
+		if ability_controller.is_dashing():
+			_set_state(State.DASHING)
+		elif ability_controller.is_gliding():
+			_set_state(State.GLIDING)
+		elif supported:
+			_set_state(State.RUNNING)
+		elif velocity.y * gravity_direction < 0.0:
+			_set_state(State.JUMPING)
+		else:
+			_set_state(State.FALLING)
 
 	if global_position.y > GameConfig.KILL_PLANE_Y:
 		die("fall")
@@ -72,15 +98,23 @@ func _physics_process(delta: float) -> void:
 func trigger_jump() -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT or state == State.ROLLING:
 		return
-	if not is_on_floor():
-		return
-	velocity.y = -jump_speed_pixels()
+	ability_controller.handle_jump_pressed()
+
+func release_jump() -> void:
+	ability_controller.handle_jump_released()
+
+func perform_jump(wall_normal: Vector2 = Vector2.ZERO) -> void:
+	velocity.y = -gravity_direction * jump_speed_pixels()
+	if not is_zero_approx(wall_normal.x):
+		wall_jump_velocity_x = wall_normal.x * GameConfig.tiles_to_pixels(GameConfig.WALL_JUMP_HORIZONTAL_SPEED)
+		wall_jump_push_remaining = GameConfig.WALL_JUMP_PUSH_DURATION
+		velocity.x = wall_jump_velocity_x
 	_set_state(State.JUMPING)
 
 func trigger_roll() -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT or state == State.ROLLING:
 		return
-	if not is_on_floor():
+	if not is_supported():
 		return
 	roll_time_remaining = GameConfig.ROLL_DURATION
 	_set_roll_collision(true)
@@ -143,6 +177,9 @@ func die(reason: String = "damage") -> void:
 	current_health = 0.0
 	GameState.set_run_health(current_health)
 	health_changed.emit(current_health, maximum_health)
+	ability_controller.cancel_active_effects()
+	wall_jump_push_remaining = 0.0
+	set_detectable(true)
 	_set_roll_collision(false)
 	_set_state(State.DEAD)
 	died.emit(reason)
@@ -155,6 +192,10 @@ func enter_revival_wait() -> void:
 	_set_state(State.REVIVAL_WAIT)
 
 func revive_at(checkpoint_position: Vector2, restored_health: float = -1.0) -> void:
+	ability_controller.cancel_active_effects(true)
+	wall_jump_push_remaining = 0.0
+	set_gravity_direction(1.0)
+	set_detectable(true)
 	global_position = checkpoint_position
 	velocity = Vector2.ZERO
 	current_health = maximum_health if restored_health < 0.0 else clampf(restored_health, 1.0, maximum_health)
@@ -169,7 +210,7 @@ func revive_at(checkpoint_position: Vector2, restored_health: float = -1.0) -> v
 	health_changed.emit(current_health, maximum_health)
 
 func run_speed_pixels() -> float:
-	return GameConfig.tiles_to_pixels(GameConfig.SPEED)
+	return GameConfig.tiles_to_pixels(GameConfig.SPEED) * WorldSpeed.player_speed_multiplier
 
 func jump_speed_pixels() -> float:
 	return sqrt(2.0 * GameConfig.GRAVITY * GameConfig.tiles_to_pixels(effective_max_jump_tiles()))
@@ -179,6 +220,38 @@ func melee_power() -> float:
 
 func can_use_weapons() -> bool:
 	return state != State.DEAD and state != State.REVIVAL_WAIT
+
+func can_activate_abilities() -> bool:
+	return state != State.DEAD and state != State.REVIVAL_WAIT
+
+func trigger_ability(ability_id: StringName) -> bool:
+	return ability_controller.activate_ability(ability_id)
+
+func ability_cooldown_remaining(ability_id: StringName) -> float:
+	return ability_controller.cooldown_remaining(ability_id)
+
+func is_supported() -> bool:
+	# CharacterBody2D evaluates floor contacts relative to up_direction. The
+	# gravity setter flips up_direction, so is_on_floor() remains the correct
+	# support query even while gravity points upward.
+	return is_on_floor()
+
+func set_gravity_direction(direction: float) -> void:
+	gravity_direction = -1.0 if direction < 0.0 else 1.0
+	up_direction = Vector2(0.0, -gravity_direction)
+	if sprite != null:
+		sprite.flip_v = gravity_direction < 0.0
+
+func set_detectable(value: bool) -> void:
+	if detectable == value:
+		_apply_feedback_color()
+		return
+	detectable = value
+	detectability_changed.emit(detectable)
+	_apply_feedback_color()
+
+func is_detectable() -> bool:
+	return detectable
 
 func _try_automatic_melee() -> void:
 	var target: Node = melee_controller.try_attack(self, melee_power())
@@ -199,11 +272,13 @@ func _update_melee_animation(delta: float) -> void:
 
 func _finish_roll() -> void:
 	_set_roll_collision(false)
-	_set_state(State.RUNNING if is_on_floor() else State.FALLING)
+	_set_state(State.RUNNING if is_supported() else State.FALLING)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("jump"):
 		trigger_jump()
+	elif event.is_action_released("jump"):
+		release_jump()
 	elif event.is_action_pressed("roll"):
 		trigger_roll()
 
@@ -250,6 +325,10 @@ func _play_state_animation() -> void:
 			_play_animation("fall")
 		State.ROLLING:
 			_play_animation("roll")
+		State.GLIDING:
+			_play_animation("fall")
+		State.DASHING:
+			_play_animation("run")
 		State.DEAD:
 			_play_animation("dead")
 
@@ -262,14 +341,19 @@ func _update_feedback(delta: float) -> void:
 			active_statuses.erase(status_id)
 		else:
 			active_statuses[status_id] = remaining
-	var burning := active_statuses.has(&"burn")
-	burn_particles.emitting = burning
+	burn_particles.emitting = active_statuses.has(&"burn")
+	_apply_feedback_color()
+
+func _apply_feedback_color() -> void:
+	if sprite == null:
+		return
+	var alpha := 1.0 if detectable else GameConfig.INVISIBILITY_ALPHA
 	if damage_flash_remaining > 0.0:
-		sprite.modulate = Color(1.0, 0.2, 0.2, 1.0)
-	elif burning:
-		sprite.modulate = Color(1.0, 0.65, 0.3, 1.0)
-	elif sprite.modulate != Color.WHITE:
-		sprite.modulate = Color.WHITE
+		sprite.modulate = Color(1.0, 0.2, 0.2, alpha)
+	elif active_statuses.has(&"burn"):
+		sprite.modulate = Color(1.0, 0.65, 0.3, alpha)
+	else:
+		sprite.modulate = Color(1.0, 1.0, 1.0, alpha)
 
 func _build_animations(character_id: int) -> void:
 	var base := "res://assets/Characters/%d/Png/Character Sprite" % character_id

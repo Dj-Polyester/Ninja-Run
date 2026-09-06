@@ -30,6 +30,7 @@ var stuck_elapsed := 0.0
 var safe_checkpoint = SAFE_CHECKPOINT_SCRIPT.new()
 
 func _ready() -> void:
+	WorldSpeed.reset()
 	GameState.reset_run()
 	world_streamer.reset(int(GameState.run.seed))
 	start_x = player.global_position.x

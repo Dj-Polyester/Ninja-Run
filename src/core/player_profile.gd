@@ -3,6 +3,7 @@ extends RefCounted
 
 const GAME_CONFIG_SCRIPT := preload("res://src/core/game_config.gd")
 const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
+const ABILITY_CATALOG_SCRIPT := preload("res://src/data/ability_catalog.gd")
 
 const CURRENT_SAVE_VERSION := 1
 const DEFAULT_CHARACTER_ID := 1
@@ -79,17 +80,30 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 		)
 	result["stat_levels"] = stat_levels
 
-	var unlocked_abilities := _sanitize_string_array(raw.get("unlocked_abilities"), [DEFAULT_ABILITY_ID])
+	var requested_abilities := _sanitize_string_array(raw.get("unlocked_abilities"), [DEFAULT_ABILITY_ID])
+	var unlocked_abilities: Array = []
+	for id in requested_abilities:
+		if ABILITY_CATALOG_SCRIPT.is_known(StringName(id)):
+			unlocked_abilities.append(id)
 	if not unlocked_abilities.has(DEFAULT_ABILITY_ID):
 		unlocked_abilities.push_front(DEFAULT_ABILITY_ID)
 	result["unlocked_abilities"] = unlocked_abilities
-	result["equipped_abilities"] = _sanitize_equipped(
+	result["equipped_abilities"] = _sanitize_ability_equipment(
 		raw.get("equipped_abilities"),
 		unlocked_abilities,
 		GAME_CONFIG_SCRIPT.NUM_EQUIPABLE_ABILITIES,
 		[DEFAULT_ABILITY_ID]
 	)
-	result["ability_levels"] = _sanitize_level_dictionary(raw.get("ability_levels"), result.ability_levels, 1)
+	var ability_levels := _sanitize_level_dictionary(raw.get("ability_levels"), result.ability_levels, 1)
+	for raw_id in ability_levels.keys():
+		var ability = ABILITY_CATALOG_SCRIPT.get_by_id(StringName(raw_id))
+		if ability == null:
+			ability_levels.erase(raw_id)
+		else:
+			ability_levels[raw_id] = clampi(int(ability_levels[raw_id]), 1, ability.max_level)
+	if not ability_levels.has(DEFAULT_ABILITY_ID):
+		ability_levels[DEFAULT_ABILITY_ID] = 1
+	result["ability_levels"] = ability_levels
 
 	var unlocked_weapons := _sanitize_string_array(raw.get("unlocked_weapons"), [])
 	result["unlocked_weapons"] = unlocked_weapons
@@ -156,6 +170,21 @@ static func _sanitize_equipped(value, unlocked: Array, limit: int, fallback: Arr
 			result.append(id)
 			if result.size() >= limit:
 				break
+	return result
+
+static func _sanitize_ability_equipment(value, unlocked: Array, limit: int, fallback: Array) -> Array:
+	var requested := _sanitize_equipped(value, unlocked, limit, fallback)
+	var result: Array = []
+	for id in requested:
+		if ABILITY_CATALOG_SCRIPT.get_by_id(StringName(id)) == null:
+			continue
+		var compatible := true
+		for equipped_id in result:
+			if not ABILITY_CATALOG_SCRIPT.are_compatible(StringName(id), StringName(equipped_id)):
+				compatible = false
+				break
+		if compatible:
+			result.append(id)
 	return result
 
 static func _sanitize_level_dictionary(value, fallback: Dictionary, minimum: int = 0) -> Dictionary:

@@ -198,6 +198,7 @@ func _segment(start_tile: int, width_tiles: int, height_tile: int, optional_rout
 		"height_tile": height_tile,
 		"optional_route": optional_route,
 		"ceiling": ceiling,
+		"breakable": true,
 	}
 
 func _mandatory_segments(platforms: Array[Dictionary]) -> Array[Dictionary]:

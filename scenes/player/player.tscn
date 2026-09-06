@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://src/gameplay/player/player.gd" id="1_player"]
 [ext_resource type="Script" path="res://src/gameplay/combat/automatic_melee_controller.gd" id="2_melee"]
 [ext_resource type="Script" path="res://src/gameplay/combat/weapon_controller.gd" id="3_weapon"]
+[ext_resource type="Script" path="res://src/gameplay/abilities/ability_controller.gd" id="4_abilities"]
 
 [sub_resource type="RectangleShape2D" id="RectangleStanding"]
 size = Vector2(34, 58)
@@ -47,3 +48,6 @@ shape = SubResource("CircleMelee")
 [node name="WeaponController" type="Node2D" parent="."]
 position = Vector2(24, -4)
 script = ExtResource("3_weapon")
+
+[node name="AbilityController" type="Node" parent="."]
+script = ExtResource("4_abilities")

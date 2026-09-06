@@ -6,6 +6,7 @@ const BIOME_DATA_SCRIPT := preload("res://src/data/biome_data.gd")
 const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
 const WEAPON_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/combat/weapon_inventory_service.gd")
+const ABILITY_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/abilities/ability_inventory_service.gd")
 
 signal profile_changed
 signal run_changed
@@ -99,6 +100,36 @@ func upgrade_stat(stat_id: StringName) -> int:
 
 func shooting_unlocked() -> bool:
 	return WEAPON_INVENTORY_SERVICE_SCRIPT.shooting_unlocked(profile)
+
+func is_ability_unlocked(ability_id: StringName) -> bool:
+	return ABILITY_INVENTORY_SERVICE_SCRIPT.is_unlocked(profile, ability_id)
+
+func is_ability_equipped(ability_id: StringName) -> bool:
+	return ABILITY_INVENTORY_SERVICE_SCRIPT.is_equipped(profile, ability_id)
+
+func unlock_ability(ability_id: StringName) -> int:
+	var result: int = ABILITY_INVENTORY_SERVICE_SCRIPT.unlock(profile, ability_id)
+	if result == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func equip_ability(ability_id: StringName) -> int:
+	var result: int = ABILITY_INVENTORY_SERVICE_SCRIPT.equip(profile, ability_id)
+	if result == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func unequip_ability(ability_id: StringName) -> int:
+	var result: int = ABILITY_INVENTORY_SERVICE_SCRIPT.unequip(profile, ability_id)
+	if result == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func upgrade_ability(ability_id: StringName) -> int:
+	var result: int = ABILITY_INVENTORY_SERVICE_SCRIPT.upgrade(profile, ability_id)
+	if result == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
 
 func is_weapon_unlocked(weapon_id: StringName) -> bool:
 	return WEAPON_INVENTORY_SERVICE_SCRIPT.is_unlocked(profile, weapon_id)

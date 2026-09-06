@@ -12,10 +12,24 @@ const COUNTDOWN_SECS := 5.0
 const NUM_EQUIPPABLE_WEAPONS := 3
 const NUM_EQUIPABLE_ABILITIES := 4
 const MAX_GLIDE_DURATION := 2.0
+const GLIDE_GRAVITY_FACTOR := 0.22
 const DASH_SPEED := 14.0
 const DASH_TILES := 4.0
 const EXPLODE_RADIUS := 3.0
+const EXPLODE_DAMAGE := 40.0
+const EXPLODE_EFFECT_DURATION := 0.45
 const COOLDOWN_PERIOD := 8.0
+const WALL_JUMP_HORIZONTAL_SPEED := 3.0
+const WALL_JUMP_PUSH_DURATION := 0.18
+const INVISIBILITY_ALPHA := 0.35
+
+# Slow-down uses explicit subsystem multipliers instead of Engine.time_scale,
+# keeping UI/cooldowns deterministic while later enemy systems can consume the
+# same movement/fire/projectile knobs.
+const SLOW_TIME_PLAYER_SPEED_MULTIPLIER := 0.60
+const SLOW_TIME_ENEMY_MOVE_MULTIPLIER := 0.60
+const SLOW_TIME_ENEMY_FIRE_INTERVAL_MULTIPLIER := 1.50
+const SLOW_TIME_PROJECTILE_SPEED_MULTIPLIER := 0.65
 
 # Phase 6 persistent stat progression. Values are expressed as source-level
 # tuning constants because task.md explicitly exposes each stat's bounds,

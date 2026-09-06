@@ -23,6 +23,12 @@ const WEAPON_DATA_SCRIPT := preload("res://src/data/weapon_data.gd")
 const WEAPON_CATALOG_SCRIPT := preload("res://src/data/weapon_catalog.gd")
 const WEAPON_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/combat/weapon_inventory_service.gd")
 const WEAPON_PROJECTILE_SCENE := preload("res://scenes/combat/weapon_projectile.tscn")
+const ABILITY_CATALOG_SCRIPT := preload("res://src/data/ability_catalog.gd")
+const ABILITY_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/abilities/ability_inventory_service.gd")
+const ABILITY_PLAYER_STUB_SCRIPT := preload("res://tests/fixtures/ability_player_stub.gd")
+const CLIMB_ABILITY_SCRIPT := preload("res://src/gameplay/abilities/climb_ability.gd")
+const GLIDE_ABILITY_SCRIPT := preload("res://src/gameplay/abilities/glide_ability.gd")
+const FLY_ABILITY_SCRIPT := preload("res://src/gameplay/abilities/fly_ability.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -125,8 +131,19 @@ func _run() -> void:
 	await test_hazard_placement_is_seeded()
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
+	test_ability_definitions_are_valid()
+	test_ability_equipment_limit_and_conflict()
+	await test_jump_air_jump_levels()
+	test_climb_wall_jump_count()
+	test_glide_duration()
+	await test_reverse_gravity_semantics()
+	test_fly_allows_unlimited_air_jumps()
+	await test_dash_distance_and_cooldown()
+	await test_explode_damage_and_destructible_terrain()
+	await test_slow_down_uses_world_multipliers()
+	await test_invisibility_detectability_and_duration()
 
-	print("\nPhase 1+2+3+4+5+6+7+8 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7+8+9 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -148,6 +165,13 @@ func test_config_values_are_valid() -> void:
 	_expect(GameConfig.ENEMY_COLLISION_MASK > 0, "enemy collision mask must reserve at least one physics layer")
 	_expect(GameConfig.MELEE_RANGE_TILES > 0.0, "melee range must be positive")
 	_expect(GameConfig.MELEE_ATTACK_INTERVAL > 0.0, "melee attack interval must be positive")
+	_expect(GameConfig.NUM_EQUIPABLE_ABILITIES > 0, "ability equipment limit must be positive")
+	_expect(GameConfig.MAX_GLIDE_DURATION > 0.0, "Glide duration must be positive")
+	_expect(GameConfig.GLIDE_GRAVITY_FACTOR > 0.0 and GameConfig.GLIDE_GRAVITY_FACTOR < 1.0, "Glide gravity factor must reduce but not reverse gravity")
+	_expect(GameConfig.DASH_SPEED > GameConfig.SPEED, "Dash speed must exceed normal run speed")
+	_expect(GameConfig.DASH_TILES > 0.0, "Dash distance must be positive")
+	_expect(GameConfig.EXPLODE_RADIUS > 0.0 and GameConfig.EXPLODE_DAMAGE > 0.0, "Explode radius and damage must be positive")
+	_expect(GameConfig.COOLDOWN_PERIOD > 0.0, "common ability cooldown must be positive")
 
 func test_game_state_reset_is_seeded() -> void:
 	GameState.reset_run(4242)
@@ -399,9 +423,13 @@ func test_player_jump_limit() -> void:
 	var player = setup.player
 	player.trigger_jump()
 	_expect(player.velocity.y < 0.0, "grounded jump must apply upward velocity")
-	var first_velocity: float = player.velocity.y
+	await get_tree().physics_frame
+	player.velocity.y = 0.0
 	player.trigger_jump()
-	_expect(is_equal_approx(player.velocity.y, first_velocity), "Phase 1 jump must not allow an air jump")
+	_expect(player.velocity.y < 0.0, "default Jump level 1 must allow one air jump")
+	player.velocity.y = 0.0
+	player.trigger_jump()
+	_expect(is_zero_approx(player.velocity.y), "default Jump level 1 must reject a second air jump before landing")
 	await _free_node(setup.root)
 
 func test_roll_changes_hitbox() -> void:
@@ -1605,6 +1633,265 @@ func test_level_applies_biome_context() -> void:
 	_expect(is_zero_approx(player.temporary_jump_modifier), "Tundra must clear Snow's temporary modifier")
 	await _free_node(level)
 
+func test_ability_definitions_are_valid() -> void:
+	var expected_ids := [
+		"jump",
+		"climb",
+		"glide",
+		"reverse_gravity",
+		"fly",
+		"dash",
+		"shooting",
+		"explode",
+		"slow_down_time",
+		"invisibility",
+	]
+	_expect(ABILITY_CATALOG_SCRIPT.ORDERED.size() == expected_ids.size(), "Phase 9 must define every requested ability plus the existing Shooting ability")
+	var seen: Dictionary = {}
+	for index in ABILITY_CATALOG_SCRIPT.ORDERED.size():
+		var ability = ABILITY_CATALOG_SCRIPT.ORDERED[index]
+		_expect(ability.is_valid(), "ability resource '%s' must be valid" % ability.display_name)
+		_expect(String(ability.id) == expected_ids[index], "ability catalog order must remain deterministic at index %d" % index)
+		_expect(not seen.has(String(ability.id)), "ability ids must be unique")
+		seen[String(ability.id)] = true
+	_expect(ABILITY_CATALOG_SCRIPT.JUMP.max_level == 3, "Jump must expose three upgrade levels")
+	_expect(ABILITY_CATALOG_SCRIPT.CLIMB.max_level == 2, "Climb must expose two upgrade levels")
+	_expect(not ABILITY_CATALOG_SCRIPT.JUMP.has_cooldown, "Jump must not use the action-ability cooldown")
+	_expect(not ABILITY_CATALOG_SCRIPT.REVERSE_GRAVITY.has_cooldown, "Reverse Gravity must toggle directly on jump input without action cooldown")
+	_expect(ABILITY_CATALOG_SCRIPT.DASH.has_cooldown, "Dash must use the common cooldown")
+	_expect(ABILITY_CATALOG_SCRIPT.EXPLODE.has_cooldown, "Explode must use the common cooldown")
+
+func test_ability_equipment_limit_and_conflict() -> void:
+	var profile: Dictionary = PLAYER_PROFILE_SCRIPT.create_default()
+	_expect(
+		ABILITY_INVENTORY_SERVICE_SCRIPT.unlock(profile, &"reverse_gravity") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS,
+		"Reverse Gravity must be unlockable through the ability inventory model"
+	)
+	_expect(
+		ABILITY_INVENTORY_SERVICE_SCRIPT.equip(profile, &"reverse_gravity") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.INCOMPATIBLE,
+		"Jump and Reverse Gravity must be rejected as an incompatible equipment pair"
+	)
+	_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.unequip(profile, &"jump") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "default Jump must be unequippable")
+	_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.equip(profile, &"reverse_gravity") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "Reverse Gravity must equip after Jump is removed")
+	for id in [&"dash", &"glide", &"fly", &"explode"]:
+		_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.unlock(profile, id) == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "ability '%s' must unlock" % id)
+	var fill_ids := [&"dash", &"glide", &"fly"]
+	for id in fill_ids:
+		_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.equip(profile, id) == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "ability '%s' must equip within the configured limit" % id)
+	_expect(profile.equipped_abilities.size() == GameConfig.NUM_EQUIPABLE_ABILITIES, "ability equipment must stop at NUM_EQUIPABLE_ABILITIES")
+	_expect(
+		ABILITY_INVENTORY_SERVICE_SCRIPT.equip(profile, &"explode") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.EQUIPMENT_LIMIT,
+		"the fifth simultaneously equipped ability must be rejected"
+	)
+	_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.upgrade(profile, &"jump") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "Jump level 1 must upgrade to level 2")
+	_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.upgrade(profile, &"jump") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "Jump level 2 must upgrade to level 3")
+	_expect(ABILITY_INVENTORY_SERVICE_SCRIPT.upgrade(profile, &"jump") == ABILITY_INVENTORY_SERVICE_SCRIPT.Result.MAX_LEVEL, "Jump must clamp at level 3")
+	var raw: Dictionary = PLAYER_PROFILE_SCRIPT.create_default()
+	raw.unlocked_abilities = ["jump", "reverse_gravity"]
+	raw.equipped_abilities = ["jump", "reverse_gravity"]
+	var sanitized := PLAYER_PROFILE_SCRIPT.sanitize(raw)
+	_expect(sanitized.equipped_abilities == ["jump"], "save sanitization must remove incompatible Jump + Reverse Gravity equipment")
+	raw.unlocked_abilities = ["jump", "not_a_real_ability"]
+	raw.equipped_abilities = ["not_a_real_ability"]
+	sanitized = PLAYER_PROFILE_SCRIPT.sanitize(raw)
+	_expect(not sanitized.unlocked_abilities.has("not_a_real_ability"), "save sanitization must remove unknown ability ids")
+	_expect(sanitized.equipped_abilities.is_empty(), "unknown ability ids must never survive as equipped runtime abilities")
+
+func test_jump_air_jump_levels() -> void:
+	for level in range(1, 4):
+		GameState.reset_profile()
+		GameState.profile.ability_levels["jump"] = level
+		var setup := await _spawn_grounded_player(false)
+		var player = setup.player
+		player.trigger_jump()
+		await get_tree().physics_frame
+		_expect(not player.is_supported(), "Jump level %d grounded takeoff must leave floor support" % level)
+		for air_index in level:
+			player.velocity.y = 0.0
+			player.trigger_jump()
+			_expect(player.velocity.y < 0.0, "Jump level %d must allow air jump %d" % [level, air_index + 1])
+		player.velocity.y = 0.0
+		player.trigger_jump()
+		_expect(is_zero_approx(player.velocity.y), "Jump level %d must reject air jumps beyond its upgrade level" % level)
+		var runtime = player.ability_controller.ability(&"jump")
+		runtime.on_support_contact()
+		player.velocity.y = 0.0
+		player.trigger_jump()
+		_expect(player.velocity.y < 0.0, "landing reset must restore Jump level %d air-jump budget" % level)
+		await _free_node(setup.root)
+
+func test_climb_wall_jump_count() -> void:
+	var stub = ABILITY_PLAYER_STUB_SCRIPT.new()
+	stub.on_wall = true
+	stub.wall_normal = Vector2.LEFT
+	var climb = CLIMB_ABILITY_SCRIPT.new().setup(ABILITY_CATALOG_SCRIPT.CLIMB, stub, null, 2)
+	_expect(climb.try_wall_jump(), "Climb level 2 must allow the first wall jump")
+	_expect(stub.last_jump_wall_normal == Vector2.LEFT, "wall jump must push using the contacted wall normal")
+	_expect(climb.try_wall_jump(), "Climb level 2 must allow the second wall jump before landing")
+	_expect(not climb.try_wall_jump(), "Climb level 2 must reject a third wall jump before landing")
+	climb.on_support_contact()
+	_expect(climb.try_wall_jump(), "floor support must reset the Climb wall-jump budget")
+	stub.free()
+
+func test_glide_duration() -> void:
+	var stub = ABILITY_PLAYER_STUB_SCRIPT.new()
+	stub.supported = false
+	stub.velocity = Vector2(0.0, 120.0)
+	var glide = GLIDE_ABILITY_SCRIPT.new().setup(ABILITY_CATALOG_SCRIPT.GLIDE, stub, null, 1)
+	var half_duration := GameConfig.MAX_GLIDE_DURATION * 0.5
+	_expect(is_equal_approx(glide.gravity_multiplier(half_duration, true), GameConfig.GLIDE_GRAVITY_FACTOR), "Glide must reduce gravity while jump remains held during a fall")
+	_expect(is_equal_approx(glide.gravity_multiplier(half_duration, true), GameConfig.GLIDE_GRAVITY_FACTOR), "Glide must remain active through MAX_GLIDE_DURATION")
+	_expect(is_equal_approx(glide.gravity_multiplier(0.01, true), 1.0), "Glide must stop reducing gravity after MAX_GLIDE_DURATION")
+	glide.on_support_contact()
+	_expect(is_equal_approx(glide.gravity_multiplier(0.01, true), GameConfig.GLIDE_GRAVITY_FACTOR), "landing must reset Glide duration")
+	_expect(is_equal_approx(glide.gravity_multiplier(0.01, false), 1.0), "releasing jump must stop Glide immediately")
+	stub.free()
+
+func test_reverse_gravity_semantics() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities = ["jump", "reverse_gravity"]
+	GameState.profile.equipped_abilities = ["reverse_gravity"]
+	var player = await _spawn_player(false)
+	_expect(is_equal_approx(player.gravity_direction, 1.0) and player.up_direction == Vector2.UP, "player must start with normal downward gravity")
+	player.trigger_jump()
+	_expect(is_equal_approx(player.gravity_direction, -1.0), "Reverse Gravity jump activation must invert gravity")
+	_expect(player.up_direction == Vector2.DOWN, "Reverse Gravity must invert CharacterBody2D floor/ceiling semantics through up_direction")
+	_expect(player.sprite.flip_v, "Reverse Gravity must provide upside-down visual feedback")
+	player.trigger_jump()
+	_expect(is_equal_approx(player.gravity_direction, 1.0) and player.up_direction == Vector2.UP, "a second Reverse Gravity jump activation must toggle gravity back")
+	await _free_node(player)
+
+func test_fly_allows_unlimited_air_jumps() -> void:
+	var stub = ABILITY_PLAYER_STUB_SCRIPT.new()
+	stub.supported = false
+	var fly = FLY_ABILITY_SCRIPT.new().setup(ABILITY_CATALOG_SCRIPT.FLY, stub, null, 1)
+	for index in 12:
+		stub.velocity.y = 0.0
+		_expect(fly.try_jump(), "Fly must permit repeated air jump %d without a finite jump budget" % (index + 1))
+	_expect(stub.jump_calls == 12, "Fly must dispatch every requested air jump")
+	stub.free()
+
+func test_dash_distance_and_cooldown() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities = ["jump", "dash"]
+	GameState.profile.equipped_abilities = ["dash"]
+	var player = await _spawn_player(false)
+	var start_x: float = player.global_position.x
+	_expect(player.trigger_ability(&"dash"), "equipped Dash must activate")
+	_expect(player.ability_cooldown_remaining(&"dash") > 0.0, "Dash activation must start the common cooldown")
+	var frames := 0
+	while player.ability_controller.is_dashing() and frames < 120:
+		await get_tree().physics_frame
+		frames += 1
+	var travelled: float = player.global_position.x - start_x
+	var expected := GameConfig.tiles_to_pixels(GameConfig.DASH_TILES)
+	_expect(frames < 120, "Dash must finish from travelled distance rather than run indefinitely")
+	_expect(absf(travelled - expected) <= 1.0, "Dash must travel exactly DASH_TILES independent of frame count (actual %.3f, expected %.3f)" % [travelled, expected])
+	_expect(not player.trigger_ability(&"dash"), "Dash must reject reactivation while cooldown remains")
+	await _free_node(player)
+
+	var holder := Node2D.new()
+	add_child(holder)
+	var wall := StaticBody2D.new()
+	wall.collision_layer = 2
+	var wall_collision := CollisionShape2D.new()
+	var wall_shape := RectangleShape2D.new()
+	wall_shape.size = Vector2(32.0, 600.0)
+	wall_collision.shape = wall_shape
+	wall.add_child(wall_collision)
+	wall.position = Vector2(160.0, 0.0)
+	holder.add_child(wall)
+	player = PLAYER_SCENE.instantiate()
+	player.position = Vector2.ZERO
+	holder.add_child(player)
+	await get_tree().process_frame
+	start_x = player.global_position.x
+	_expect(player.trigger_ability(&"dash"), "a fresh Dash runtime must activate before collision testing")
+	frames = 0
+	while player.ability_controller.is_dashing() and frames < 120:
+		await get_tree().physics_frame
+		frames += 1
+	travelled = player.global_position.x - start_x
+	_expect(frames < 120, "Dash must terminate when a blocking collision prevents progress")
+	_expect(travelled > 0.0 and travelled < expected - 1.0, "blocking collision must end Dash before DASH_TILES is reached")
+	await _free_node(holder)
+
+func test_explode_damage_and_destructible_terrain() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities = ["jump", "explode"]
+	GameState.profile.equipped_abilities = ["explode"]
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(GameConfig.tiles_to_pixels(1.0), 0.0), 200.0, true)
+	var far_enemy = _spawn_melee_enemy(player.global_position + Vector2(GameConfig.tiles_to_pixels(GameConfig.EXPLODE_RADIUS + 2.0), 0.0), 200.0, true)
+	_expect(player.trigger_ability(&"explode"), "equipped Explode must activate")
+	_expect(is_equal_approx(enemy.current_health, 200.0 - GameConfig.EXPLODE_DAMAGE), "Explode must damage enemies inside EXPLODE_RADIUS")
+	_expect(is_equal_approx(far_enemy.current_health, 200.0), "Explode must not damage enemies outside EXPLODE_RADIUS")
+	await _free_node(enemy)
+	await _free_node(far_enemy)
+	await _free_node(player)
+
+	var streamer = STREAMER_SCRIPT.new()
+	add_child(streamer)
+	streamer.reset(91919)
+	var protected_coords := Vector2i(0, GameConfig.BASE_PLATFORM_HEIGHT)
+	var protected_source: int = streamer.terrain_layer.get_cell_source_id(protected_coords)
+	var protected_center: Vector2 = streamer.terrain_layer.to_global(streamer.terrain_layer.map_to_local(protected_coords))
+	_expect(protected_source != -1, "Explode terrain test requires the authored starting platform")
+	_expect(streamer.break_tiles_in_radius(protected_center, 0.25) == 0, "protected starting terrain must not be destructible")
+	_expect(streamer.terrain_layer.get_cell_source_id(protected_coords) == protected_source, "protected terrain must remain after Explode query")
+	var breakable_coords := Vector2i.ZERO
+	var found_breakable := false
+	for raw_coords in streamer.breakable_cells.keys():
+		var coords: Vector2i = raw_coords
+		if bool(streamer.breakable_cells[coords]) and streamer.terrain_layer.get_cell_source_id(coords) != -1:
+			breakable_coords = coords
+			found_breakable = true
+			break
+	_expect(found_breakable, "procedural generator must mark generated terrain as breakable for Explode")
+	if found_breakable:
+		var breakable_center: Vector2 = streamer.terrain_layer.to_global(streamer.terrain_layer.map_to_local(breakable_coords))
+		_expect(streamer.break_tiles_in_radius(breakable_center, 0.25) == 1, "Explode terrain query must erase a breakable generated tile")
+		_expect(streamer.terrain_layer.get_cell_source_id(breakable_coords) == -1, "breakable generated tile must be removed from the TileMapLayer")
+	await _free_node(streamer)
+
+func test_slow_down_uses_world_multipliers() -> void:
+	WorldSpeed.reset()
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities = ["jump", "slow_down_time"]
+	GameState.profile.equipped_abilities = ["slow_down_time"]
+	var player = await _spawn_player(false)
+	var engine_scale_before := Engine.time_scale
+	_expect(player.trigger_ability(&"slow_down_time"), "equipped Slow Down Time must activate")
+	_expect(WorldSpeed.is_slow_active(), "Slow Down Time must activate WorldSpeed state")
+	_expect(is_equal_approx(WorldSpeed.player_speed_multiplier, GameConfig.SLOW_TIME_PLAYER_SPEED_MULTIPLIER), "Slow Down Time must apply the configured player-speed multiplier")
+	_expect(is_equal_approx(WorldSpeed.enemy_move_multiplier, GameConfig.SLOW_TIME_ENEMY_MOVE_MULTIPLIER), "Slow Down Time must expose the configured enemy movement multiplier")
+	_expect(is_equal_approx(WorldSpeed.enemy_fire_interval_multiplier, GameConfig.SLOW_TIME_ENEMY_FIRE_INTERVAL_MULTIPLIER), "Slow Down Time must expose the configured enemy firing-interval multiplier")
+	_expect(is_equal_approx(WorldSpeed.projectile_speed_multiplier, GameConfig.SLOW_TIME_PROJECTILE_SPEED_MULTIPLIER), "Slow Down Time must expose the configured projectile-speed multiplier")
+	_expect(is_equal_approx(player.run_speed_pixels(), GameConfig.tiles_to_pixels(GameConfig.SPEED) * GameConfig.SLOW_TIME_PLAYER_SPEED_MULTIPLIER), "player auto-run must consume the WorldSpeed player multiplier")
+	_expect(is_equal_approx(Engine.time_scale, engine_scale_before), "Slow Down Time must not modify Engine.time_scale")
+	WorldSpeed._process(WorldSpeed.slow_remaining + 0.01)
+	_expect(not WorldSpeed.is_slow_active(), "WorldSpeed multipliers must reset when slow duration expires")
+	_expect(is_equal_approx(WorldSpeed.player_speed_multiplier, 1.0), "expired Slow Down Time must restore player speed")
+	await _free_node(player)
+	WorldSpeed.reset()
+
+func test_invisibility_detectability_and_duration() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_abilities = ["jump", "invisibility"]
+	GameState.profile.equipped_abilities = ["invisibility"]
+	var player = await _spawn_player(false)
+	_expect(player.detectable, "player must start detectable")
+	_expect(player.trigger_ability(&"invisibility"), "equipped Invisibility must activate")
+	_expect(not player.detectable and not player.is_detectable(), "Invisibility must change explicit gameplay detectability, not only presentation")
+	_expect(is_equal_approx(player.sprite.modulate.a, GameConfig.INVISIBILITY_ALPHA), "Invisibility must provide transparency as visual feedback")
+	var runtime = player.ability_controller.ability(&"invisibility")
+	_expect(runtime.duration_remaining > 0.0, "Invisibility duration must come from the persistent invisibility-duration stat")
+	player.ability_controller.tick(runtime.duration_remaining + 0.01)
+	_expect(player.detectable, "Invisibility must restore detectability when its duration expires")
+	_expect(is_equal_approx(player.sprite.modulate.a, 1.0), "expired Invisibility must restore player alpha")
+	_expect(player.ability_cooldown_remaining(&"invisibility") > 0.0, "Invisibility activation must start the common cooldown")
+	await _free_node(player)
+
 func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)
 	if FileAccess.file_exists(path):
@@ -1647,8 +1934,9 @@ func _spawn_player(reset_profile: bool = true):
 	await get_tree().process_frame
 	return player
 
-func _spawn_grounded_player() -> Dictionary:
-	GameState.reset_profile()
+func _spawn_grounded_player(reset_profile: bool = true) -> Dictionary:
+	if reset_profile:
+		GameState.reset_profile()
 	var holder := Node2D.new()
 	add_child(holder)
 	var floor := StaticBody2D.new()

@@ -18,6 +18,7 @@ run/main_scene="res://scenes/main.tscn"
 [autoload]
 
 GameConfig="*res://src/core/game_config.gd"
+WorldSpeed="*res://src/gameplay/abilities/world_speed_controller.gd"
 GameState="*res://src/core/game_state.gd"
 SaveManager="*res://src/core/save_manager.gd"
 

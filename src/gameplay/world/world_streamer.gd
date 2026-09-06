@@ -15,6 +15,7 @@ var run_seed := 1
 var terrain_layer: TileMapLayer
 var runtime_nodes_by_chunk: Dictionary = {}
 var falling_tiles_by_coord: Dictionary = {}
+var breakable_cells: Dictionary = {}
 
 var generated_until_tile: int:
 	get:
@@ -39,6 +40,7 @@ func reset(seed_value: int) -> void:
 	_ensure_terrain_layer()
 	_clear_runtime_nodes()
 	terrain_layer.clear()
+	breakable_cells.clear()
 	active_chunks.clear()
 	run_seed = seed_value
 	biome_sequence.reset(seed_value)
@@ -126,6 +128,7 @@ func _paint_start_platform() -> void:
 			"height_tile": GameConfig.BASE_PLATFORM_HEIGHT,
 			"optional_route": false,
 			"ceiling": false,
+			"breakable": false,
 		}],
 		"bonus_spawn_tiles": [],
 		"persistent_start": true,
@@ -150,6 +153,7 @@ func _paint_segment(segment: Dictionary, biome: BiomeData, skipped_cells: Dictio
 	var height := int(segment.height_tile)
 	for index in width:
 		var map_coords := Vector2i(start_tile + index, height)
+		breakable_cells[map_coords] = bool(segment.get("breakable", true))
 		if skipped_cells.has(map_coords):
 			continue
 		var atlas_coords := biome.atlas_coords_for_segment(index, width)
@@ -161,8 +165,35 @@ func _erase_chunk(spec: Dictionary) -> void:
 		var width := int(platform.width_tiles)
 		var height := int(platform.height_tile)
 		for index in width:
-			terrain_layer.erase_cell(Vector2i(start_tile + index, height))
+			var map_coords := Vector2i(start_tile + index, height)
+			terrain_layer.erase_cell(map_coords)
+			breakable_cells.erase(map_coords)
 	_remove_runtime_nodes(spec)
+
+func break_tiles_in_radius(global_center: Vector2, radius_tiles: float) -> int:
+	if radius_tiles <= 0.0 or terrain_layer == null:
+		return 0
+	var center := terrain_layer.local_to_map(terrain_layer.to_local(global_center))
+	var radius_cells := ceili(radius_tiles)
+	var broken := 0
+	for y in range(center.y - radius_cells, center.y + radius_cells + 1):
+		for x in range(center.x - radius_cells, center.x + radius_cells + 1):
+			var coords := Vector2i(x, y)
+			if Vector2(coords - center).length() > radius_tiles + 0.001:
+				continue
+			if not bool(breakable_cells.get(coords, false)):
+				continue
+			if terrain_layer.get_cell_source_id(coords) != -1:
+				terrain_layer.erase_cell(coords)
+				breakable_cells.erase(coords)
+				broken += 1
+				continue
+			var falling_tile := falling_tiles_by_coord.get(coords) as FallingTile
+			if is_instance_valid(falling_tile) and falling_tile.state != FallingTile.State.FALLING:
+				falling_tile.begin_falling_immediately()
+				breakable_cells.erase(coords)
+				broken += 1
+	return broken
 
 func _select_hazard_coords(spec: Dictionary, biome: BiomeData) -> Array[Vector2i]:
 	var selected: Array[Vector2i] = []
