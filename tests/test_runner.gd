@@ -18,6 +18,7 @@ const PLAYER_PROFILE_SCRIPT := preload("res://src/core/player_profile.gd")
 const STAT_DATA_SCRIPT := preload("res://src/data/stat_data.gd")
 const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
+const MELEE_DUMMY_ENEMY_SCRIPT := preload("res://tests/fixtures/melee_dummy_enemy.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -84,6 +85,12 @@ func _run() -> void:
 	test_stat_levels_sanitize_to_limits()
 	await test_runtime_player_uses_upgraded_stats()
 	test_run_health_uses_upgraded_maximum_health()
+	await test_melee_detector_configuration()
+	await test_automatic_melee_attacks_nearest_target()
+	await test_automatic_melee_uses_upgraded_power_and_damage_info()
+	await test_automatic_melee_respects_cooldown()
+	await test_automatic_melee_ignores_invalid_targets()
+	await test_automatic_melee_stops_when_player_is_dead()
 	test_phase3_biome_metadata()
 	test_snow_modifier_is_seeded_and_bounded()
 	test_snow_generator_uses_effective_jump()
@@ -99,7 +106,7 @@ func _run() -> void:
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
 
-	print("\nPhase 1+2+3+4+5+6 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -118,6 +125,9 @@ func test_config_values_are_valid() -> void:
 	_expect(GameConfig.COUNTDOWN_SECS > 0.0, "revival countdown must be positive")
 	_expect(GameConfig.STUCK_PROGRESS_THRESHOLD > 0.0, "stuck progress threshold must be positive")
 	_expect(GameConfig.SAFE_CHECKPOINT_INTERVAL_TILES > 0.0, "safe checkpoint interval must be positive")
+	_expect(GameConfig.ENEMY_COLLISION_MASK > 0, "enemy collision mask must reserve at least one physics layer")
+	_expect(GameConfig.MELEE_RANGE_TILES > 0.0, "melee range must be positive")
+	_expect(GameConfig.MELEE_ATTACK_INTERVAL > 0.0, "melee attack interval must be positive")
 
 func test_game_state_reset_is_seeded() -> void:
 	GameState.reset_run(4242)
@@ -947,6 +957,107 @@ func test_run_health_uses_upgraded_maximum_health() -> void:
 	GameState.reset_run(6060)
 	_expect(is_equal_approx(float(GameState.run.health), 200.0), "new RunState health must start from the derived maximum-health stat")
 
+func test_melee_detector_configuration() -> void:
+	var player = await _spawn_player()
+	var detector: Area2D = player.get_node("MeleeDetector")
+	var collision: CollisionShape2D = detector.get_node("CollisionShape2D")
+	var circle := collision.shape as CircleShape2D
+	_expect(detector.collision_layer == 0, "melee detector must not occupy a physics collision layer")
+	_expect(detector.collision_mask == GameConfig.ENEMY_COLLISION_MASK, "melee detector must query only the configured enemy layer")
+	_expect(detector.monitoring and not detector.monitorable, "melee detector must query overlaps without acting as a target itself")
+	_expect(circle != null, "melee detector must use a circular proximity shape")
+	if circle != null:
+		_expect(is_equal_approx(circle.radius, GameConfig.tiles_to_pixels(GameConfig.MELEE_RANGE_TILES)), "melee detector radius must be derived from MELEE_RANGE_TILES")
+	await _free_node(player)
+
+func test_automatic_melee_attacks_nearest_target() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var near_enemy = _spawn_melee_enemy(player.global_position + Vector2(28.0, 0.0))
+	var far_enemy = _spawn_melee_enemy(player.global_position + Vector2(62.0, 0.0))
+	for _index in 4:
+		await get_tree().physics_frame
+		if near_enemy.damage_events > 0:
+			break
+	_expect(near_enemy.damage_events == 1, "automatic melee must attack the nearest valid enemy in range")
+	_expect(far_enemy.damage_events == 0, "automatic melee must not hit a farther target when a nearer valid target exists")
+	_expect(player.melee_controller.last_target == near_enemy, "melee controller must record the selected nearest target")
+	_expect(player.sprite.animation == &"melee", "automatic melee must play the supplied attack animation")
+	await _free_node(near_enemy)
+	await _free_node(far_enemy)
+	await _free_node(player)
+
+func test_automatic_melee_uses_upgraded_power_and_damage_info() -> void:
+	GameState.reset_profile()
+	GameState.profile.stat_levels.melee_power = 3
+	var expected_damage := float(GameState.stat_value(&"melee_power"))
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(32.0, 0.0))
+	var attacked := await _wait_for_melee_attack(player, enemy)
+	_expect(attacked, "automatic melee must fire while a valid enemy remains in proximity")
+	_expect(is_equal_approx(enemy.current_health, enemy.maximum_health - expected_damage), "melee hit damage must use the upgraded melee_power stat")
+	_expect(is_equal_approx(player.melee_controller.last_damage, expected_damage), "melee controller must expose the applied derived damage")
+	_expect(enemy.last_damage_info != null, "melee hits must use the shared DamageInfo payload")
+	if enemy.last_damage_info != null:
+		_expect(enemy.last_damage_info.source == player, "melee DamageInfo source must be the attacking player")
+		_expect(enemy.last_damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.MELEE, "automatic melee must tag hits with MELEE damage type")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_automatic_melee_respects_cooldown() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(32.0, 0.0), 1000.0)
+	var attacked := await _wait_for_melee_attack(player, enemy)
+	_expect(attacked, "cooldown test requires an initial automatic melee hit")
+	var first_count: int = enemy.damage_events
+	var remaining: float = player.melee_controller.cooldown_remaining
+	_expect(remaining > 0.0, "successful melee hit must start MELEE_ATTACK_INTERVAL cooldown")
+	await _follow_melee_target_for_seconds(player, enemy, maxf(0.05, remaining * 0.45))
+	_expect(enemy.damage_events == first_count, "enemy staying in range must not be hit again before melee cooldown expires")
+	await _follow_melee_target_for_seconds(player, enemy, remaining + 0.15)
+	_expect(enemy.damage_events >= first_count + 1, "enemy staying in range must be attacked again after melee cooldown expires")
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_automatic_melee_ignores_invalid_targets() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	var blocker := StaticBody2D.new()
+	blocker.collision_layer = GameConfig.ENEMY_COLLISION_MASK
+	blocker.collision_mask = 0
+	var blocker_collision := CollisionShape2D.new()
+	var blocker_shape := CircleShape2D.new()
+	blocker_shape.radius = 12.0
+	blocker_collision.shape = blocker_shape
+	blocker.add_child(blocker_collision)
+	blocker.global_position = player.global_position + Vector2(18.0, 0.0)
+	add_child(blocker)
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(52.0, 0.0))
+	for _index in 6:
+		blocker.global_position = player.global_position + Vector2(18.0, 0.0)
+		enemy.global_position = player.global_position + Vector2(52.0, 0.0)
+		await get_tree().physics_frame
+		if enemy.damage_events > 0:
+			break
+	_expect(enemy.damage_events == 1, "non-damageable overlaps must be ignored instead of blocking a valid melee target")
+	_expect(player.melee_controller.last_target == enemy, "nearest-target selection must consider only objects implementing the damage contract")
+	await _free_node(blocker)
+	await _free_node(enemy)
+	await _free_node(player)
+
+func test_automatic_melee_stops_when_player_is_dead() -> void:
+	GameState.reset_profile()
+	var player = await _spawn_player(false)
+	player.die("test")
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(30.0, 0.0))
+	for _index in 5:
+		enemy.global_position = player.global_position + Vector2(30.0, 0.0)
+		await get_tree().physics_frame
+	_expect(enemy.damage_events == 0, "dead players must not continue automatic melee attacks")
+	await _free_node(enemy)
+	await _free_node(player)
+
 func test_phase3_biome_metadata() -> void:
 	var expected_hazards := [
 		BiomeData.HazardType.NONE,
@@ -1249,6 +1360,37 @@ func _spawn_grounded_player() -> Dictionary:
 	for _index in 6:
 		await get_tree().physics_frame
 	return {"root": holder, "player": player}
+
+func _spawn_melee_enemy(position: Vector2, health: float = 200.0):
+	var enemy = MELEE_DUMMY_ENEMY_SCRIPT.new()
+	enemy.maximum_health = health
+	enemy.current_health = health
+	enemy.collision_layer = GameConfig.ENEMY_COLLISION_MASK
+	enemy.collision_mask = 0
+	var collision := CollisionShape2D.new()
+	var shape := CircleShape2D.new()
+	shape.radius = 14.0
+	collision.shape = shape
+	enemy.add_child(collision)
+	enemy.global_position = position
+	add_child(enemy)
+	return enemy
+
+func _wait_for_melee_attack(player: Node2D, enemy: Node2D, max_frames: int = 12) -> bool:
+	for _index in max_frames:
+		enemy.global_position = player.global_position + Vector2(32.0, 0.0)
+		await get_tree().physics_frame
+		if int(enemy.damage_events) > 0:
+			return true
+	return false
+
+func _follow_melee_target_for_seconds(player: Node2D, enemy: Node2D, seconds: float) -> void:
+	var elapsed := 0.0
+	var tick := 1.0 / float(Engine.physics_ticks_per_second)
+	while elapsed < seconds:
+		enemy.global_position = player.global_position + Vector2(32.0, 0.0)
+		await get_tree().physics_frame
+		elapsed += tick
 
 func _free_node(node: Node) -> void:
 	if is_instance_valid(node):

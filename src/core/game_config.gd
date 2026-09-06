@@ -65,6 +65,13 @@ const PLAYER_COLLISION_WIDTH := 34.0
 const PLAYER_COLLISION_HEIGHT := 58.0
 const ROLL_HEIGHT_RATIO := 0.52
 
+# Phase 7 automatic melee combat. ENEMY_COLLISION_MASK reserves physics layer
+# 3 (bit value 4) for enemy bodies/hurtboxes so the proximity query does not
+# spend time considering terrain, pickups, or the player body.
+const ENEMY_COLLISION_MASK := 1 << 2
+const MELEE_RANGE_TILES := 1.25
+const MELEE_ATTACK_INTERVAL := 0.55
+
 const START_PLATFORM_START_TILE := -4
 const START_PLATFORM_WIDTH := 20
 const BASE_PLATFORM_HEIGHT := 8

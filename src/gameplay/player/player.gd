@@ -5,6 +5,7 @@ const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
 
 signal died(reason: String)
 signal health_changed(current: float, maximum: float)
+signal melee_attacked(target: Node, damage: float)
 
 enum State { RUNNING, JUMPING, FALLING, ROLLING, GLIDING, DASHING, DEAD, REVIVAL_WAIT }
 
@@ -19,11 +20,13 @@ var current_biome_id := BiomeData.Id.GRASS
 var temporary_jump_modifier := 0.0
 var active_statuses: Dictionary = {}
 var last_damage_info
+var melee_animation_remaining := 0.0
 
 @onready var standing_collision: CollisionShape2D = $StandingCollision
 @onready var rolling_collision: CollisionShape2D = $RollingCollision
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var burn_particles: GPUParticles2D = $BurnParticles
+@onready var melee_controller = $MeleeDetector
 
 func _ready() -> void:
 	maximum_health = float(GameState.stat_value(&"maximum_health"))
@@ -38,6 +41,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_update_feedback(delta)
+	_update_melee_animation(delta)
 	if state == State.DEAD or state == State.REVIVAL_WAIT:
 		velocity = Vector2.ZERO
 		return
@@ -60,6 +64,9 @@ func _physics_process(delta: float) -> void:
 
 	if global_position.y > GameConfig.KILL_PLANE_Y:
 		die("fall")
+		return
+
+	_try_automatic_melee()
 
 func trigger_jump() -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT or state == State.ROLLING:
@@ -166,6 +173,26 @@ func run_speed_pixels() -> float:
 func jump_speed_pixels() -> float:
 	return sqrt(2.0 * GameConfig.GRAVITY * GameConfig.tiles_to_pixels(effective_max_jump_tiles()))
 
+func melee_power() -> float:
+	return maxf(0.0, float(GameState.stat_value(&"melee_power")))
+
+func _try_automatic_melee() -> void:
+	var target: Node = melee_controller.try_attack(self, melee_power())
+	if target == null:
+		return
+	melee_animation_remaining = _animation_duration(&"melee")
+	if melee_animation_remaining <= 0.0:
+		melee_animation_remaining = GameConfig.MELEE_ATTACK_INTERVAL
+	_play_animation(&"melee")
+	melee_attacked.emit(target, melee_controller.last_damage)
+
+func _update_melee_animation(delta: float) -> void:
+	if melee_animation_remaining <= 0.0:
+		return
+	melee_animation_remaining = maxf(0.0, melee_animation_remaining - delta)
+	if melee_animation_remaining <= 0.0:
+		_play_state_animation()
+
 func _finish_roll() -> void:
 	_set_roll_collision(false)
 	_set_state(State.RUNNING if is_on_floor() else State.FALLING)
@@ -207,6 +234,9 @@ func _set_state(next_state: State) -> void:
 	if state == next_state:
 		return
 	state = next_state
+	_play_state_animation()
+
+func _play_state_animation() -> void:
 	match state:
 		State.RUNNING:
 			_play_animation("run")
@@ -247,6 +277,7 @@ func _build_animations(character_id: int) -> void:
 		_add_headless_animation(frames, "fall")
 		_add_headless_animation(frames, "roll")
 		_add_headless_animation(frames, "dead")
+		_add_headless_animation(frames, "melee")
 		sprite.sprite_frames = frames
 		return
 	_add_animation(frames, "run", base.path_join("Fast Run"), 12.0, true)
@@ -254,6 +285,7 @@ func _build_animations(character_id: int) -> void:
 	_add_animation(frames, "fall", base.path_join("Fall"), 12.0, true)
 	_add_animation(frames, "roll", base.path_join("Roll"), 14.0, true)
 	_add_animation(frames, "dead", base.path_join("Dead"), 12.0, false)
+	_add_animation(frames, "melee", base.path_join("Shoot"), 16.0, false)
 	sprite.sprite_frames = frames
 
 func _add_animation(frames: SpriteFrames, animation_name: StringName, folder: String, fps: float, looped: bool) -> void:
@@ -272,6 +304,15 @@ func _add_animation(frames: SpriteFrames, animation_name: StringName, folder: St
 func _add_headless_animation(frames: SpriteFrames, animation_name: StringName) -> void:
 	frames.add_animation(animation_name)
 	frames.set_animation_loop(animation_name, true)
+
+func _animation_duration(animation_name: StringName) -> float:
+	if sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(animation_name):
+		return 0.0
+	var frame_count := sprite.sprite_frames.get_frame_count(animation_name)
+	var fps := sprite.sprite_frames.get_animation_speed(animation_name)
+	if frame_count <= 0 or fps <= 0.0:
+		return 0.0
+	return float(frame_count) / fps
 
 func _play_animation(animation_name: StringName) -> void:
 	if sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(animation_name):
