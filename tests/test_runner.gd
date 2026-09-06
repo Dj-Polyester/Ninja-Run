@@ -50,6 +50,10 @@ const CHARACTER_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/progress
 const MOBILE_ACTION_CONTROLS_SCENE := preload("res://scenes/ui/mobile_action_controls.tscn")
 const MAIN_MENU_SCENE := preload("res://scenes/main.tscn")
 
+const PHASE16_STRESS_SEED_COUNT := 100
+const PHASE16_STRESS_TARGET_TILES := 10_000
+const PHASE16_MAX_SIMULATED_RETAINED_CHUNKS := 24
+
 var failures: Array[String] = []
 var passed := 0
 
@@ -216,8 +220,17 @@ func _run() -> void:
 	await test_phase15_weapons_screen()
 	await test_phase15_settings_screen()
 	await test_level_has_phase15_hud()
+	await test_phase16_player_jumps_onto_generated_platform()
+	await test_phase16_roll_clears_low_obstacle()
+	await test_phase16_enemy_projectile_damages_player()
+	await test_phase16_player_melee_damages_nearby_enemy()
+	await test_phase16_collectible_is_collected_during_auto_run()
+	await test_phase16_biome_transition_swaps_terrain_and_enemy_pool()
+	await test_phase16_revival_resumes_streamed_world()
+	await test_phase16_hud_reflects_game_state()
+	test_phase16_procedural_stress()
 
-	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12+13+14+15 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1-16 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -2217,10 +2230,10 @@ func test_enemy_projectile_damage_and_status() -> void:
 	var target = _spawn_enemy_target(Vector2.ZERO)
 	var projectile = ENEMY_PROJECTILE_SCENE.instantiate()
 	projectile.global_position = Vector2(160.0, 0.0)
-	add_child(projectile)
-	await get_tree().process_frame
 	var status := {"id": &"freeze", "duration": 1.5}
 	projectile.configure(null, target.global_position, 17.0, status, 480.0)
+	add_child(projectile)
+	await get_tree().process_frame
 	var health_before: float = target.current_health
 	for _index in 60:
 		await get_tree().physics_frame
@@ -3029,6 +3042,326 @@ func test_level_has_phase15_hud() -> void:
 	await _free_node(level)
 	GameState.reset_profile()
 
+func test_phase16_player_jumps_onto_generated_platform() -> void:
+	GameState.reset_profile()
+	GameState.reset_run(16001)
+	WorldSpeed.reset()
+	var holder := Node2D.new()
+	add_child(holder)
+	var streamer = STREAMER_SCRIPT.new()
+	holder.add_child(streamer)
+	streamer.reset(16001)
+	var player = PLAYER_SCENE.instantiate()
+	player.position = Vector2(128.0, 400.0)
+	holder.add_child(player)
+	for _index in 60:
+		await get_tree().physics_frame
+		if player.is_on_floor():
+			break
+	_expect(player.is_on_floor(), "Phase 16 jump integration fixture must settle the player on streamed terrain")
+	_expect(streamer.active_chunks.size() > 1, "Phase 16 jump integration requires at least one generated chunk beyond the start platform")
+	if streamer.active_chunks.size() <= 1:
+		await _free_node(holder)
+		return
+	var generated_chunk: Dictionary = streamer.active_chunks[1]
+	var mandatory := _mandatory_segments(generated_chunk)
+	_expect(not mandatory.is_empty(), "generated integration chunk must expose a mandatory landing platform")
+	if mandatory.is_empty():
+		await _free_node(holder)
+		return
+	var target: Dictionary = mandatory[0]
+	var launch_tile := GameConfig.START_PLATFORM_START_TILE + GameConfig.START_PLATFORM_WIDTH - 2
+	var launch_x := GameConfig.tiles_to_pixels(float(launch_tile))
+	for _index in 180:
+		if player.global_position.x >= launch_x or player.current_health <= 0.0:
+			break
+		await get_tree().physics_frame
+	_expect(player.current_health > 0.0 and player.is_on_floor(), "player must reach the launch point on the generated start terrain")
+	player.trigger_jump()
+	var landed_on_generated_platform := false
+	var target_start_x := GameConfig.tiles_to_pixels(float(target.start_tile))
+	var target_end_x := GameConfig.tiles_to_pixels(float(int(target.start_tile) + int(target.width_tiles)))
+	for _index in 180:
+		await get_tree().physics_frame
+		if player.current_health <= 0.0:
+			break
+		if player.is_on_floor() and player.global_position.x >= target_start_x and player.global_position.x < target_end_x:
+			landed_on_generated_platform = true
+			break
+	_expect(landed_on_generated_platform, "real player physics must jump from the start platform onto a procedurally generated mandatory platform")
+	await _free_node(holder)
+
+func test_phase16_roll_clears_low_obstacle() -> void:
+	var setup := await _spawn_grounded_player()
+	var holder: Node2D = setup.root
+	var player = setup.player
+	var standing_shape := player.standing_collision.shape as RectangleShape2D
+	var rolling_shape := player.rolling_collision.shape as RectangleShape2D
+	var standing_top: float = player.position.y - standing_shape.size.y * 0.5
+	var rolling_top: float = player.position.y + player.rolling_collision.position.y - rolling_shape.size.y * 0.5
+	var obstacle_bottom: float = lerpf(standing_top, rolling_top, 0.5)
+	var obstacle_height := 20.0
+	var obstacle := StaticBody2D.new()
+	obstacle.collision_layer = GameConfig.TERRAIN_COLLISION_LAYER
+	var obstacle_collision := CollisionShape2D.new()
+	var obstacle_shape := RectangleShape2D.new()
+	obstacle_shape.size = Vector2(96.0, obstacle_height)
+	obstacle_collision.shape = obstacle_shape
+	obstacle.add_child(obstacle_collision)
+	obstacle.position = Vector2(player.position.x + 160.0, obstacle_bottom - obstacle_height * 0.5)
+	holder.add_child(obstacle)
+	await get_tree().physics_frame
+	player.trigger_roll()
+	var cleared := false
+	var clearance_x := obstacle.position.x + obstacle_shape.size.x * 0.5 + standing_shape.size.x * 0.5
+	for _index in 60:
+		await get_tree().physics_frame
+		if player.position.x > clearance_x:
+			cleared = true
+			break
+	_expect(cleared, "rolling collision shape must let the auto-running player pass beneath a low obstacle")
+	await _free_node(holder)
+
+func test_phase16_enemy_projectile_damages_player() -> void:
+	var setup := await _spawn_grounded_player()
+	var holder: Node2D = setup.root
+	var player = setup.player
+	var projectile = ENEMY_PROJECTILE_SCENE.instantiate()
+	projectile.global_position = player.global_position + Vector2(96.0, 0.0)
+	var status := {"id": &"freeze", "duration": 1.5}
+	projectile.configure(null, player.global_position, 17.0, status, 480.0)
+	holder.add_child(projectile)
+	await get_tree().process_frame
+	var health_before: float = player.current_health
+	for _index in 45:
+		await get_tree().physics_frame
+		if player.current_health < health_before:
+			break
+	var expected_health: float = health_before - 17.0 * float(player.defense_multiplier)
+	_expect(is_equal_approx(player.current_health, expected_health), "real enemy projectile collision must damage the real player through the shared damage contract")
+	_expect(player.last_damage_info != null and player.last_damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.PROJECTILE, "real projectile/player integration must preserve PROJECTILE DamageInfo")
+	_expect(player.status_remaining(&"freeze") > 0.0, "real projectile/player integration must apply projectile status metadata")
+	await _free_node(holder)
+
+func test_phase16_player_melee_damages_nearby_enemy() -> void:
+	var setup := await _spawn_grounded_player()
+	var player = setup.player
+	var enemy = _spawn_melee_enemy(player.global_position + Vector2(32.0, 0.0), 200.0, true)
+	var health_before: float = enemy.current_health
+	var attacked := await _wait_for_melee_attack(player, enemy, 18)
+	_expect(attacked and enemy.current_health < health_before, "real player proximity detection must automatically damage a nearby enemy during auto-run")
+	_expect(enemy.last_damage_info != null and enemy.last_damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.MELEE, "automatic melee integration must deliver MELEE DamageInfo")
+	await _free_node(enemy)
+	await _free_node(setup.root)
+
+func test_phase16_collectible_is_collected_during_auto_run() -> void:
+	GameState.reset_profile()
+	var setup := await _spawn_grounded_player(false)
+	var holder: Node2D = setup.root
+	var player = setup.player
+	var pickup = COLLECTIBLE_PICKUP_SCENE.instantiate()
+	pickup.global_position = player.global_position + Vector2(96.0, 0.0)
+	holder.add_child(pickup)
+	await get_tree().process_frame
+	pickup.configure(COLLECTIBLE_CATALOG_SCRIPT.BRONZE_COIN)
+	var gold_before := GameState.gold_count()
+	for _index in 60:
+		await get_tree().physics_frame
+		if GameState.gold_count() > gold_before:
+			break
+	_expect(GameState.gold_count() == gold_before + COLLECTIBLE_CATALOG_SCRIPT.BRONZE_COIN.gold_value, "auto-running player must collect a real pickup through physics overlap")
+	await _free_node(holder)
+	GameState.reset_profile()
+
+func test_phase16_biome_transition_swaps_terrain_and_enemy_pool() -> void:
+	GameState.reset_profile()
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	level.set_physics_process(false)
+	var streamer = level.get_node("WorldStreamer")
+	var enemy_spawner = level.get_node("EnemySpawner")
+	var collectible_spawner = level.get_node("CollectibleSpawner")
+	enemy_spawner.clear()
+	collectible_spawner.clear()
+	GameState.reset_run(16006)
+	enemy_spawner.run_seed = 16006
+	collectible_spawner.run_seed = 16006
+	streamer.reset(16006)
+	var snow_tile := BiomeData.Id.SNOW * GameConfig.BIOME_INTERVAL + 6
+	streamer.update_for_player(GameConfig.tiles_to_pixels(float(snow_tile)))
+	level.apply_biome_for_tile(snow_tile)
+	await get_tree().process_frame
+	var snow_chunks: Array[Dictionary] = []
+	for spec in streamer.active_chunks:
+		if int(spec.get("biome_id", -1)) == BiomeData.Id.SNOW:
+			snow_chunks.append(spec)
+	_expect(not snow_chunks.is_empty(), "streaming across a biome boundary must materialize Snow chunks")
+	var found_snow_terrain := false
+	var found_snow_enemy := false
+	var snow_enemy_pool_valid := true
+	for spec in snow_chunks:
+		for platform in spec.get("platforms", []):
+			if bool(platform.get("ceiling", false)):
+				continue
+			var coords := Vector2i(int(platform.start_tile), int(platform.height_tile))
+			if streamer.terrain_layer.get_cell_source_id(coords) != -1:
+				found_snow_terrain = true
+				break
+		var chunk_key := int(spec.start_tile)
+		for enemy in enemy_spawner.enemies_by_chunk.get(chunk_key, []):
+			if enemy != null and is_instance_valid(enemy) and enemy.data != null:
+				found_snow_enemy = true
+				if not BiomeCatalog.SNOW.enemy_pool.has(enemy.data.id):
+					snow_enemy_pool_valid = false
+	_expect(found_snow_terrain, "Snow biome transition must paint Snow terrain rather than leaving the old terrain set active")
+	_expect(found_snow_enemy, "Snow biome transition must instantiate at least one enemy from the Snow pool")
+	_expect(snow_enemy_pool_valid, "every runtime enemy spawned in a Snow chunk must come from the Snow enemy pool")
+	_expect(level.current_biome_id == BiomeData.Id.SNOW and int(GameState.run.current_biome) == BiomeData.Id.SNOW, "biome transition must update both level context and RunState")
+	await _free_node(level)
+
+func test_phase16_revival_resumes_streamed_world() -> void:
+	GameState.reset_profile()
+	GameState.profile.revival_potions = 1
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var player = level.get_node("Player")
+	for _index in 20:
+		await get_tree().physics_frame
+	player.die("damage")
+	_expect(level.game_over_active and level.get_node("WorldStreamer").process_mode == Node.PROCESS_MODE_DISABLED, "death integration must halt the streamed world before revival")
+	level._on_revive_pressed()
+	var revived_x: float = player.global_position.x
+	for _index in 20:
+		await get_tree().physics_frame
+	_expect(not level.game_over_active and not level.revival_active, "revival integration must return the level to its active-run state")
+	_expect(level.get_node("WorldStreamer").process_mode == Node.PROCESS_MODE_INHERIT, "revival integration must resume WorldStreamer processing")
+	_expect(player.global_position.x > revived_x, "revived player must resume continuous forward running from the safe checkpoint")
+	await _free_node(level)
+
+func test_phase16_hud_reflects_game_state() -> void:
+	var profile := PLAYER_PROFILE_SCRIPT.create_default()
+	profile.gold = 11
+	profile.revival_potions = 3
+	GameState.set_profile(profile)
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	level.set_physics_process(false)
+	var player = level.get_node("Player")
+	player.take_damage(10.0)
+	GameState.add_gold(29)
+	GameState.set_distance_tiles(42)
+	level._update_hud()
+	var hud_root := "HUD/MarginContainer/VBoxContainer/"
+	var health_bar: ProgressBar = level.get_node(hud_root + "HealthBar")
+	var health_label: Label = level.get_node(hud_root + "HealthLabel")
+	var gold_label: Label = level.get_node(hud_root + "GoldLabel")
+	var potion_label: Label = level.get_node(hud_root + "PotionLabel")
+	var distance_label: Label = level.get_node(hud_root + "DistanceLabel")
+	_expect(is_equal_approx(health_bar.value, player.current_health) and health_label.text.contains(str(roundi(player.current_health))), "HUD integration must mirror live player health")
+	_expect(gold_label.text == "Gold: %d" % GameState.gold_count(), "HUD integration must mirror persistent gold from GameState")
+	_expect(potion_label.text == "Revival potions: %d" % GameState.revival_potion_count(), "HUD integration must mirror persistent revival inventory")
+	_expect(distance_label.text == "Distance: 42 tiles", "HUD integration must mirror run distance from GameState")
+	await _free_node(level)
+	GameState.reset_profile()
+
+func test_phase16_procedural_stress() -> void:
+	var total_chunks := 0
+	var total_enemy_specs := 0
+	var total_collectible_specs := 0
+	var max_retained_chunks := 0
+	var failure_message := ""
+	for seed_value in range(PHASE16_STRESS_SEED_COUNT):
+		var sequence = BIOME_SEQUENCE_SCRIPT.new(seed_value)
+		var generator = LAYOUT_GENERATOR_SCRIPT.new()
+		generator.reset(seed_value)
+		var streamer_model = STREAMER_SCRIPT.new()
+		streamer_model.run_seed = seed_value
+		streamer_model.biome_sequence.reset(seed_value)
+		var enemy_spawner = ENEMY_SPAWNER_SCRIPT.new()
+		enemy_spawner.world_streamer = streamer_model
+		enemy_spawner.run_seed = seed_value
+		var collectible_spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
+		collectible_spawner.run_seed = seed_value
+		var previous: Dictionary = {
+			"start_tile": GameConfig.START_PLATFORM_START_TILE,
+			"width_tiles": GameConfig.START_PLATFORM_WIDTH,
+			"height_tile": GameConfig.BASE_PLATFORM_HEIGHT,
+		}
+		var retained_chunks: Array[Dictionary] = []
+		while generator.generated_until_tile < PHASE16_STRESS_TARGET_TILES:
+			var start_tile: int = generator.generated_until_tile
+			var biome = sequence.get_biome_for_tile(start_tile)
+			if biome == null or not BiomeCatalog.ORDERED.has(biome):
+				failure_message = "stress seed %d resolved an invalid biome near tile %d" % [seed_value, start_tile]
+				break
+			var biome_end := sequence.get_encounter_end_tile(start_tile)
+			var spec: Dictionary = generator.next_chunk(biome, biome_end)
+			if spec.is_empty() or int(spec.get("end_tile", start_tile)) <= start_tile:
+				failure_message = "stress seed %d produced an empty/non-advancing chunk near tile %d" % [seed_value, start_tile]
+				break
+			if int(spec.get("biome_id", -1)) != biome.id:
+				failure_message = "stress seed %d produced mismatched biome metadata near tile %d" % [seed_value, start_tile]
+				break
+			var mandatory := _mandatory_segments(spec)
+			if mandatory.is_empty():
+				failure_message = "stress seed %d produced no mandatory route near tile %d" % [seed_value, start_tile]
+				break
+			for segment in mandatory:
+				if not generator.is_transition_reachable(previous, segment):
+					failure_message = "stress seed %d produced an unreachable mandatory transition near tile %d" % [seed_value, int(segment.start_tile)]
+					break
+				previous = segment
+			if not failure_message.is_empty():
+				break
+
+			for spawn_spec in enemy_spawner.spawn_specs_for_chunk(spec):
+				total_enemy_specs += 1
+				var enemy_data = ENEMY_CATALOG_SCRIPT.get_by_id(StringName(spawn_spec.enemy_id))
+				if enemy_data == null or not biome.enemy_pool.has(enemy_data.id):
+					failure_message = "stress seed %d produced an invalid/foreign enemy resource near tile %d" % [seed_value, int(spawn_spec.tile_x)]
+					break
+				if not _spawn_spec_has_platform_support(spec, int(spawn_spec.tile_x), int(spawn_spec.height_tile)):
+					failure_message = "stress seed %d placed enemy '%s' without terrain support near tile %d" % [seed_value, String(enemy_data.id), int(spawn_spec.tile_x)]
+					break
+			if not failure_message.is_empty():
+				break
+
+			for spawn_spec in collectible_spawner.spawn_specs_for_chunk(spec):
+				total_collectible_specs += 1
+				var collectible = COLLECTIBLE_CATALOG_SCRIPT.get_by_id(StringName(spawn_spec.collectible_id))
+				if collectible == null or not collectible.is_valid():
+					failure_message = "stress seed %d produced an invalid collectible resource near tile %d" % [seed_value, int(spawn_spec.tile_x)]
+					break
+				if not _spawn_spec_has_platform_support(spec, int(spawn_spec.tile_x), int(spawn_spec.height_tile)):
+					failure_message = "stress seed %d placed collectible '%s' without terrain support near tile %d" % [seed_value, String(collectible.id), int(spawn_spec.tile_x)]
+					break
+			if not failure_message.is_empty():
+				break
+
+			retained_chunks.append(spec)
+			var simulated_player_tile := maxi(0, generator.generated_until_tile - GameConfig.GENERATION_DISTANCE_AHEAD)
+			var cutoff := simulated_player_tile - GameConfig.CLEANUP_DISTANCE_BEHIND
+			var retained_after_cleanup: Array[Dictionary] = []
+			for retained_spec in retained_chunks:
+				if int(retained_spec.end_tile) >= cutoff:
+					retained_after_cleanup.append(retained_spec)
+			retained_chunks = retained_after_cleanup
+			max_retained_chunks = maxi(max_retained_chunks, retained_chunks.size())
+			total_chunks += 1
+		streamer_model.free()
+		enemy_spawner.free()
+		collectible_spawner.free()
+		if not failure_message.is_empty():
+			break
+
+	_expect(failure_message.is_empty(), failure_message if not failure_message.is_empty() else "100-seed procedural stress must complete without invalid mandatory routes/resources/spawns")
+	_expect(total_chunks > 50_000, "Phase 16 stress must exercise tens of thousands of generated chunks across 100 seeds")
+	_expect(total_enemy_specs > 0 and total_collectible_specs > 0, "Phase 16 stress must exercise both enemy and collectible placement paths")
+	_expect(max_retained_chunks <= PHASE16_MAX_SIMULATED_RETAINED_CHUNKS, "streaming cleanup model must remain bounded during 10,000+ tile stress runs")
+
 func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)
 	if FileAccess.file_exists(path):
@@ -3049,6 +3382,18 @@ func _mandatory_segments(spec: Dictionary) -> Array[Dictionary]:
 			result.append(segment)
 	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.start_tile) < int(b.start_tile))
 	return result
+
+func _spawn_spec_has_platform_support(spec: Dictionary, tile_x: int, height_tile: int) -> bool:
+	for platform in spec.get("platforms", []):
+		if bool(platform.get("ceiling", false)):
+			continue
+		if int(platform.get("height_tile", 0)) != height_tile:
+			continue
+		var start_tile := int(platform.get("start_tile", 0))
+		var width_tiles := int(platform.get("width_tiles", 0))
+		if tile_x >= start_tile and tile_x < start_tile + width_tiles:
+			return true
+	return false
 
 func _action_has_physical_key(action: StringName, keycode: Key) -> bool:
 	for event in InputMap.action_get_events(action):

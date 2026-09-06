@@ -28,7 +28,11 @@ func collect() -> int:
 	if already_collected or data == null:
 		return 0
 	already_collected = true
-	monitoring = false
+	# A physics overlap can call collect() from body_entered. Godot blocks
+	# toggling Area2D monitoring synchronously while that signal is being
+	# dispatched, so defer the state change and let already_collected guard any
+	# duplicate signal before this node is freed.
+	set_deferred("monitoring", false)
 	var awarded := maxi(0, data.gold_value)
 	if awarded > 0:
 		GameState.add_gold(awarded)
