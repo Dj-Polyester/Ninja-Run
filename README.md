@@ -1,6 +1,6 @@
 # Ninja Run
 
-Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)**, **Phase 2 (procedural world generation)**, and **Phase 3 (biome mechanics)** are implemented in this branch.
+Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)**, **Phase 2 (procedural world generation)**, **Phase 3 (biome mechanics)**, and **Phase 4 (health, damage, stuck detection, and revival/game-over loop)** are implemented in this branch.
 
 ## Requirements
 
@@ -22,9 +22,9 @@ Desktop controls:
 - **Up Arrow** — jump
 - **Down Arrow** — roll
 
-The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, the camera follows horizontal progress with look-ahead, and falling below the kill plane ends the run. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
+The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, and the camera follows horizontal progress with look-ahead. Falling below the kill plane, losing all health, or failing to make horizontal progress for `GAME_OVER_NUMBER_OF_SECS` starts the Phase 4 revival countdown. A revival potion returns the player to the most recent safe checkpoint with restored health, cleared statuses, and brief invulnerability; otherwise the countdown ends in final game-over. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
 
-## Phase 1–3 architecture
+## Phase 1–4 architecture
 
 ```text
 scenes/
@@ -46,11 +46,16 @@ src/
   data/
     biome_data.gd
   gameplay/
+    combat/
+      damage_info.gd
+      damageable_contract.gd
     hazards/
       desert_hazard.gd
       falling_tile.gd
       spike_hazard.gd
-    level/level.gd
+    level/
+      level.gd
+      safe_checkpoint.gd
     player/player.gd
     world/biome_catalog.gd
     world/biome_mechanics.gd
@@ -72,11 +77,11 @@ tests/
   test_runner.gd
 ```
 
-Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `GameState` owns current run/profile state, `SaveManager` owns persistence, player code owns movement/health/status feedback, `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
+Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `GameState` owns current run/profile state, `SaveManager` owns persistence, `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
 
 ## Configuration
 
-The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–3 actively use the following values:
+The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–4 actively use the following values:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
@@ -96,6 +101,12 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `GRAVITY` | 1800 px/s² | Player gravity |
 | `KILL_PLANE_Y` | 1050 px | Falling past this Y coordinate kills the player |
 | `DAMAGE_INVULNERABILITY` | 0.45 s | Damage re-hit protection |
+| `DAMAGE_FLASH_DURATION` | 0.12 s | Red damage-feedback duration |
+| `REVIVE_INVULNERABILITY` | 1.0 s | Protection window immediately after revival |
+| `GAME_OVER_NUMBER_OF_SECS` | 3.0 s | Maximum time without meaningful forward progress before stuck death |
+| `COUNTDOWN_SECS` | 5.0 s | Time available to use a revival potion before final game-over |
+| `STUCK_PROGRESS_THRESHOLD` | 0.125 tiles | Minimum horizontal advance that resets the stuck timer |
+| `SAFE_CHECKPOINT_INTERVAL_TILES` | 2 tiles | Minimum forward spacing between safe checkpoint captures |
 | `SNOW_JUMP_MODIFIER_MIN` | -0.5 tiles | Minimum temporary Snow jump modifier |
 | `SNOW_JUMP_MODIFIER_MAX` | +0.5 tiles | Maximum temporary Snow jump modifier |
 | `DESERT_CONTACT_DAMAGE` | 8 | Initial Desert heat damage |
@@ -112,13 +123,21 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `FORT_SPIKE_LOWER_DURATION` | 0.18 s | Fort spike lowering animation/state duration |
 | `FORT_SPIKE_RETRACT_DISTANCE` | 24 px | Vertical visual offset while a Fort spike is hidden |
 
-The remaining task-level variables (`GAME_OVER_NUMBER_OF_SECS`, `COUNTDOWN_SECS`, equipment limits, glide/dash/explode/cooldown values) are centralized now so later phases do not scatter them across gameplay scripts.
+The remaining task-level variables (equipment limits, glide/dash/explode/cooldown values) are centralized now so later phases do not scatter them across gameplay scripts.
 
 ## Player states
 
-`NinjaPlayer` defines the planned state vocabulary (`RUNNING`, `JUMPING`, `FALLING`, `ROLLING`, `GLIDING`, `DASHING`, `DEAD`, `REVIVAL_WAIT`). Phase 1 activates running, jumping, falling, rolling, and dead states; later states intentionally have no behavior until their corresponding ability/revival phases.
+`NinjaPlayer` defines the planned state vocabulary (`RUNNING`, `JUMPING`, `FALLING`, `ROLLING`, `GLIDING`, `DASHING`, `DEAD`, `REVIVAL_WAIT`). Running, jumping, falling, rolling, dead, and revival-wait states are active through Phase 4; glide and dash remain reserved for their later ability phases.
 
-Damage uses a common `take_damage(amount, damage_info)` entry point, applies the current defense multiplier, gives a short invulnerability window, flashes the character red, updates health state, and emits health changes for the HUD.
+Damage uses the common `take_damage(amount, damage_info)` entry point and the shared `DamageInfo` payload (`source`, `damage_type`, `status_effect`, `knockback`). The player exposes the full `take_damage`, `heal`, `apply_status`, and `die` contract intended for future enemies as well. Incoming damage applies `raw_damage * defense_multiplier`, gives a short invulnerability window, applies status/knockback metadata, flashes the character red, updates health state, and emits health changes for the HUD.
+
+## Health, stuck detection, revival, and game-over
+
+`level.gd` tracks actual X-position progress rather than velocity. Moving forward by at least `STUCK_PROGRESS_THRESHOLD` resets the stuck timer; remaining below that progress threshold for `GAME_OVER_NUMBER_OF_SECS` enters the same death/revival path as zero health or falling below the kill plane. The detector does not advance while the run is halted for revival/game-over, and normal SceneTree pause semantics also suspend it.
+
+The level retains a `SafeCheckpoint` containing position, biome id, and tile index. The initial spawn is a fallback checkpoint; after that, checkpoint updates occur only on grounded, living, status-free, non-invulnerable progress and are spaced by `SAFE_CHECKPOINT_INTERVAL_TILES` so a lethal hazard does not immediately overwrite the previous safe point. The current checkpoint is mirrored into `GameState.run`.
+
+On death or stuck detection, the player enters `REVIVAL_WAIT`, moving world gameplay is disabled without globally pausing the SceneTree, and a `COUNTDOWN_SECS` UI appears. If `revival_potions > 0`, the supplied revival-potion art is used on the revive button in non-headless runs. Using a potion decrements inventory, teleports to the safe checkpoint, restores health, clears active statuses, grants `REVIVE_INVULNERABILITY`, resets stuck tracking, and resumes streamed gameplay. If the countdown reaches zero, the state becomes final game-over and exposes restart/menu controls.
 
 ## Procedural world generation
 
@@ -159,7 +178,7 @@ Run the headless test suite with:
 godot --headless --path . tests/test_runner.tscn
 ```
 
-Phase 1–3 test inventory:
+Phase 1–4 test inventory:
 
 - `test_config_values_are_valid`
 - `test_game_state_reset_is_seeded`
@@ -185,13 +204,20 @@ Phase 1–3 test inventory:
 - `test_roll_changes_hitbox`
 - `test_roll_duration_restores_hitbox`
 - `test_animation_state_selection`
+- `test_common_damage_contract`
 - `test_damage_applies_defense`
 - `test_damage_invulnerability_window`
 - `test_damage_flashes_red`
 - `test_fall_sets_health_zero`
 - `test_camera_tracks_x_only`
 - `test_level_advances_distance`
-- `test_level_fall_ends_run`
+- `test_zero_health_triggers_countdown`
+- `test_stuck_player_triggers_countdown`
+- `test_safe_checkpoint_tracks_stable_progress`
+- `test_revive_consumes_potion`
+- `test_revive_restores_checkpoint`
+- `test_countdown_without_potion_ends_run`
+- `test_stuck_detection_is_suspended_during_revival`
 - `test_save_profile_round_trip`
 - `test_missing_save_creates_defaults`
 - `test_phase3_biome_metadata`
@@ -209,15 +235,15 @@ Phase 1–3 test inventory:
 - `test_streamer_cleans_runtime_hazards`
 - `test_level_applies_biome_context`
 
-Physics-sensitive tests instantiate the real player and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup.
+Physics-sensitive tests instantiate the real player and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival.
 
 ## Save data
 
-`SaveManager` reserves `user://save.json` with `save_version = 1`. Phase 1 persists only the minimal profile fields needed by the runner (selected character, maximum health, defense multiplier). Progression data is added in the persistence/progression phase.
+`SaveManager` reserves `user://save.json` with `save_version = 1`. The current minimal profile persists selected character, maximum health, defense multiplier, and revival-potion inventory. The larger profile/run-state split and remaining progression fields are added in the dedicated persistence/progression phase.
 
-## Scope after Phase 3
+## Scope after Phase 4
 
-The following requested systems are intentionally not claimed as implemented yet: revival countdown/stuck detection, upgrades, enemies, automatic melee, weapons, abilities, collectible spawning/drop tables, character shop, full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation now in place.
+The following requested systems are intentionally not claimed as implemented yet: upgrades, enemies, automatic melee, weapons, abilities, collectible spawning/drop tables, character shop, full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard and Phase 4 health/revival foundation now in place.
 
 ## Assets
 

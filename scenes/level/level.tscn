@@ -93,6 +93,19 @@ horizontal_alignment = 1
 layout_mode = 2
 text = "You fell from the run."
 horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="CountdownLabel" type="Label" parent="HUD/GameOverPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Run ends in 5"
+horizontal_alignment = 1
+
+[node name="ReviveButton" type="Button" parent="HUD/GameOverPanel/VBoxContainer"]
+custom_minimum_size = Vector2(260, 52)
+layout_mode = 2
+text = "REVIVE  ×1"
+icon_max_width = 32
 
 [node name="RestartButton" type="Button" parent="HUD/GameOverPanel/VBoxContainer"]
 custom_minimum_size = Vector2(260, 48)
@@ -106,3 +119,4 @@ text = "MAIN MENU"
 
 [connection signal="pressed" from="HUD/GameOverPanel/VBoxContainer/RestartButton" to="." method="_on_restart_pressed"]
 [connection signal="pressed" from="HUD/GameOverPanel/VBoxContainer/MenuButton" to="." method="_on_menu_pressed"]
+[connection signal="pressed" from="HUD/GameOverPanel/VBoxContainer/ReviveButton" to="." method="_on_revive_pressed"]

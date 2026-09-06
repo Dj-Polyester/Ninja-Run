@@ -1,6 +1,8 @@
 class_name NinjaPlayer
 extends CharacterBody2D
 
+const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
+
 signal died(reason: String)
 signal health_changed(current: float, maximum: float)
 
@@ -9,12 +11,14 @@ enum State { RUNNING, JUMPING, FALLING, ROLLING, GLIDING, DASHING, DEAD, REVIVAL
 var state := State.RUNNING
 var current_health := 0.0
 var maximum_health := 0.0
+var defense_multiplier := 1.0
 var roll_time_remaining := 0.0
 var invulnerability_remaining := 0.0
 var damage_flash_remaining := 0.0
 var current_biome_id := BiomeData.Id.GRASS
 var temporary_jump_modifier := 0.0
 var active_statuses: Dictionary = {}
+var last_damage_info
 
 @onready var standing_collision: CollisionShape2D = $StandingCollision
 @onready var rolling_collision: CollisionShape2D = $RollingCollision
@@ -23,6 +27,7 @@ var active_statuses: Dictionary = {}
 
 func _ready() -> void:
 	maximum_health = float(GameState.profile.get("maximum_health", 100.0))
+	defense_multiplier = maxf(0.0, float(GameState.profile.get("defense_multiplier", 1.0)))
 	current_health = maximum_health
 	_configure_collision_shapes()
 	_configure_burn_particles()
@@ -54,10 +59,7 @@ func _physics_process(delta: float) -> void:
 		_set_state(State.FALLING)
 
 	if global_position.y > GameConfig.KILL_PLANE_Y:
-		current_health = 0.0
-		GameState.set_run_health(current_health)
-		health_changed.emit(current_health, maximum_health)
-		_die("fall")
+		die("fall")
 
 func trigger_jump() -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT or state == State.ROLLING:
@@ -76,18 +78,26 @@ func trigger_roll() -> void:
 	_set_roll_collision(true)
 	_set_state(State.ROLLING)
 
-func take_damage(amount: float, _damage_info: Dictionary = {}) -> void:
+func take_damage(amount: float, damage_info = null) -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT or invulnerability_remaining > 0.0:
 		return
-	var defense := float(GameState.profile.get("defense_multiplier", 1.0))
-	current_health = maxf(0.0, current_health - maxf(0.0, amount) * defense)
+	last_damage_info = damage_info
+	var final_damage := maxf(0.0, amount) * defense_multiplier
+	if final_damage <= 0.0:
+		return
+	current_health = maxf(0.0, current_health - final_damage)
 	invulnerability_remaining = GameConfig.DAMAGE_INVULNERABILITY
 	damage_flash_remaining = GameConfig.DAMAGE_FLASH_DURATION
 	sprite.modulate = Color(1.0, 0.2, 0.2, 1.0)
+	if damage_info != null:
+		if not damage_info.status_effect.is_empty():
+			apply_status(damage_info.status_effect)
+		if damage_info.knockback != Vector2.ZERO:
+			velocity += damage_info.knockback
 	GameState.set_run_health(current_health)
 	health_changed.emit(current_health, maximum_health)
 	if current_health <= 0.0:
-		_die("damage")
+		die("damage")
 
 func heal(amount: float) -> void:
 	if amount <= 0.0 or state == State.DEAD:
@@ -119,18 +129,42 @@ func apply_status(effect: Dictionary) -> void:
 func status_remaining(status_id: StringName) -> float:
 	return float(active_statuses.get(status_id, 0.0))
 
+func die(reason: String = "damage") -> void:
+	if state == State.DEAD or state == State.REVIVAL_WAIT:
+		return
+	current_health = 0.0
+	GameState.set_run_health(current_health)
+	health_changed.emit(current_health, maximum_health)
+	_set_roll_collision(false)
+	_set_state(State.DEAD)
+	died.emit(reason)
+
+func enter_revival_wait() -> void:
+	if state != State.DEAD:
+		return
+	velocity = Vector2.ZERO
+	_set_roll_collision(false)
+	_set_state(State.REVIVAL_WAIT)
+
+func revive_at(checkpoint_position: Vector2, restored_health: float = -1.0) -> void:
+	global_position = checkpoint_position
+	velocity = Vector2.ZERO
+	current_health = maximum_health if restored_health < 0.0 else clampf(restored_health, 1.0, maximum_health)
+	active_statuses.clear()
+	burn_particles.emitting = false
+	damage_flash_remaining = 0.0
+	invulnerability_remaining = GameConfig.REVIVE_INVULNERABILITY
+	sprite.modulate = Color.WHITE
+	_set_roll_collision(false)
+	_set_state(State.FALLING)
+	GameState.set_run_health(current_health)
+	health_changed.emit(current_health, maximum_health)
+
 func run_speed_pixels() -> float:
 	return GameConfig.tiles_to_pixels(GameConfig.SPEED)
 
 func jump_speed_pixels() -> float:
 	return sqrt(2.0 * GameConfig.GRAVITY * GameConfig.tiles_to_pixels(effective_max_jump_tiles()))
-
-func _die(reason: String) -> void:
-	if state == State.DEAD:
-		return
-	_set_roll_collision(false)
-	_set_state(State.DEAD)
-	died.emit(reason)
 
 func _finish_roll() -> void:
 	_set_roll_collision(false)

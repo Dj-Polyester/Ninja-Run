@@ -1,6 +1,9 @@
 class_name SpikeHazard
 extends Area2D
 
+const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
+const DAMAGEABLE_CONTRACT_SCRIPT := preload("res://src/gameplay/combat/damageable_contract.gd")
+
 enum State { RETRACTED, RISING, EXPOSED, LOWERING }
 
 var state := State.RETRACTED
@@ -25,12 +28,10 @@ func is_damage_enabled() -> bool:
 	return state == State.EXPOSED and not hitbox.disabled
 
 func try_damage(target: Node) -> bool:
-	if not is_damage_enabled() or target == null or not target.has_method("take_damage"):
+	if not is_damage_enabled() or not DAMAGEABLE_CONTRACT_SCRIPT.supports(target):
 		return false
-	target.take_damage(GameConfig.FORT_SPIKE_DAMAGE, {
-		"source": self,
-		"damage_type": &"piercing",
-	})
+	var damage_info = DAMAGE_INFO_SCRIPT.new(self, DAMAGE_INFO_SCRIPT.DamageType.PIERCING)
+	target.take_damage(GameConfig.FORT_SPIKE_DAMAGE, damage_info)
 	return true
 
 func _physics_process(delta: float) -> void:

@@ -1,6 +1,9 @@
 class_name DesertHazard
 extends Area2D
 
+const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
+const DAMAGEABLE_CONTRACT_SCRIPT := preload("res://src/gameplay/combat/damageable_contract.gd")
+
 var tracked_bodies: Array[Node] = []
 
 @onready var damage_timer: Timer = $DamageTimer
@@ -14,31 +17,23 @@ func _ready() -> void:
 func apply_contact_damage(target: Node) -> bool:
 	if not _is_damageable(target):
 		return false
-	target.take_damage(GameConfig.DESERT_CONTACT_DAMAGE, {
-		"source": self,
-		"damage_type": &"fire",
-		"status_effect": &"burn",
-	})
-	if target.has_method("apply_status"):
-		target.apply_status({
-			"id": &"burn",
-			"duration": GameConfig.DESERT_BURN_DURATION,
-		})
+	var damage_info = DAMAGE_INFO_SCRIPT.new(
+		self,
+		DAMAGE_INFO_SCRIPT.DamageType.FIRE,
+		{"id": &"burn", "duration": GameConfig.DESERT_BURN_DURATION}
+	)
+	target.take_damage(GameConfig.DESERT_CONTACT_DAMAGE, damage_info)
 	return true
 
 func apply_burn_tick(target: Node) -> bool:
 	if not _is_damageable(target):
 		return false
-	target.take_damage(GameConfig.DESERT_BURN_TICK_DAMAGE, {
-		"source": self,
-		"damage_type": &"fire",
-		"status_effect": &"burn",
-	})
-	if target.has_method("apply_status"):
-		target.apply_status({
-			"id": &"burn",
-			"duration": GameConfig.DESERT_BURN_DURATION,
-		})
+	var damage_info = DAMAGE_INFO_SCRIPT.new(
+		self,
+		DAMAGE_INFO_SCRIPT.DamageType.FIRE,
+		{"id": &"burn", "duration": GameConfig.DESERT_BURN_DURATION}
+	)
+	target.take_damage(GameConfig.DESERT_BURN_TICK_DAMAGE, damage_info)
 	return true
 
 func _on_body_entered(body: Node) -> void:
@@ -65,7 +60,7 @@ func _on_damage_timer_timeout() -> void:
 		damage_timer.stop()
 
 func _is_damageable(target: Node) -> bool:
-	return target != null and target.has_method("take_damage")
+	return DAMAGEABLE_CONTRACT_SCRIPT.supports(target)
 
 func _configure_particles() -> void:
 	if flame_particles.process_material == null:

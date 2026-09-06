@@ -12,6 +12,8 @@ const FALLING_TILE_SCENE := preload("res://scenes/hazards/falling_tile.tscn")
 const SPIKE_HAZARD_SCENE := preload("res://scenes/hazards/spike_hazard.tscn")
 const FALLING_TILE_SCRIPT := preload("res://src/gameplay/hazards/falling_tile.gd")
 const SPIKE_HAZARD_SCRIPT := preload("res://src/gameplay/hazards/spike_hazard.gd")
+const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
+const DAMAGEABLE_CONTRACT_SCRIPT := preload("res://src/gameplay/combat/damageable_contract.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -44,13 +46,20 @@ func _run() -> void:
 	await test_roll_changes_hitbox()
 	await test_roll_duration_restores_hitbox()
 	await test_animation_state_selection()
+	await test_common_damage_contract()
 	await test_damage_applies_defense()
 	await test_damage_invulnerability_window()
 	await test_damage_flashes_red()
 	await test_fall_sets_health_zero()
 	await test_camera_tracks_x_only()
 	await test_level_advances_distance()
-	await test_level_fall_ends_run()
+	await test_zero_health_triggers_countdown()
+	await test_stuck_player_triggers_countdown()
+	await test_safe_checkpoint_tracks_stable_progress()
+	await test_revive_consumes_potion()
+	await test_revive_restores_checkpoint()
+	await test_countdown_without_potion_ends_run()
+	await test_stuck_detection_is_suspended_during_revival()
 	await test_save_profile_round_trip()
 	test_missing_save_creates_defaults()
 	test_phase3_biome_metadata()
@@ -68,7 +77,7 @@ func _run() -> void:
 	await test_streamer_cleans_runtime_hazards()
 	await test_level_applies_biome_context()
 
-	print("\nPhase 1+2+3 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -83,6 +92,10 @@ func test_config_values_are_valid() -> void:
 	_expect(GameConfig.CHUNK_MIN_SPAN > 0, "minimum chunk span must be positive")
 	_expect(GameConfig.CHUNK_MAX_SPAN >= GameConfig.CHUNK_MIN_SPAN, "chunk span range must be ordered")
 	_expect(GameConfig.BIOME_INTERVAL > GameConfig.CHUNK_MIN_SPAN, "biome interval must fit procedural chunks")
+	_expect(GameConfig.GAME_OVER_NUMBER_OF_SECS > 0.0, "stuck game-over delay must be positive")
+	_expect(GameConfig.COUNTDOWN_SECS > 0.0, "revival countdown must be positive")
+	_expect(GameConfig.STUCK_PROGRESS_THRESHOLD > 0.0, "stuck progress threshold must be positive")
+	_expect(GameConfig.SAFE_CHECKPOINT_INTERVAL_TILES > 0.0, "safe checkpoint interval must be positive")
 
 func test_game_state_reset_is_seeded() -> void:
 	GameState.reset_run(4242)
@@ -378,6 +391,27 @@ func test_animation_state_selection() -> void:
 	_expect(player.sprite.animation == &"dead", "death must select the dead animation")
 	await _free_node(setup.root)
 
+func test_common_damage_contract() -> void:
+	var player = await _spawn_player()
+	_expect(DAMAGEABLE_CONTRACT_SCRIPT.supports(player), "player must expose the common take_damage/heal/apply_status/die contract")
+	var before_health: float = player.current_health
+	var before_velocity: Vector2 = player.velocity
+	var knockback := Vector2(13.0, -27.0)
+	var damage_info = DAMAGE_INFO_SCRIPT.new(
+		player,
+		DAMAGE_INFO_SCRIPT.DamageType.FIRE,
+		{"id": &"burn", "duration": 0.75},
+		knockback
+	)
+	player.take_damage(5.0, damage_info)
+	_expect(player.last_damage_info == damage_info, "damageable targets must receive the shared DamageInfo object")
+	_expect(damage_info.source == player, "DamageInfo must retain its damage source")
+	_expect(damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.FIRE, "DamageInfo must retain its damage type")
+	_expect(player.status_remaining(&"burn") > 0.0, "DamageInfo status payload must be applied by the common damage path")
+	_expect(player.velocity == before_velocity + knockback, "DamageInfo knockback must be applied by the common damage path")
+	_expect(is_equal_approx(player.current_health, before_health - 5.0), "common damage path must still reduce health")
+	await _free_node(player)
+
 func test_damage_applies_defense() -> void:
 	GameState.profile.defense_multiplier = 0.5
 	var player = await _spawn_player(false)
@@ -448,17 +482,119 @@ func test_level_advances_distance() -> void:
 	_expect(int(GameState.run.distance_tiles) >= 1, "automatic progress must update run distance in tiles")
 	await _free_node(level)
 
-func test_level_fall_ends_run() -> void:
+func test_zero_health_triggers_countdown() -> void:
+	GameState.reset_profile()
+	GameState.profile.revival_potions = 1
 	var level = LEVEL_SCENE.instantiate()
 	add_child(level)
 	await get_tree().process_frame
 	var player = level.get_node("Player")
-	player.global_position.y = GameConfig.KILL_PLANE_Y + 10.0
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	_expect(bool(level.game_over_active), "player death must stop the active level run")
-	_expect(bool(GameState.run.game_over), "player death must mark the run as game-over")
-	_expect(level.get_node("HUD/GameOverPanel").visible, "player death must show the game-over controls")
+	player.take_damage(player.maximum_health)
+	_expect(bool(level.game_over_active), "zero health must halt the active runner loop")
+	_expect(bool(level.revival_active), "zero health must enter the revival countdown")
+	_expect(player.state == PLAYER_SCRIPT.State.REVIVAL_WAIT, "death must transition the player into REVIVAL_WAIT while the countdown is active")
+	_expect(not bool(GameState.run.game_over), "the run must not become final game-over until the revival countdown expires")
+	_expect(bool(GameState.run.revival_active), "GameState must expose an active revival countdown")
+	_expect(is_equal_approx(float(GameState.run.revival_countdown), GameConfig.COUNTDOWN_SECS), "revival countdown must start at COUNTDOWN_SECS")
+	_expect(level.get_node("HUD/GameOverPanel").visible, "death must show the revival/game-over panel")
+	_expect(level.get_node("HUD/GameOverPanel/VBoxContainer/ReviveButton").visible, "revival potion button must be visible when inventory is positive")
+	_expect(level.get_node("WorldStreamer").process_mode == Node.PROCESS_MODE_DISABLED, "world gameplay must halt during revival")
+	await _free_node(level)
+
+func test_stuck_player_triggers_countdown() -> void:
+	GameState.reset_profile()
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var player = level.get_node("Player")
+	level.last_progress_x = player.global_position.x
+	level.stuck_elapsed = 0.0
+	level._update_stuck_detection(GameConfig.GAME_OVER_NUMBER_OF_SECS + 0.01)
+	_expect(bool(level.revival_active), "lack of horizontal progress for GAME_OVER_NUMBER_OF_SECS must trigger revival")
+	_expect(String(GameState.run.death_reason) == "stuck", "stuck detection must report the stuck death reason")
+	_expect(is_zero_approx(player.current_health), "stuck detection must enter the same zero-health death path")
+	await _free_node(level)
+
+func test_safe_checkpoint_tracks_stable_progress() -> void:
+	GameState.reset_profile()
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var initial_tile: int = int(level.safe_checkpoint.tile_index)
+	for _index in 75:
+		await get_tree().physics_frame
+	_expect(bool(level.safe_checkpoint.valid), "level must always retain a valid safe checkpoint")
+	_expect(int(level.safe_checkpoint.tile_index) > initial_tile, "stable grounded progress must advance the safe checkpoint")
+	var stored: Dictionary = GameState.run.get("safe_checkpoint", {})
+	_expect(bool(stored.get("valid", false)), "safe checkpoint must be mirrored into RunState")
+	_expect(int(stored.get("tile_index", -1)) == int(level.safe_checkpoint.tile_index), "RunState checkpoint tile must match the level checkpoint")
+	await _free_node(level)
+
+func test_revive_consumes_potion() -> void:
+	GameState.reset_profile()
+	GameState.profile.revival_potions = 2
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var player = level.get_node("Player")
+	player.die("damage")
+	level._on_revive_pressed()
+	_expect(GameState.revival_potion_count() == 1, "successful revival must consume exactly one revival potion")
+	_expect(not bool(level.revival_active), "successful revival must close the revival countdown")
+	_expect(not bool(level.game_over_active), "successful revival must resume the active run")
+	_expect(not bool(GameState.run.game_over), "successful revival must keep the run alive")
+	_expect(level.get_node("WorldStreamer").process_mode == Node.PROCESS_MODE_INHERIT, "successful revival must resume world gameplay")
+	await _free_node(level)
+
+func test_revive_restores_checkpoint() -> void:
+	GameState.reset_profile()
+	GameState.profile.revival_potions = 1
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var player = level.get_node("Player")
+	var checkpoint_position: Vector2 = player.global_position + Vector2(48.0, -16.0)
+	var checkpoint_tile: int = floori(GameConfig.pixels_to_tiles(checkpoint_position.x))
+	level._capture_checkpoint(checkpoint_position, checkpoint_tile)
+	player.apply_status({"id": &"burn", "duration": 5.0})
+	player.global_position += Vector2(300.0, 120.0)
+	player.die("damage")
+	level._on_revive_pressed()
+	_expect(player.global_position == checkpoint_position, "revival must teleport the player to the last safe checkpoint")
+	_expect(is_equal_approx(player.current_health, player.maximum_health), "revival must restore player health")
+	_expect(player.active_statuses.is_empty(), "revival must clear lethal/temporary statuses")
+	_expect(player.invulnerability_remaining >= GameConfig.REVIVE_INVULNERABILITY, "revival must grant a short protection window")
+	_expect(player.state == PLAYER_SCRIPT.State.FALLING, "revived player must return to a live movement state")
+	_expect(not level.get_node("HUD/GameOverPanel").visible, "revival must hide the countdown panel")
+	await _free_node(level)
+
+func test_countdown_without_potion_ends_run() -> void:
+	GameState.reset_profile()
+	GameState.profile.revival_potions = 0
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var player = level.get_node("Player")
+	player.die("damage")
+	var revive_button: Button = level.get_node("HUD/GameOverPanel/VBoxContainer/ReviveButton")
+	_expect(not revive_button.visible, "revival button must be hidden when no potion is available")
+	level._process(GameConfig.COUNTDOWN_SECS + 0.01)
+	_expect(bool(level.final_game_over), "expired revival countdown must transition to final game-over")
+	_expect(not bool(level.revival_active), "final game-over must end the revival window")
+	_expect(bool(GameState.run.game_over), "expired countdown without revival must end the run")
+	_expect(level.get_node("HUD/GameOverPanel/VBoxContainer/Title").text == "GAME OVER", "expired countdown must show final game-over UI")
+	await _free_node(level)
+
+func test_stuck_detection_is_suspended_during_revival() -> void:
+	GameState.reset_profile()
+	var level = LEVEL_SCENE.instantiate()
+	add_child(level)
+	await get_tree().process_frame
+	var player = level.get_node("Player")
+	player.die("damage")
+	level.stuck_elapsed = 1.25
+	level._physics_process(GameConfig.GAME_OVER_NUMBER_OF_SECS * 2.0)
+	_expect(is_equal_approx(level.stuck_elapsed, 1.25), "stuck detection must not advance while revival/game-over processing has halted the run")
 	await _free_node(level)
 
 func test_save_profile_round_trip() -> void:
@@ -468,12 +604,14 @@ func test_save_profile_round_trip() -> void:
 	GameState.profile.selected_character = 7
 	GameState.profile.maximum_health = 125.0
 	GameState.profile.defense_multiplier = 0.8
+	GameState.profile.revival_potions = 4
 	_expect(SaveManager.save_profile(TEST_SAVE_PATH), "SaveManager must write a valid profile")
 	GameState.reset_profile()
 	_expect(SaveManager.load_profile(TEST_SAVE_PATH), "SaveManager must load a valid profile")
 	_expect(int(GameState.profile.selected_character) == 7, "selected character must survive a save/load round trip")
 	_expect(is_equal_approx(float(GameState.profile.maximum_health), 125.0), "maximum health must survive a save/load round trip")
 	_expect(is_equal_approx(float(GameState.profile.defense_multiplier), 0.8), "defense multiplier must survive a save/load round trip")
+	_expect(int(GameState.profile.revival_potions) == 4, "revival potion inventory must survive a save/load round trip")
 	_remove_test_save(TEST_SAVE_PATH)
 	await get_tree().process_frame
 
@@ -483,6 +621,7 @@ func test_missing_save_creates_defaults() -> void:
 	GameState.profile.maximum_health = 999.0
 	_expect(not SaveManager.load_profile(MISSING_SAVE_PATH), "loading a missing save must report that no save was loaded")
 	_expect(is_equal_approx(float(GameState.profile.maximum_health), 100.0), "missing saves must restore default profile values")
+	_expect(GameState.revival_potion_count() == 1, "missing saves must restore the default revival potion inventory")
 
 func test_phase3_biome_metadata() -> void:
 	var expected_hazards := [
