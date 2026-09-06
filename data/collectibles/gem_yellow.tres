@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CollectibleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/collectible_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"gem_yellow"
+display_name = "Yellow Gem"
+kind = 1
+texture_path = "res://assets/Collectibles/droppable/gem_yellow.png"
+gold_value = 45
+spawnable = true
+droppable = true

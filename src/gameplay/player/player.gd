@@ -19,13 +19,19 @@ var invulnerability_remaining := 0.0
 var damage_flash_remaining := 0.0
 var current_biome_id := BiomeData.Id.GRASS
 var temporary_jump_modifier := 0.0
-var active_statuses: Dictionary = {}
 var last_damage_info
 var melee_animation_remaining := 0.0
 var gravity_direction := 1.0
 var detectable := true
 var wall_jump_push_remaining := 0.0
 var wall_jump_velocity_x := 0.0
+var status_tick_flash_remaining := 0.0
+
+var active_statuses: Dictionary:
+	get:
+		if status_controller == null:
+			return {}
+		return status_controller.remaining_snapshot()
 
 @onready var standing_collision: CollisionShape2D = $StandingCollision
 @onready var rolling_collision: CollisionShape2D = $RollingCollision
@@ -34,6 +40,7 @@ var wall_jump_velocity_x := 0.0
 @onready var melee_controller = $MeleeDetector
 @onready var weapon_controller = $WeaponController
 @onready var ability_controller: AbilityController = $AbilityController
+@onready var status_controller = $StatusEffectController
 
 func _ready() -> void:
 	maximum_health = float(GameState.stat_value(&"maximum_health"))
@@ -52,6 +59,10 @@ func _physics_process(delta: float) -> void:
 	_update_feedback(delta)
 	_update_melee_animation(delta)
 	ability_controller.tick(delta)
+	if state == State.DEAD or state == State.REVIVAL_WAIT:
+		velocity = Vector2.ZERO
+		return
+	status_controller.tick(delta)
 	if state == State.DEAD or state == State.REVIVAL_WAIT:
 		velocity = Vector2.ZERO
 		return
@@ -124,7 +135,7 @@ func take_damage(amount: float, damage_info = null) -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT or invulnerability_remaining > 0.0:
 		return
 	last_damage_info = damage_info
-	var final_damage := maxf(0.0, amount) * defense_multiplier
+	var final_damage: float = maxf(0.0, amount) * defense_multiplier * status_controller.damage_taken_multiplier()
 	if final_damage <= 0.0:
 		return
 	current_health = maxf(0.0, current_health - final_damage)
@@ -132,7 +143,7 @@ func take_damage(amount: float, damage_info = null) -> void:
 	damage_flash_remaining = GameConfig.DAMAGE_FLASH_DURATION
 	sprite.modulate = Color(1.0, 0.2, 0.2, 1.0)
 	if damage_info != null:
-		if not damage_info.status_effect.is_empty():
+		if damage_info.status_effect != null:
 			apply_status(damage_info.status_effect)
 		if damage_info.knockback != Vector2.ZERO:
 			velocity += damage_info.knockback
@@ -159,17 +170,14 @@ func set_biome_context(biome: BiomeData, jump_modifier: float = 0.0) -> void:
 func effective_max_jump_tiles() -> float:
 	return maxf(0.1, GameConfig.MAX_JUMP + temporary_jump_modifier)
 
-func apply_status(effect: Dictionary) -> void:
-	var status_id := StringName(effect.get("id", &""))
-	if status_id == &"":
-		return
-	var duration := maxf(0.0, float(effect.get("duration", 0.0)))
-	active_statuses[status_id] = maxf(float(active_statuses.get(status_id, 0.0)), duration)
-	if status_id == &"burn":
-		burn_particles.emitting = duration > 0.0
+func apply_status(effect) -> bool:
+	return status_controller.apply(effect)
 
 func status_remaining(status_id: StringName) -> float:
-	return float(active_statuses.get(status_id, 0.0))
+	return status_controller.remaining(status_id)
+
+func status_stacks(status_id: StringName) -> int:
+	return status_controller.stacks(status_id)
 
 func die(reason: String = "damage") -> void:
 	if state == State.DEAD or state == State.REVIVAL_WAIT:
@@ -199,9 +207,10 @@ func revive_at(checkpoint_position: Vector2, restored_health: float = -1.0) -> v
 	global_position = checkpoint_position
 	velocity = Vector2.ZERO
 	current_health = maximum_health if restored_health < 0.0 else clampf(restored_health, 1.0, maximum_health)
-	active_statuses.clear()
+	status_controller.clear_all()
 	burn_particles.emitting = false
 	damage_flash_remaining = 0.0
+	status_tick_flash_remaining = 0.0
 	invulnerability_remaining = GameConfig.REVIVE_INVULNERABILITY
 	sprite.modulate = Color.WHITE
 	_set_roll_collision(false)
@@ -210,7 +219,7 @@ func revive_at(checkpoint_position: Vector2, restored_health: float = -1.0) -> v
 	health_changed.emit(current_health, maximum_health)
 
 func run_speed_pixels() -> float:
-	return GameConfig.tiles_to_pixels(GameConfig.SPEED) * WorldSpeed.player_speed_multiplier
+	return GameConfig.tiles_to_pixels(GameConfig.SPEED) * WorldSpeed.player_speed_multiplier * status_controller.movement_speed_multiplier()
 
 func jump_speed_pixels() -> float:
 	return sqrt(2.0 * GameConfig.GRAVITY * GameConfig.tiles_to_pixels(effective_max_jump_tiles()))
@@ -335,25 +344,48 @@ func _play_state_animation() -> void:
 func _update_feedback(delta: float) -> void:
 	invulnerability_remaining = maxf(0.0, invulnerability_remaining - delta)
 	damage_flash_remaining = maxf(0.0, damage_flash_remaining - delta)
-	for status_id in active_statuses.keys():
-		var remaining := maxf(0.0, float(active_statuses[status_id]) - delta)
-		if remaining <= 0.0:
-			active_statuses.erase(status_id)
-		else:
-			active_statuses[status_id] = remaining
-	burn_particles.emitting = active_statuses.has(&"burn")
+	status_tick_flash_remaining = maxf(0.0, status_tick_flash_remaining - delta)
+	burn_particles.emitting = status_controller != null and status_controller.emits_flames()
 	_apply_feedback_color()
 
 func _apply_feedback_color() -> void:
 	if sprite == null:
 		return
 	var alpha := 1.0 if detectable else GameConfig.INVISIBILITY_ALPHA
-	if damage_flash_remaining > 0.0:
+	if damage_flash_remaining > 0.0 or status_tick_flash_remaining > 0.0:
 		sprite.modulate = Color(1.0, 0.2, 0.2, alpha)
-	elif active_statuses.has(&"burn"):
-		sprite.modulate = Color(1.0, 0.65, 0.3, alpha)
 	else:
-		sprite.modulate = Color(1.0, 1.0, 1.0, alpha)
+		var tint: Color = status_controller.visual_tint() if status_controller != null else Color.WHITE
+		tint.a = alpha
+		sprite.modulate = tint
+
+func apply_status_tick_damage(amount: float, effect: Resource) -> void:
+	if state == State.DEAD or state == State.REVIVAL_WAIT or amount <= 0.0:
+		return
+	var final_damage: float = amount * defense_multiplier * status_controller.damage_taken_multiplier()
+	if final_damage <= 0.0:
+		return
+	current_health = maxf(0.0, current_health - final_damage)
+	if effect != null and bool(effect.blink_red_on_tick):
+		status_tick_flash_remaining = GameConfig.STATUS_TICK_FLASH_DURATION
+	GameState.set_run_health(current_health)
+	health_changed.emit(current_health, maximum_health)
+	_apply_feedback_color()
+	if current_health <= 0.0:
+		die("status")
+
+func status_effect_applied(_effect: Resource, _stacks: int) -> void:
+	burn_particles.emitting = status_controller.emits_flames()
+	_apply_feedback_color()
+
+func status_effect_ticked(effect: Resource, _stacks: int) -> void:
+	if effect != null and bool(effect.blink_red_on_tick):
+		status_tick_flash_remaining = GameConfig.STATUS_TICK_FLASH_DURATION
+	_apply_feedback_color()
+
+func status_effect_removed(_effect: Resource) -> void:
+	burn_particles.emitting = status_controller.emits_flames()
+	_apply_feedback_color()
 
 func _build_animations(character_id: int) -> void:
 	var base := "res://assets/Characters/%d/Png/Character Sprite" % character_id

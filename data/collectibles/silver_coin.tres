@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CollectibleData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/collectible_data.gd" id="1_data"]
+
+[resource]
+script = ExtResource("1_data")
+id = &"silver_coin"
+display_name = "Silver Coin"
+kind = 0
+texture_path = "res://assets/Collectibles/spawnable/coin_silver.png"
+gold_value = 3
+spawnable = true
+droppable = true

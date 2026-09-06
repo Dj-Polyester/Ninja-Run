@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/stone_chill.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"golem_1"
+display_name = "Tundra Golem"
+biome_id = 1
+minimum_encounter = 2
+movement_mode = 0
+attack_modes = 3
+base_health = 110
+health_per_level = 28
+base_damage = 18
+damage_per_level = 4
+vicinity_tiles = 5.0
+shooting_interval = 2.0
+projectile_speed_tiles = 5.0
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/golems/Golem_1/PNG/PNG Sequences"
+sprite_scale = 0.19

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StatusEffect" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/status_effect.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"arcane_burn"
+display_name = "Arcane Burn"
+duration = 1.7
+tick_interval = 0.75
+tick_damage = 3.5
+tint = Color(0.95, 0.48, 0.9, 1)
+visual_priority = 47
+emits_flames = true

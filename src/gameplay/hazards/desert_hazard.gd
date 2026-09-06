@@ -3,6 +3,7 @@ extends Area2D
 
 const DAMAGE_INFO_SCRIPT := preload("res://src/gameplay/combat/damage_info.gd")
 const DAMAGEABLE_CONTRACT_SCRIPT := preload("res://src/gameplay/combat/damageable_contract.gd")
+const BURN_STATUS := preload("res://data/status_effects/burn.tres")
 
 var tracked_bodies: Array[Node] = []
 
@@ -20,7 +21,7 @@ func apply_contact_damage(target: Node) -> bool:
 	var damage_info = DAMAGE_INFO_SCRIPT.new(
 		self,
 		DAMAGE_INFO_SCRIPT.DamageType.FIRE,
-		{"id": &"burn", "duration": GameConfig.DESERT_BURN_DURATION}
+		BURN_STATUS
 	)
 	target.take_damage(GameConfig.DESERT_CONTACT_DAMAGE, damage_info)
 	return true
@@ -31,7 +32,7 @@ func apply_burn_tick(target: Node) -> bool:
 	var damage_info = DAMAGE_INFO_SCRIPT.new(
 		self,
 		DAMAGE_INFO_SCRIPT.DamageType.FIRE,
-		{"id": &"burn", "duration": GameConfig.DESERT_BURN_DURATION}
+		BURN_STATUS
 	)
 	target.take_damage(GameConfig.DESERT_BURN_TICK_DAMAGE, damage_info)
 	return true

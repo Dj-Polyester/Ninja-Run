@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"ogre"
+display_name = "Ogre"
+biome_id = 0
+minimum_encounter = 2
+movement_mode = 0
+attack_modes = 1
+base_health = 95
+health_per_level = 24
+base_damage = 18
+damage_per_level = 4
+melee_range_tiles = 1.05
+melee_interval = 1.15
+animation_root = "res://assets/Enemies/orc-ogre-and-goblin/Ogre/PNG/PNG Sequences"
+sprite_scale = 0.2

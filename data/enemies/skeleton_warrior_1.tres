@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/armor_break.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"skeleton_warrior_1"
+display_name = "Skeleton Warrior I"
+biome_id = 5
+movement_mode = 1
+attack_modes = 1
+base_health = 58
+health_per_level = 16
+base_damage = 13
+damage_per_level = 3
+move_speed_tiles = 1.6
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/skeleton-warrior/Skeleton_Warrior_1/PNG/PNG Sequences"

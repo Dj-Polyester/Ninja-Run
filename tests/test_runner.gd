@@ -29,6 +29,21 @@ const ABILITY_PLAYER_STUB_SCRIPT := preload("res://tests/fixtures/ability_player
 const CLIMB_ABILITY_SCRIPT := preload("res://src/gameplay/abilities/climb_ability.gd")
 const GLIDE_ABILITY_SCRIPT := preload("res://src/gameplay/abilities/glide_ability.gd")
 const FLY_ABILITY_SCRIPT := preload("res://src/gameplay/abilities/fly_ability.gd")
+const ENEMY_DATA_SCRIPT := preload("res://src/data/enemy_data.gd")
+const ENEMY_CATALOG_SCRIPT := preload("res://src/data/enemy_catalog.gd")
+const ENEMY_SCENE := preload("res://scenes/enemies/enemy.tscn")
+const ENEMY_SPAWNER_SCRIPT := preload("res://src/gameplay/enemies/enemy_spawner.gd")
+const ENEMY_PROJECTILE_SCENE := preload("res://scenes/enemies/enemy_projectile.tscn")
+const ENEMY_BEAM_SCENE := preload("res://scenes/enemies/enemy_beam.tscn")
+const ENEMY_TARGET_DUMMY_SCRIPT := preload("res://tests/fixtures/enemy_target_dummy.gd")
+const STATUS_EFFECT_SCRIPT := preload("res://src/data/status_effect.gd")
+const STATUS_EFFECT_CATALOG_SCRIPT := preload("res://src/data/status_effect_catalog.gd")
+const STATUS_EFFECT_CONTROLLER_SCRIPT := preload("res://src/gameplay/status/status_effect_controller.gd")
+const STATUS_TARGET_DUMMY_SCRIPT := preload("res://tests/fixtures/status_target_dummy.gd")
+const RNG_SERVICE_SCRIPT := preload("res://src/core/rng_service.gd")
+const COLLECTIBLE_CATALOG_SCRIPT := preload("res://src/data/collectible_catalog.gd")
+const COLLECTIBLE_PICKUP_SCENE := preload("res://scenes/items/collectible_pickup.tscn")
+const COLLECTIBLE_SPAWNER_SCRIPT := preload("res://src/gameplay/items/collectible_spawner.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -142,8 +157,42 @@ func _run() -> void:
 	await test_explode_damage_and_destructible_terrain()
 	await test_slow_down_uses_world_multipliers()
 	await test_invisibility_detectability_and_duration()
+	test_enemy_biome_restriction()
+	test_enemy_level_scaling()
+	await test_enemy_patrol()
+	await test_stationary_enemy()
+	await test_enemy_melee_vicinity()
+	await test_enemy_shooting_vicinity()
+	await test_enemy_fire_interval()
+	await test_enemy_projectile_damage_and_status()
+	await test_enemy_death()
+	await test_enemy_health_bar_updates()
+	await test_enemy_spawner_is_seeded()
+	await test_streamed_enemy_cleanup()
+	test_status_effect_resources_are_valid()
+	test_status_effect_dictionary_compatibility()
+	await test_freeze()
+	await test_burn()
+	await test_blood_loss()
+	test_poison()
+	test_slow()
+	test_status_refresh_policy()
+	test_status_stack_policy()
+	test_status_expiration()
+	await test_status_damage_multiplier()
+	await test_enemy_uses_generic_status_controller()
+	test_collectible_definitions_are_valid()
+	test_gem_value_exceeds_coin()
+	await test_pickup_increases_gold()
+	test_collectible_spawn_is_seeded()
+	test_collectible_difficulty_biases_value()
+	test_enemy_drop_tables_are_valid()
+	test_enemy_drop_probability_and_count()
+	await test_enemy_death_spawns_drops()
+	await test_streamed_collectible_cleanup()
+	test_level_collectible_architecture()
 
-	print("\nPhase 1+2+3+4+5+6+7+8+9 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -165,6 +214,11 @@ func test_config_values_are_valid() -> void:
 	_expect(GameConfig.ENEMY_COLLISION_MASK > 0, "enemy collision mask must reserve at least one physics layer")
 	_expect(GameConfig.MELEE_RANGE_TILES > 0.0, "melee range must be positive")
 	_expect(GameConfig.MELEE_ATTACK_INTERVAL > 0.0, "melee attack interval must be positive")
+	_expect(GameConfig.ENEMY_MIN_PLATFORM_WIDTH > 0, "enemy spawning must require a positive platform width")
+	_expect(GameConfig.ENEMY_MAX_PER_CHUNK > 0, "enemy spawning must have a positive bounded per-chunk cap")
+	_expect(GameConfig.ENEMY_ADDITIONAL_SPAWN_CHANCE >= 0.0 and GameConfig.ENEMY_ADDITIONAL_SPAWN_CHANCE <= 1.0, "additional enemy spawn chance must be a valid probability")
+	_expect(GameConfig.ENEMY_PROJECTILE_LIFETIME > 0.0, "enemy projectile lifetime must be positive")
+	_expect(GameConfig.ENEMY_BEAM_DURATION > 0.0 and GameConfig.ENEMY_BEAM_MAX_RANGE_TILES > 0.0, "enemy beam duration and range must be positive")
 	_expect(GameConfig.NUM_EQUIPABLE_ABILITIES > 0, "ability equipment limit must be positive")
 	_expect(GameConfig.MAX_GLIDE_DURATION > 0.0, "Glide duration must be positive")
 	_expect(GameConfig.GLIDE_GRAVITY_FACTOR > 0.0 and GameConfig.GLIDE_GRAVITY_FACTOR < 1.0, "Glide gravity factor must reduce but not reverse gravity")
@@ -1897,6 +1951,636 @@ func test_invisibility_detectability_and_duration() -> void:
 	_expect(player.ability_cooldown_remaining(&"invisibility") > 0.0, "Invisibility activation must start the common cooldown")
 	await _free_node(player)
 
+func test_enemy_biome_restriction() -> void:
+	var all_enemies: Array = ENEMY_CATALOG_SCRIPT.all()
+	_expect(all_enemies.size() == 39, "Phase 10 must define every one of the 39 supplied enemy character sets")
+	var mapped_ids: Dictionary = {}
+	var mapped_animation_roots: Dictionary = {}
+	var themed_status_ids: Dictionary = {}
+	var has_stationary := false
+	var has_patrol := false
+	var has_melee_only := false
+	var has_shoot_only := false
+	var has_both := false
+	var has_projectile_shooter := false
+	var has_beam_shooter := false
+
+	for biome in BiomeCatalog.all():
+		_expect(biome.enemy_pool.size() > 1, "%s biome must map more than one enemy" % biome.display_name)
+		var first_encounter: Array = ENEMY_CATALOG_SCRIPT.available_for_biome(biome, 1)
+		_expect(first_encounter.size() > 1, "%s biome must expose more than one enemy on its first encounter" % biome.display_name)
+		var has_later_enemy := false
+		for enemy_id in biome.enemy_pool:
+			var id_string := String(enemy_id)
+			_expect(not mapped_ids.has(id_string), "enemy '%s' must be assigned to exactly one biome" % id_string)
+			mapped_ids[id_string] = biome.id
+			var data = ENEMY_CATALOG_SCRIPT.get_by_id(enemy_id)
+			_expect(data != null, "biome enemy id '%s' must resolve to EnemyData" % id_string)
+			if data == null:
+				continue
+			_expect(data.biome_id == biome.id, "enemy '%s' EnemyData biome must match its BiomeData pool" % id_string)
+			_expect(data.minimum_encounter >= 1, "enemy '%s' minimum encounter must be positive" % id_string)
+			has_later_enemy = has_later_enemy or data.minimum_encounter > 1
+			var animation_root := String(data.animation_root)
+			_expect(not animation_root.is_empty(), "enemy '%s' must reference its supplied animation set" % id_string)
+			_expect(not mapped_animation_roots.has(animation_root), "each enemy definition must map a distinct supplied animation set: %s" % animation_root)
+			mapped_animation_roots[animation_root] = id_string
+			_expect(_directory_has_png(animation_root.path_join(data.idle_animation_folder)), "enemy '%s' idle animation must resolve to supplied PNG frames" % id_string)
+			if biome.id != BiomeData.Id.GRASS:
+				var status_id := String(data.status_effect.id) if data.status_effect != null else ""
+				_expect(data.status_effect is Resource, "non-Grass enemy '%s' must reference a StatusEffect resource" % id_string)
+				_expect(not status_id.is_empty(), "non-Grass enemy '%s' must carry themed status metadata" % id_string)
+				_expect(not themed_status_ids.has(status_id), "non-Grass enemy status '%s' must be unique" % status_id)
+				themed_status_ids[status_id] = id_string
+			has_stationary = has_stationary or data.movement_mode == ENEMY_DATA_SCRIPT.MovementMode.STATIONARY
+			has_patrol = has_patrol or data.movement_mode == ENEMY_DATA_SCRIPT.MovementMode.PATROL
+			var melee: bool = data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.MELEE)
+			var shoot: bool = data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.SHOOT)
+			has_melee_only = has_melee_only or (melee and not shoot)
+			has_shoot_only = has_shoot_only or (shoot and not melee)
+			has_both = has_both or (melee and shoot)
+			if shoot:
+				has_projectile_shooter = has_projectile_shooter or data.ranged_style == ENEMY_DATA_SCRIPT.RangedStyle.PROJECTILE
+				has_beam_shooter = has_beam_shooter or data.ranged_style == ENEMY_DATA_SCRIPT.RangedStyle.BEAM
+		_expect(has_later_enemy, "%s biome must reserve at least one enemy for a later encounter" % biome.display_name)
+
+	var physical_roots := _physical_enemy_animation_roots()
+	_expect(physical_roots.size() == 39, "enemy asset tree must still expose the expected 39 character animation roots")
+	_expect(mapped_ids.size() == all_enemies.size(), "every EnemyData resource must appear in exactly one biome pool")
+	_expect(mapped_animation_roots.size() == physical_roots.size(), "every supplied enemy animation root must be mapped exactly once")
+	for root in physical_roots:
+		_expect(mapped_animation_roots.has(root), "supplied enemy animation set must be mapped: %s" % root)
+	_expect(has_stationary and has_patrol, "generic enemy data must cover stationary and patrol movement modes")
+	_expect(has_melee_only and has_shoot_only and has_both, "generic enemy data must cover melee-only, shoot-only, and hybrid attack modes")
+	_expect(has_projectile_shooter and has_beam_shooter, "enemy catalog must exercise both projectile and beam ranged styles")
+	var level = LEVEL_SCENE.instantiate()
+	_expect(level.has_node("EnemySpawner"), "level scene must own a reusable EnemySpawner")
+	level.free()
+
+func test_enemy_level_scaling() -> void:
+	var data = ENEMY_CATALOG_SCRIPT.get_by_id(&"death_knight")
+	_expect(data != null, "enemy level test requires Death Knight data")
+	if data == null:
+		return
+	_expect(is_equal_approx(data.health_for_level(1), data.base_health), "enemy level 1 health must equal base health")
+	_expect(is_equal_approx(data.damage_for_level(1), data.base_damage), "enemy level 1 damage must equal base damage")
+	_expect(is_equal_approx(data.health_for_level(3), data.base_health + data.health_per_level * 2.0), "enemy health must scale by health_per_level")
+	_expect(is_equal_approx(data.damage_for_level(3), data.base_damage + data.damage_per_level * 2.0), "enemy damage must scale by damage_per_level")
+	_expect(data.health_for_level(3) > data.health_for_level(1), "higher-level enemies must have more health")
+	_expect(data.damage_for_level(3) > data.damage_for_level(1), "higher-level enemies must deal more damage")
+	var sequence = BIOME_SEQUENCE_SCRIPT.new(9191)
+	var later_grass_tile := -1
+	for encounter in range(BiomeCatalog.ORDERED.size(), 160):
+		var tile := encounter * GameConfig.BIOME_INTERVAL
+		if sequence.get_biome_id_for_tile(tile) == BiomeData.Id.GRASS:
+			later_grass_tile = tile
+			break
+	_expect(later_grass_tile >= 0, "seeded biome sequence must eventually revisit Grass")
+	if later_grass_tile >= 0:
+		_expect(sequence.get_biome_occurrence_for_tile(later_grass_tile) >= 2, "biome occurrence counter must distinguish later encounters")
+		var later_pool: Array = ENEMY_CATALOG_SCRIPT.available_for_biome(BiomeCatalog.GRASS, sequence.get_biome_occurrence_for_tile(later_grass_tile))
+		_expect(later_pool.size() > ENEMY_CATALOG_SCRIPT.available_for_biome(BiomeCatalog.GRASS, 1).size(), "later biome encounters must unlock higher-minimum-encounter enemies")
+
+func test_enemy_patrol() -> void:
+	var target = _spawn_enemy_target(Vector2(2000.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.global_position = Vector2.ZERO
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior"), 1, target)
+	var range_pixels := GameConfig.tiles_to_pixels(enemy.data.patrol_range_tiles)
+	enemy.patrol_direction = 1.0
+	enemy.global_position.x = enemy.spawn_x + range_pixels + 1.0
+	enemy._update_movement(1.0 / 60.0)
+	_expect(enemy.patrol_direction < 0.0 and enemy.velocity.x < 0.0, "patrol enemy must turn back at the right patrol boundary")
+	enemy.patrol_direction = -1.0
+	enemy.global_position.x = enemy.spawn_x - range_pixels - 1.0
+	enemy._update_movement(1.0 / 60.0)
+	_expect(enemy.patrol_direction > 0.0 and enemy.velocity.x > 0.0, "patrol enemy must turn back at the left patrol boundary")
+	_expect(is_equal_approx(absf(enemy.velocity.x), GameConfig.tiles_to_pixels(enemy.data.move_speed_tiles) * WorldSpeed.enemy_move_multiplier), "patrol speed must consume EnemyData and WorldSpeed movement tuning")
+	await _free_node(enemy)
+	await _free_node(target)
+
+func test_stationary_enemy() -> void:
+	var target = _spawn_enemy_target(Vector2(2000.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.global_position = Vector2.ZERO
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"archer_guy"), 1, target)
+	var x_before: float = enemy.global_position.x
+	enemy._update_movement(0.1)
+	_expect(is_zero_approx(enemy.velocity.x), "stationary enemy must not receive horizontal patrol velocity")
+	_expect(is_equal_approx(enemy.global_position.x, x_before), "stationary enemy must remain at its authored horizontal position")
+	await _free_node(enemy)
+	await _free_node(target)
+
+func test_enemy_melee_vicinity() -> void:
+	var target = _spawn_enemy_target(Vector2(24.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.global_position = Vector2.ZERO
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior"), 2, target)
+	var health_before: float = target.current_health
+	_expect(enemy._try_melee_attack(), "melee enemy must attack a detectable player inside melee vicinity")
+	_expect(is_equal_approx(target.current_health, health_before - enemy.damage_amount()), "enemy melee must apply level-scaled damage")
+	_expect(target.last_damage_info != null and target.last_damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.MELEE, "enemy melee must dispatch shared MELEE DamageInfo")
+	_expect(not enemy._try_melee_attack(), "enemy melee interval must prevent an immediate repeated hit")
+	enemy.melee_cooldown_remaining = 0.0
+	target.global_position = Vector2(GameConfig.tiles_to_pixels(enemy.data.melee_range_tiles + 1.0), 0.0)
+	_expect(not enemy._try_melee_attack(), "melee enemy must not attack outside its configured melee vicinity")
+	target.global_position = Vector2(24.0, 0.0)
+	target.set_detectable(false)
+	_expect(not enemy._try_melee_attack(), "invisible player must not be acquired for enemy melee")
+	await _free_node(enemy)
+	await _free_node(target)
+
+func test_enemy_shooting_vicinity() -> void:
+	var target = _spawn_enemy_target(Vector2(GameConfig.tiles_to_pixels(3.0), 0.0))
+	var projectile_parent := Node2D.new()
+	add_child(projectile_parent)
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.global_position = Vector2.ZERO
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"archer_guy"), 1, target, projectile_parent)
+	enemy.shooting_cooldown_remaining = 0.0
+	_expect(enemy._try_shoot(), "shooting enemy must fire at a detectable player inside its configured vicinity")
+	_expect(projectile_parent.get_child_count() == 1, "projectile-style enemy attack must instantiate exactly one projectile")
+	var projectile := projectile_parent.get_child(0)
+	_expect(projectile is Area2D and projectile.has_node("CollisionShape2D"), "enemy projectile gameplay collision must be an Area2D hitbox")
+	_expect(projectile.has_node("Particles"), "enemy projectile visuals must use a separate particle emitter")
+	var count_before := projectile_parent.get_child_count()
+	enemy.shooting_cooldown_remaining = 0.0
+	target.global_position = Vector2(GameConfig.tiles_to_pixels(enemy.data.vicinity_tiles + 1.0), 0.0)
+	_expect(not enemy._try_shoot() and projectile_parent.get_child_count() == count_before, "shooting enemy must not fire outside its configured vicinity")
+	target.global_position = Vector2(GameConfig.tiles_to_pixels(3.0), 0.0)
+	target.set_detectable(false)
+	_expect(not enemy._try_shoot(), "invisible player must not be acquired for enemy shooting")
+	await _free_node(enemy)
+	await _free_node(projectile_parent)
+	target.set_detectable(true)
+
+	var beam_parent := Node2D.new()
+	add_child(beam_parent)
+	var beam_enemy = ENEMY_SCENE.instantiate()
+	add_child(beam_enemy)
+	await get_tree().process_frame
+	beam_enemy.global_position = Vector2.ZERO
+	beam_enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"frost_knight_3"), 3, target, beam_parent)
+	beam_enemy.shooting_cooldown_remaining = 0.0
+	_expect(beam_enemy._try_shoot(), "beam-style enemy must fire through the same generic shooting interface")
+	_expect(beam_parent.get_child_count() == 1, "beam-style attack must instantiate exactly one beam effect")
+	var beam := beam_parent.get_child(0)
+	_expect(beam.has_node("RayCast2D"), "beam gameplay damage must be resolved by RayCast2D rather than particles")
+	_expect(beam.has_node("Line2D") and beam.has_node("ImpactParticles"), "beam visuals must be separate from its gameplay ray")
+	await _free_node(beam_enemy)
+	await _free_node(beam_parent)
+	await _free_node(target)
+
+func test_enemy_fire_interval() -> void:
+	WorldSpeed.reset()
+	GameState.reset_profile()
+	var target = _spawn_enemy_target(Vector2(GameConfig.tiles_to_pixels(3.0), 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"archer_guy"), 1, target)
+	_expect(is_equal_approx(enemy.effective_shooting_interval(), enemy.data.shooting_interval), "default enemy shooting interval must equal EnemyData cadence")
+	var levels: Dictionary = GameState.profile.get("stat_levels", {}).duplicate(true)
+	levels["enemy_fire_interval_multiplier"] = 3
+	GameState.profile["stat_levels"] = levels
+	var profile_multiplier := float(GameState.stat_value(&"enemy_fire_interval_multiplier"))
+	_expect(profile_multiplier > 1.0, "enemy fire interval progression test requires an upgraded beneficial multiplier")
+	_expect(is_equal_approx(enemy.effective_shooting_interval(), enemy.data.shooting_interval * profile_multiplier), "enemy firing interval must consume the persistent player stat multiplier")
+	WorldSpeed.activate_slow(2.0)
+	_expect(is_equal_approx(enemy.effective_shooting_interval(), enemy.data.shooting_interval * profile_multiplier * GameConfig.SLOW_TIME_ENEMY_FIRE_INTERVAL_MULTIPLIER), "enemy firing interval must also consume WorldSpeed slow-time multiplier")
+	WorldSpeed.reset()
+	await _free_node(enemy)
+	await _free_node(target)
+	GameState.reset_profile()
+
+func test_enemy_projectile_damage_and_status() -> void:
+	var target = _spawn_enemy_target(Vector2.ZERO)
+	var projectile = ENEMY_PROJECTILE_SCENE.instantiate()
+	projectile.global_position = Vector2(160.0, 0.0)
+	add_child(projectile)
+	await get_tree().process_frame
+	var status := {"id": &"freeze", "duration": 1.5}
+	projectile.configure(null, target.global_position, 17.0, status, 480.0)
+	var health_before: float = target.current_health
+	for _index in 60:
+		await get_tree().physics_frame
+		if target.damage_events > 0:
+			break
+	_expect(is_equal_approx(target.current_health, health_before - 17.0), "enemy projectile hitbox must apply configured damage through DamageableContract")
+	_expect(target.last_damage_info != null and target.last_damage_info.damage_type == DAMAGE_INFO_SCRIPT.DamageType.PROJECTILE, "enemy projectile must dispatch PROJECTILE DamageInfo")
+	if target.last_damage_info != null:
+		_expect(target.last_damage_info.status_effect != null and String(target.last_damage_info.status_effect.id) == "freeze", "enemy projectile must carry themed EnemyData status metadata independently of visuals")
+	_expect(not target.status_effects.is_empty() and String(target.status_effects[-1].id) == "freeze", "damage target must receive projectile status metadata")
+	await _free_node(target)
+
+func test_enemy_death() -> void:
+	var target = _spawn_enemy_target(Vector2(2000.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior"), 2, target)
+	_expect(DAMAGEABLE_CONTRACT_SCRIPT.supports(enemy), "generic enemy must implement the shared damage contract")
+	enemy.take_damage(enemy.maximum_health + 1.0, DAMAGE_INFO_SCRIPT.new(target, DAMAGE_INFO_SCRIPT.DamageType.MELEE))
+	_expect(enemy.dead and is_zero_approx(enemy.current_health), "lethal enemy damage must enter dead state at zero health")
+	_expect(not enemy.can_receive_melee_attack() and not enemy.can_receive_projectile_attack(), "dead enemy must immediately stop accepting player attacks")
+	_expect(not enemy.health_bar.visible, "dead enemy health bar must be hidden")
+	await get_tree().process_frame
+	_expect(enemy.body_collision.disabled and enemy.hurtbox_collision.disabled, "enemy death must disable body and hurtbox collisions")
+	await _free_node(enemy)
+	await _free_node(target)
+
+func test_enemy_health_bar_updates() -> void:
+	var target = _spawn_enemy_target(Vector2(2000.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior"), 3, target)
+	_expect(is_equal_approx(enemy.health_bar.max_value, enemy.maximum_health), "enemy health bar maximum must match level-scaled maximum health")
+	_expect(is_equal_approx(enemy.health_bar.value, enemy.current_health), "enemy health bar value must start at current health")
+	_expect(enemy.health_bar.visible, "living enemy health bar must remain visible above the enemy")
+	enemy.take_damage(7.0)
+	_expect(enemy.health_bar.visible and is_equal_approx(enemy.health_bar.value, enemy.current_health), "enemy health bar must appear and update immediately after damage")
+	enemy.heal(enemy.maximum_health)
+	_expect(is_equal_approx(enemy.health_bar.value, enemy.maximum_health) and enemy.health_bar.visible, "enemy health bar must stay visible and update after full healing")
+	await _free_node(enemy)
+	await _free_node(target)
+
+func test_enemy_spawner_is_seeded() -> void:
+	var streamer = STREAMER_SCRIPT.new()
+	streamer.biome_sequence.reset(424242)
+	var spawner = ENEMY_SPAWNER_SCRIPT.new()
+	spawner.world_streamer = streamer
+	spawner.run_seed = 424242
+	var spec := {
+		"biome_id": BiomeData.Id.GRASS,
+		"start_tile": 16,
+		"platforms": [
+			{"start_tile": 16, "width_tiles": 8, "height_tile": 8, "optional_route": false, "ceiling": false},
+			{"start_tile": 25, "width_tiles": 9, "height_tile": 8, "optional_route": false, "ceiling": false},
+		],
+	}
+	var first: Array[Dictionary] = spawner.spawn_specs_for_chunk(spec)
+	var replay: Array[Dictionary] = spawner.spawn_specs_for_chunk(spec)
+	_expect(not first.is_empty(), "eligible streamed chunk must produce at least one deterministic enemy spawn spec")
+	_expect(first == replay, "enemy spawn selection and placement must replay exactly for the same run seed and chunk")
+	_expect(first.size() <= GameConfig.ENEMY_MAX_PER_CHUNK, "enemy chunk spawning must respect the configured per-chunk bound")
+	for spawn_spec in first:
+		_expect(BiomeCatalog.GRASS.enemy_pool.has(StringName(spawn_spec.enemy_id)), "spawned enemy id must belong to the active biome pool")
+		_expect(int(spawn_spec.level) == 1, "first Grass encounter must spawn level-1 eligible enemies")
+	streamer.free()
+	spawner.free()
+
+func test_streamed_enemy_cleanup() -> void:
+	GameState.reset_run(30303)
+	var holder := Node2D.new()
+	add_child(holder)
+	var streamer = STREAMER_SCRIPT.new()
+	holder.add_child(streamer)
+	var enemy_container := Node2D.new()
+	enemy_container.name = "EnemyContainer"
+	holder.add_child(enemy_container)
+	var projectile_container := Node2D.new()
+	projectile_container.name = "ProjectileContainer"
+	holder.add_child(projectile_container)
+	var effects := Node2D.new()
+	effects.name = "Effects"
+	holder.add_child(effects)
+	var target = ENEMY_TARGET_DUMMY_SCRIPT.new()
+	target.global_position = Vector2.ZERO
+	holder.add_child(target)
+	var spawner = ENEMY_SPAWNER_SCRIPT.new()
+	holder.add_child(spawner)
+	await get_tree().process_frame
+	streamer.biome_sequence.reset(30303)
+	spawner.configure(streamer, enemy_container, target, projectile_container, effects)
+	var spec := {
+		"biome_id": BiomeData.Id.GRASS,
+		"start_tile": 16,
+		"platforms": [{"start_tile": 16, "width_tiles": 10, "height_tile": 8, "optional_route": false, "ceiling": false}],
+	}
+	spawner._on_chunk_generated(spec)
+	_expect(enemy_container.get_child_count() > 0, "streamed chunk generation must instantiate Enemy scenes into EnemyContainer")
+	_expect(spawner.enemies_by_chunk.has(16), "EnemySpawner must track spawned enemies by streamed chunk for bounded cleanup")
+	if enemy_container.get_child_count() > 0:
+		var spawned_enemy = enemy_container.get_child(0)
+		_expect(spawned_enemy.is_in_group(&"enemies"), "streamed Enemy scene must register in the common enemies group")
+		_expect(spawned_enemy.data != null and BiomeCatalog.GRASS.enemy_pool.has(spawned_enemy.data.id), "streamed enemy must be configured from the chunk biome pool")
+	spawner._on_chunk_removed(spec)
+	await get_tree().process_frame
+	_expect(enemy_container.get_child_count() == 0, "removing a streamed chunk must release its enemy instances")
+	_expect(not spawner.enemies_by_chunk.has(16), "EnemySpawner chunk registry must not retain cleaned enemies")
+	await _free_node(holder)
+
+func test_status_effect_resources_are_valid() -> void:
+	var effects: Array = STATUS_EFFECT_CATALOG_SCRIPT.all()
+	var ids := {}
+	_expect(effects.size() >= 35, "Phase 11 status catalog must expose every themed enemy effect plus Freeze/Burn/BloodLoss/Poison/Slow")
+	for effect in effects:
+		_expect(effect is Resource and effect.get_script() == STATUS_EFFECT_SCRIPT, "status catalog entries must be StatusEffect resources")
+		if effect == null:
+			continue
+		_expect(effect.is_valid(), "status effect '%s' must have valid duration/tick/stack/runtime values" % String(effect.id))
+		_expect(not ids.has(effect.id), "status effect ids must be unique: '%s'" % String(effect.id))
+		ids[effect.id] = true
+	for required_id in [&"freeze", &"burn", &"blood_loss", &"poison", &"slow"]:
+		_expect(ids.has(required_id), "status catalog must include required '%s' effect" % String(required_id))
+
+func test_status_effect_dictionary_compatibility() -> void:
+	var resolved = STATUS_EFFECT_CATALOG_SCRIPT.resolve({"id": &"freeze", "duration": 2.25})
+	_expect(resolved != null and resolved.id == &"freeze", "legacy status dictionaries must resolve to canonical StatusEffect resources")
+	_expect(resolved != null and is_equal_approx(resolved.duration, 2.25), "legacy status dictionaries must be able to override canonical duration")
+	var canonical = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"freeze")
+	_expect(canonical != null and is_equal_approx(canonical.duration, 1.4), "legacy overrides must duplicate rather than mutate the shared canonical status resource")
+	var info = DAMAGE_INFO_SCRIPT.new(null, DAMAGE_INFO_SCRIPT.DamageType.FIRE, {"id": &"burn", "duration": 0.75})
+	_expect(info.status_effect != null and info.status_effect.id == &"burn", "DamageInfo must normalize old status payloads at the combat boundary")
+
+func test_freeze() -> void:
+	WorldSpeed.reset()
+	var player = await _spawn_player()
+	player.set_physics_process(false)
+	var freeze = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"freeze")
+	var normal_speed: float = player.run_speed_pixels()
+	_expect(player.apply_status(freeze), "Freeze must be accepted by the player's generic status controller")
+	_expect(player.status_remaining(&"freeze") > 0.0, "Freeze must track remaining duration")
+	_expect(is_equal_approx(player.run_speed_pixels(), normal_speed * freeze.movement_speed_multiplier), "Freeze must slow automatic running through the generic movement multiplier")
+	_expect(is_equal_approx(player.sprite.modulate.r, freeze.tint.r) and is_equal_approx(player.sprite.modulate.g, freeze.tint.g) and is_equal_approx(player.sprite.modulate.b, freeze.tint.b), "Freeze must provide ice-blue player modulation feedback")
+	player.status_controller.tick(freeze.duration + 0.01)
+	_expect(is_zero_approx(player.status_remaining(&"freeze")), "Freeze must expire after its configured duration")
+	_expect(is_equal_approx(player.run_speed_pixels(), normal_speed), "Freeze expiration must restore normal automatic run speed")
+	await _free_node(player)
+
+func test_burn() -> void:
+	var player = await _spawn_player()
+	player.set_physics_process(false)
+	var burn = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"burn")
+	_expect(player.apply_status(burn), "Burn must be accepted by the player's generic status controller")
+	_expect(player.status_controller.emits_flames(), "Burn metadata must request flame presentation")
+	_expect(player.burn_particles.emitting, "Burn application must activate the player's GPUParticles2D flame feedback")
+	_expect(is_equal_approx(player.sprite.modulate.r, burn.tint.r) and is_equal_approx(player.sprite.modulate.g, burn.tint.g), "Burn must tint the player independently of damage collision logic")
+	player.status_controller.clear_all()
+	_expect(not player.burn_particles.emitting, "removing Burn must stop flame particles immediately")
+	await _free_node(player)
+
+func test_blood_loss() -> void:
+	var player = await _spawn_player()
+	player.set_physics_process(false)
+	var blood_loss = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"blood_loss")
+	var health_before: float = player.current_health
+	player.apply_status(blood_loss)
+	player.status_controller.tick(blood_loss.tick_interval)
+	var expected_damage: float = blood_loss.tick_damage * player.defense_multiplier
+	_expect(is_equal_approx(player.current_health, health_before - expected_damage), "BloodLoss must deal periodic damage through StatusEffect.on_tick")
+	_expect(player.status_tick_flash_remaining > 0.0, "BloodLoss ticks must request the periodic red blink feedback")
+	_expect(player.sprite.modulate.r > player.sprite.modulate.g and player.sprite.modulate.r > player.sprite.modulate.b, "BloodLoss tick feedback must visibly blink red")
+	await _free_node(player)
+
+func test_poison() -> void:
+	var target = STATUS_TARGET_DUMMY_SCRIPT.new()
+	var controller = STATUS_EFFECT_CONTROLLER_SCRIPT.new()
+	controller.configure(target)
+	var poison = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"poison")
+	controller.apply(poison)
+	controller.tick(poison.tick_interval)
+	_expect(target.tick_damage_events == 1, "Poison must tick at its configured interval")
+	_expect(is_equal_approx(target.total_tick_damage, poison.tick_damage), "Poison must dispatch configured periodic damage")
+	_expect(target.ticked_ids == [&"poison"], "Poison on_tick hook must be observable on the affected target")
+	controller.free()
+	target.free()
+
+func test_slow() -> void:
+	var target = STATUS_TARGET_DUMMY_SCRIPT.new()
+	var controller = STATUS_EFFECT_CONTROLLER_SCRIPT.new()
+	controller.configure(target)
+	var slow = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"slow")
+	controller.apply(slow)
+	_expect(is_equal_approx(controller.movement_speed_multiplier(), slow.movement_speed_multiplier), "Slow must expose its configured movement multiplier through the generic controller")
+	_expect(target.tick_damage_events == 0, "Slow must not invent periodic damage when its resource defines none")
+	controller.free()
+	target.free()
+
+func test_status_refresh_policy() -> void:
+	var target = STATUS_TARGET_DUMMY_SCRIPT.new()
+	var controller = STATUS_EFFECT_CONTROLLER_SCRIPT.new()
+	controller.configure(target)
+	var freeze = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"freeze")
+	controller.apply(freeze)
+	controller.tick(freeze.duration * 0.5)
+	_expect(controller.remaining(&"freeze") < freeze.duration, "REFRESH policy fixture must consume duration before reapplication")
+	controller.apply(freeze)
+	_expect(is_equal_approx(controller.remaining(&"freeze"), freeze.duration), "REFRESH stack policy must reset remaining duration without adding stacks")
+	_expect(controller.stacks(&"freeze") == 1, "REFRESH stack policy must keep one stack")
+	controller.free()
+	target.free()
+
+func test_status_stack_policy() -> void:
+	var target = STATUS_TARGET_DUMMY_SCRIPT.new()
+	var controller = STATUS_EFFECT_CONTROLLER_SCRIPT.new()
+	controller.configure(target)
+	var blood_loss = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"blood_loss")
+	for _index in 4:
+		controller.apply(blood_loss)
+	_expect(controller.stacks(&"blood_loss") == blood_loss.max_stacks, "STACK policy must clamp at StatusEffect.max_stacks")
+	controller.tick(blood_loss.tick_interval)
+	_expect(is_equal_approx(target.total_tick_damage, blood_loss.tick_damage * float(blood_loss.max_stacks)), "stacked periodic status damage must scale with the active stack count")
+	controller.free()
+	target.free()
+
+func test_status_expiration() -> void:
+	var target = STATUS_TARGET_DUMMY_SCRIPT.new()
+	var controller = STATUS_EFFECT_CONTROLLER_SCRIPT.new()
+	controller.configure(target)
+	var slow = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"slow")
+	controller.apply(slow)
+	controller.tick(slow.duration + 0.1)
+	_expect(not controller.has_effect(&"slow") and controller.is_empty(), "expired status effects must be removed from the active controller")
+	_expect(target.removed_ids == [&"slow"], "status expiration must call StatusEffect.on_remove exactly once")
+	_expect(is_equal_approx(controller.movement_speed_multiplier(), 1.0), "status expiration must restore the neutral movement multiplier")
+	controller.free()
+	target.free()
+
+func test_status_damage_multiplier() -> void:
+	var player = await _spawn_player()
+	player.set_physics_process(false)
+	var armor_break = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"armor_break")
+	player.apply_status(armor_break)
+	var health_before: float = player.current_health
+	player.invulnerability_remaining = 0.0
+	player.take_damage(10.0, DAMAGE_INFO_SCRIPT.new(null, DAMAGE_INFO_SCRIPT.DamageType.MELEE))
+	var expected_damage: float = 10.0 * player.defense_multiplier * armor_break.damage_taken_multiplier
+	_expect(is_equal_approx(player.current_health, health_before - expected_damage), "damage-amplifying statuses must compose with the player's persistent defense multiplier")
+	await _free_node(player)
+
+func test_enemy_uses_generic_status_controller() -> void:
+	var target = _spawn_enemy_target(Vector2(2000.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	add_child(enemy)
+	await get_tree().process_frame
+	enemy.configure(ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior"), 1, target)
+	var freeze = STATUS_EFFECT_CATALOG_SCRIPT.get_by_id(&"freeze")
+	var info = DAMAGE_INFO_SCRIPT.new(target, DAMAGE_INFO_SCRIPT.DamageType.GENERIC, freeze)
+	enemy.take_damage(1.0, info)
+	_expect(enemy.status_remaining(&"freeze") > 0.0, "generic Enemy must apply status metadata carried by incoming DamageInfo")
+	_expect(is_equal_approx(enemy.status_controller.movement_speed_multiplier(), freeze.movement_speed_multiplier), "Enemy and player must reuse the same StatusEffectController movement semantics")
+	_expect(is_equal_approx(enemy.sprite.modulate.b, freeze.tint.b), "generic Enemy must expose status tint feedback through the same resource metadata")
+	await _free_node(enemy)
+	await _free_node(target)
+
+func test_collectible_definitions_are_valid() -> void:
+	var ids: Dictionary = {}
+	_expect(COLLECTIBLE_CATALOG_SCRIPT.ALL.size() == 6, "Phase 12 must define bronze/silver/gold coins and three supplied gem variants")
+	for collectible in COLLECTIBLE_CATALOG_SCRIPT.ALL:
+		_expect(collectible != null and collectible.is_valid(), "every collectible resource must have an id, positive gold value, and texture")
+		if collectible == null:
+			continue
+		var id_string := String(collectible.id)
+		_expect(not ids.has(id_string), "collectible ids must be unique: %s" % id_string)
+		ids[id_string] = true
+		_expect(FileAccess.file_exists(collectible.texture_path), "collectible '%s' must reference a supplied asset" % id_string)
+		_expect(collectible.spawnable and collectible.droppable, "Phase 12 collectible definitions must be eligible for procedural placement and data-driven drops")
+
+func test_gem_value_exceeds_coin() -> void:
+	_expect(COLLECTIBLE_CATALOG_SCRIPT.minimum_gem_value() > COLLECTIBLE_CATALOG_SCRIPT.maximum_coin_value(), "every gem gold value must exceed every coin gold value")
+	_expect(COLLECTIBLE_CATALOG_SCRIPT.BRONZE_COIN.gold_value < COLLECTIBLE_CATALOG_SCRIPT.SILVER_COIN.gold_value, "silver coin must be worth more than bronze coin")
+	_expect(COLLECTIBLE_CATALOG_SCRIPT.SILVER_COIN.gold_value < COLLECTIBLE_CATALOG_SCRIPT.GOLD_COIN.gold_value, "gold coin must be worth more than silver coin")
+
+func test_pickup_increases_gold() -> void:
+	GameState.reset_profile()
+	var pickup = COLLECTIBLE_PICKUP_SCENE.instantiate()
+	add_child(pickup)
+	pickup.configure(COLLECTIBLE_CATALOG_SCRIPT.SILVER_COIN)
+	var before := GameState.gold_count()
+	var awarded: int = pickup.collect()
+	_expect(awarded == COLLECTIBLE_CATALOG_SCRIPT.SILVER_COIN.gold_value, "collecting a pickup must return its configured gold value")
+	_expect(GameState.gold_count() == before + awarded, "collecting a pickup must increase persistent profile gold")
+	_expect(pickup.collect() == 0, "a collectible pickup must be idempotent and never award twice")
+	await get_tree().process_frame
+	GameState.reset_profile()
+
+func test_collectible_spawn_is_seeded() -> void:
+	var spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
+	var spec := {
+		"biome_id": BiomeData.Id.GRASS,
+		"archetype": ProceduralLayoutGenerator.Archetype.GAPS,
+		"start_tile": 32,
+		"end_tile": 44,
+		"platforms": [
+			{"start_tile": 32, "width_tiles": 10, "height_tile": 8, "optional_route": false, "ceiling": false},
+			{"start_tile": 43, "width_tiles": 8, "height_tile": 7, "optional_route": false, "ceiling": false},
+		],
+		"bonus_spawn_tiles": [Vector2i(39, 5)],
+	}
+	var first: Array[Dictionary] = spawner.spawn_specs_for_chunk(spec, RNG_SERVICE_SCRIPT.new(70707))
+	var replay: Array[Dictionary] = spawner.spawn_specs_for_chunk(spec, RNG_SERVICE_SCRIPT.new(70707))
+	_expect(not first.is_empty(), "a chunk with a risky-route bonus slot must produce at least one collectible")
+	_expect(first == replay, "procedural collectible selection must replay exactly with the same injected seed")
+	_expect(first.size() <= GameConfig.COLLECTIBLE_MAX_PER_CHUNK, "procedural collectible count must respect the configured per-chunk bound")
+	var found_bonus := false
+	for spawn_spec in first:
+		var collectible = COLLECTIBLE_CATALOG_SCRIPT.get_by_id(StringName(spawn_spec.collectible_id))
+		_expect(collectible != null and collectible.spawnable, "procedural collectible ids must resolve to spawnable CollectibleData")
+		if bool(spawn_spec.bonus):
+			found_bonus = true
+			_expect(is_equal_approx(float(spawn_spec.difficulty), 1.0), "risky optional-route collectible slots must carry maximum placement difficulty")
+	_expect(found_bonus, "risky-route bonus_spawn_tiles must always be represented in collectible spawn specs")
+	spawner.free()
+
+func test_collectible_difficulty_biases_value() -> void:
+	var spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
+	var equal_weights := {&"bronze_coin": 1.0, &"gold_coin": 1.0, &"gem": 1.0}
+	var easy: Dictionary = spawner.adjusted_spawn_weights(equal_weights, 0.0)
+	var risky: Dictionary = spawner.adjusted_spawn_weights(equal_weights, 1.0)
+	var easy_premium_ratio := (float(easy[&"gold_coin"]) + float(easy[&"gem"])) / float(easy[&"bronze_coin"])
+	var risky_premium_ratio := (float(risky[&"gold_coin"]) + float(risky[&"gem"])) / float(risky[&"bronze_coin"])
+	_expect(risky_premium_ratio > easy_premium_ratio, "higher platform difficulty must increase the relative weight of high-value collectibles")
+	var flat_spec := {"archetype": ProceduralLayoutGenerator.Archetype.FLAT}
+	var gap_spec := {"archetype": ProceduralLayoutGenerator.Archetype.GAPS}
+	var platform := {"height_tile": GameConfig.BASE_PLATFORM_HEIGHT, "optional_route": false}
+	_expect(spawner.placement_difficulty(gap_spec, platform) > spawner.placement_difficulty(flat_spec, platform), "gap layouts must be treated as riskier collectible placement than flat layouts")
+	spawner.free()
+
+func test_enemy_drop_tables_are_valid() -> void:
+	for enemy_data in ENEMY_CATALOG_SCRIPT.all():
+		_expect(enemy_data.has_valid_drop_table(), "enemy '%s' must carry a valid Phase 12 drop table" % String(enemy_data.id))
+		for entry in enemy_data.drop_table:
+			var probability := float(entry.get("probability", -1.0))
+			var collectible = COLLECTIBLE_CATALOG_SCRIPT.get_by_id(StringName(String(entry.get("collectible_id", ""))))
+			_expect(probability >= 0.0 and probability <= 1.0, "enemy '%s' drop probabilities must stay in [0, 1]" % String(enemy_data.id))
+			_expect(collectible != null and collectible.droppable, "enemy '%s' drop table must reference droppable collectibles" % String(enemy_data.id))
+
+func test_enemy_drop_probability_and_count() -> void:
+	var data = ENEMY_DATA_SCRIPT.new()
+	var deterministic_drop_table: Array[Dictionary] = [
+		{"collectible_id": &"gold_coin", "probability": 1.0, "min_count": 2, "max_count": 2},
+		{"collectible_id": &"gem_blue", "probability": 0.0, "min_count": 1, "max_count": 1},
+	]
+	data.drop_table = deterministic_drop_table
+	var spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
+	var first: Array[Dictionary] = spawner.drop_specs_for_enemy(data, RNG_SERVICE_SCRIPT.new(8888))
+	var replay: Array[Dictionary] = spawner.drop_specs_for_enemy(data, RNG_SERVICE_SCRIPT.new(8888))
+	_expect(first == replay, "enemy drop rolls must be deterministic for the same injected RNG seed")
+	_expect(first.size() == 2, "100% two-count drop must emit exactly two pickup specs while 0% drops emit none")
+	for drop_spec in first:
+		_expect(StringName(drop_spec.collectible_id) == &"gold_coin", "drop probability test must only include the guaranteed collectible")
+	spawner.free()
+
+func test_enemy_death_spawns_drops() -> void:
+	GameState.reset_run(42421)
+	var holder := Node2D.new()
+	add_child(holder)
+	var pickup_container := Node2D.new()
+	holder.add_child(pickup_container)
+	var collectible_spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
+	holder.add_child(collectible_spawner)
+	collectible_spawner.pickup_container = pickup_container
+	collectible_spawner.run_seed = 42421
+	var target = _spawn_enemy_target(Vector2(2000.0, 0.0))
+	var enemy = ENEMY_SCENE.instantiate()
+	holder.add_child(enemy)
+	await get_tree().process_frame
+	var guaranteed_data: EnemyData = ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior").duplicate(true)
+	var guaranteed_drop_table: Array[Dictionary] = [{"collectible_id": &"gold_coin", "probability": 1.0, "min_count": 1, "max_count": 1}]
+	guaranteed_data.drop_table = guaranteed_drop_table
+	enemy.configure(guaranteed_data, 1, target)
+	collectible_spawner._on_enemy_spawned(enemy, 64)
+	enemy.die()
+	_expect(pickup_container.get_child_count() == 1, "generic Enemy.died signal must spawn its configured collectible drop")
+	if pickup_container.get_child_count() == 1:
+		var pickup = pickup_container.get_child(0)
+		_expect(pickup.data != null and pickup.data.id == &"gold_coin", "enemy death pickup must resolve the EnemyData drop-table collectible")
+	await _free_node(holder)
+	await _free_node(target)
+
+func test_streamed_collectible_cleanup() -> void:
+	var holder := Node2D.new()
+	add_child(holder)
+	var pickup_container := Node2D.new()
+	holder.add_child(pickup_container)
+	var spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
+	holder.add_child(spawner)
+	spawner.pickup_container = pickup_container
+	spawner._spawn_pickup(COLLECTIBLE_CATALOG_SCRIPT.BRONZE_COIN, Vector2.ZERO, 72, &"procedural")
+	_expect(pickup_container.get_child_count() == 1 and spawner.pickups_by_chunk.has(72), "CollectibleSpawner must track pickups by streamed chunk")
+	spawner._on_chunk_removed({"start_tile": 72})
+	await get_tree().process_frame
+	_expect(pickup_container.get_child_count() == 0, "removing a streamed chunk must release its collectible instances")
+	_expect(not spawner.pickups_by_chunk.has(72), "collectible chunk registry must not retain cleaned pickups")
+	await _free_node(holder)
+
+func test_level_collectible_architecture() -> void:
+	var level = LEVEL_SCENE.instantiate()
+	_expect(level.has_node("CollectibleSpawner"), "level scene must own one reusable CollectibleSpawner")
+	_expect(level.has_node("PickupContainer"), "level scene must own the Phase 12 pickup container")
+	_expect(level.has_node("HUD/MarginContainer/VBoxContainer/GoldLabel"), "level HUD must expose persistent gold earned from collectibles")
+	level.free()
+
 func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)
 	if FileAccess.file_exists(path):
@@ -1930,6 +2614,50 @@ func _png_decodes(path: String) -> bool:
 		return false
 	var image := Image.new()
 	return image.load_png_from_buffer(file.get_buffer(file.get_length())) == OK and not image.is_empty()
+
+func _directory_has_png(folder: String) -> bool:
+	var files := ResourceLoader.list_directory(folder)
+	if files.is_empty():
+		files = DirAccess.get_files_at(folder)
+	for file_name in files:
+		if file_name.to_lower().ends_with(".png"):
+			return true
+	return false
+
+func _physical_enemy_animation_roots() -> Array[String]:
+	var result: Array[String] = []
+	var root_path := "res://assets/Enemies"
+	var root := DirAccess.open(root_path)
+	if root == null:
+		return result
+	var families := root.get_directories()
+	families.sort()
+	for family in families:
+		var family_path := root_path.path_join(family)
+		var family_dir := DirAccess.open(family_path)
+		if family_dir == null:
+			continue
+		var enemy_names := family_dir.get_directories()
+		enemy_names.sort()
+		for enemy_name in enemy_names:
+			var animation_root := family_path.path_join(enemy_name).path_join("PNG/PNG Sequences")
+			if DirAccess.open(animation_root) != null:
+				result.append(animation_root)
+	result.sort()
+	return result
+
+func _spawn_enemy_target(position: Vector2):
+	var target = ENEMY_TARGET_DUMMY_SCRIPT.new()
+	target.collision_layer = GameConfig.PLAYER_COLLISION_LAYER
+	target.collision_mask = 0
+	var collision := CollisionShape2D.new()
+	var shape := CircleShape2D.new()
+	shape.radius = 14.0
+	collision.shape = shape
+	target.add_child(collision)
+	target.global_position = position
+	add_child(target)
+	return target
 
 func _spawn_player(reset_profile: bool = true):
 	if reset_profile:

@@ -1,0 +1,77 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://src/gameplay/enemies/enemy_health_component.gd" id="2_health"]
+[ext_resource type="Script" path="res://src/gameplay/status/status_effect_controller.gd" id="3_status"]
+
+[sub_resource type="RectangleShape2D" id="RectangleBody"]
+size = Vector2(36, 56)
+
+[sub_resource type="RectangleShape2D" id="RectangleHurtbox"]
+size = Vector2(36, 56)
+
+[sub_resource type="CircleShape2D" id="CircleDetection"]
+radius = 320.0
+
+[sub_resource type="CircleShape2D" id="CircleMelee"]
+radius = 54.4
+
+[sub_resource type="StyleBoxFlat" id="HealthBackground"]
+bg_color = Color(0.08, 0.08, 0.08, 0.85)
+corner_radius_top_left = 2
+corner_radius_top_right = 2
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
+[node name="Enemy" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_enemy")
+
+[node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleBody")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 4
+collision_mask = 0
+monitoring = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("RectangleHurtbox")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.22, 0.22)
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2_health")
+
+[node name="StatusEffectController" type="Node" parent="."]
+script = ExtResource("3_status")
+
+[node name="HealthBar" type="ProgressBar" parent="."]
+offset_left = -30.0
+offset_top = -48.0
+offset_right = 30.0
+offset_bottom = -40.0
+mouse_filter = 2
+show_percentage = false
+theme_override_styles/background = SubResource("HealthBackground")
+
+[node name="DetectionArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea"]
+shape = SubResource("CircleDetection")
+
+[node name="MeleeArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 1
+monitorable = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="MeleeArea"]
+shape = SubResource("CircleMelee")
+
+[node name="ShootingOrigin" type="Node2D" parent="."]
+position = Vector2(-24, -6)

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="StatusEffect" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/status_effect.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"curse"
+display_name = "Curse"
+duration = 1.6
+tick_interval = 0.8
+tick_damage = 2.0
+damage_taken_multiplier = 1.1
+tint = Color(0.72, 0.56, 0.76, 1)
+visual_priority = 27
+blink_red_on_tick = true

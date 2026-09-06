@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/frozen_bleed.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"skull_knight"
+display_name = "Skull Knight"
+biome_id = 2
+movement_mode = 1
+attack_modes = 3
+base_health = 68
+health_per_level = 18
+base_damage = 14
+damage_per_level = 3.2
+move_speed_tiles = 1.4
+vicinity_tiles = 5.0
+shooting_interval = 1.9
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/halloween-characters/Skull Knight/PNG/PNG Sequences"

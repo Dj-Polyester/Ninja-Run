@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/wound.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"orc"
+display_name = "Orc"
+biome_id = 5
+minimum_encounter = 2
+movement_mode = 1
+attack_modes = 1
+base_health = 96
+health_per_level = 24
+base_damage = 19
+damage_per_level = 4.2
+move_speed_tiles = 1.35
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/orc-ogre-and-goblin/Orc/PNG/PNG Sequences"
+sprite_scale = 0.2

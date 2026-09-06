@@ -6,7 +6,7 @@ var damage_events := 0
 var last_damage_info
 var active := true
 var dead := false
-var statuses: Array[Dictionary] = []
+var statuses: Array[Resource] = []
 
 func can_receive_melee_attack() -> bool:
 	return active and not dead and current_health > 0.0
@@ -28,8 +28,9 @@ func heal(amount: float) -> void:
 		return
 	current_health = minf(maximum_health, current_health + amount)
 
-func apply_status(effect: Dictionary) -> void:
-	statuses.append(effect.duplicate(true))
+func apply_status(effect) -> void:
+	if effect is Resource:
+		statuses.append(effect)
 
 func die(_reason: String = "damage") -> void:
 	dead = true

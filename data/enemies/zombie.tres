@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/numb.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"zombie"
+display_name = "Zombie"
+biome_id = 1
+movement_mode = 1
+attack_modes = 1
+base_health = 62
+health_per_level = 16
+base_damage = 11
+damage_per_level = 2.8
+move_speed_tiles = 1.15
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/death-knight-skeleton-zombie/Zombie/PNG/PNG Sequences"

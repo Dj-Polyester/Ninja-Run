@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/fatigue.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"ghoul_hunter_3"
+display_name = "Ghoul Hunter III"
+biome_id = 1
+minimum_encounter = 3
+movement_mode = 1
+attack_modes = 3
+base_health = 78
+health_per_level = 20
+base_damage = 16
+damage_per_level = 3.5
+move_speed_tiles = 1.7
+vicinity_tiles = 6.0
+shooting_interval = 1.35
+ranged_style = 1
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/ghoul-hunter/Ghoul_Hunter_3/PNG/PNG Sequences"

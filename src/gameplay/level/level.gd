@@ -3,11 +3,14 @@ extends Node2D
 const SAFE_CHECKPOINT_SCRIPT := preload("res://src/gameplay/level/safe_checkpoint.gd")
 
 @onready var world_streamer = $WorldStreamer
+@onready var enemy_spawner = $EnemySpawner
+@onready var collectible_spawner = $CollectibleSpawner
 @onready var player = $Player
 @onready var camera: Camera2D = $Camera2D
 @onready var health_bar: ProgressBar = $HUD/MarginContainer/VBoxContainer/HealthBar
 @onready var health_label: Label = $HUD/MarginContainer/VBoxContainer/HealthLabel
 @onready var distance_label: Label = $HUD/MarginContainer/VBoxContainer/DistanceLabel
+@onready var gold_label: Label = $HUD/MarginContainer/VBoxContainer/GoldLabel
 @onready var biome_label: Label = $HUD/MarginContainer/VBoxContainer/BiomeLabel
 @onready var game_over_panel: PanelContainer = $HUD/GameOverPanel
 @onready var game_over_title: Label = $HUD/GameOverPanel/VBoxContainer/Title
@@ -32,11 +35,15 @@ var safe_checkpoint = SAFE_CHECKPOINT_SCRIPT.new()
 func _ready() -> void:
 	WorldSpeed.reset()
 	GameState.reset_run()
+	enemy_spawner.configure(world_streamer, $EnemyContainer, player, $ProjectileContainer, $Effects)
+	collectible_spawner.configure(world_streamer, $PickupContainer, enemy_spawner)
 	world_streamer.reset(int(GameState.run.seed))
 	start_x = player.global_position.x
 	last_progress_x = start_x
 	player.died.connect(_on_player_died)
 	player.health_changed.connect(_on_health_changed)
+	if not GameState.profile_changed.is_connected(_update_hud):
+		GameState.profile_changed.connect(_update_hud)
 	game_over_panel.visible = false
 	_configure_revival_icon()
 	apply_biome_for_tile(floori(GameConfig.pixels_to_tiles(player.global_position.x)))
@@ -196,6 +203,7 @@ func _update_hud() -> void:
 	health_bar.value = player.current_health
 	health_label.text = "Health: %d / %d" % [roundi(player.current_health), roundi(player.maximum_health)]
 	distance_label.text = "Distance: %d tiles" % int(GameState.run.get("distance_tiles", 0))
+	gold_label.text = "Gold: %d" % GameState.gold_count()
 
 func _on_health_changed(_current: float, _maximum: float) -> void:
 	_update_hud()

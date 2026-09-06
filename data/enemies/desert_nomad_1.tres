@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/burn.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"desert_nomad_1"
+display_name = "Desert Nomad I"
+biome_id = 3
+movement_mode = 1
+attack_modes = 1
+base_health = 52
+health_per_level = 14
+base_damage = 11
+damage_per_level = 2.6
+move_speed_tiles = 1.55
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/desert-nomad/Desert_Nomad_1/PNG/PNG Sequences"

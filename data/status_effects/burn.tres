@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="StatusEffect" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/status_effect.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"burn"
+display_name = "Burn"
+duration = 1.5
+tint = Color(1, 0.65, 0.3, 1)
+visual_priority = 40
+emits_flames = true

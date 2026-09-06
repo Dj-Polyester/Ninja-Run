@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/puncture.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"skeleton_warrior_3"
+display_name = "Skeleton Warrior III"
+biome_id = 5
+minimum_encounter = 3
+movement_mode = 0
+attack_modes = 2
+base_health = 92
+health_per_level = 23
+base_damage = 20
+damage_per_level = 4.4
+vicinity_tiles = 6.3
+shooting_interval = 1.3
+ranged_style = 1
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/skeleton-warrior/Skeleton_Warrior_3/PNG/PNG Sequences"

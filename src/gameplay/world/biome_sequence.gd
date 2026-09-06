@@ -30,6 +30,16 @@ func get_encounter_index_for_tile(tile_x: int) -> int:
 		return 0
 	return tile_x / GameConfig.BIOME_INTERVAL
 
+func get_biome_occurrence_for_tile(tile_x: int) -> int:
+	var encounter := get_encounter_index_for_tile(tile_x)
+	_ensure_encounter(encounter)
+	var biome_id := _encounters[encounter]
+	var occurrence := 0
+	for index in range(encounter + 1):
+		if _encounters[index] == biome_id:
+			occurrence += 1
+	return maxi(1, occurrence)
+
 func get_encounter_end_tile(tile_x: int) -> int:
 	var encounter := get_encounter_index_for_tile(tile_x)
 	return (encounter + 1) * GameConfig.BIOME_INTERVAL

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/ice_lock.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"frost_knight_3"
+display_name = "Frost Knight III"
+biome_id = 2
+minimum_encounter = 3
+movement_mode = 0
+attack_modes = 2
+base_health = 88
+health_per_level = 22
+base_damage = 18
+damage_per_level = 4
+vicinity_tiles = 6.2
+shooting_interval = 1.4
+ranged_style = 1
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/frost-knight/Frost_Knight_3/PNG/PNG Sequences"

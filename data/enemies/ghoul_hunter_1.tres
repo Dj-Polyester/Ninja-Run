@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/cold_wound.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"ghoul_hunter_1"
+display_name = "Ghoul Hunter I"
+biome_id = 1
+movement_mode = 1
+attack_modes = 2
+base_health = 50
+health_per_level = 14
+base_damage = 10
+damage_per_level = 2.5
+move_speed_tiles = 1.5
+vicinity_tiles = 5.5
+shooting_interval = 1.7
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/ghoul-hunter/Ghoul_Hunter_1/PNG/PNG Sequences"

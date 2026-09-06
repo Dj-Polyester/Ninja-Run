@@ -86,6 +86,46 @@ const ENEMY_COLLISION_MASK := 1 << 2
 const MELEE_RANGE_TILES := 1.25
 const MELEE_ATTACK_INTERVAL := 0.55
 
+# Phase 10 enemy runtime. Physics layers are represented as bit values so the
+# same values can be used directly as collision_layer/collision_mask fields.
+const PLAYER_COLLISION_LAYER := 1 << 0
+const TERRAIN_COLLISION_LAYER := 1 << 1
+const ENEMY_COLLISION_WIDTH := 36.0
+const ENEMY_COLLISION_HEIGHT := 56.0
+const ENEMY_MIN_PLATFORM_WIDTH := 4
+const ENEMY_SPAWN_START_TILE := 12
+const ENEMY_MAX_PER_CHUNK := 2
+const ENEMY_ADDITIONAL_SPAWN_CHANCE := 0.42
+const ENEMY_INITIAL_SHOOT_DELAY := 0.45
+const ENEMY_PROJECTILE_COLLISION_RADIUS := 8.0
+const ENEMY_PROJECTILE_LIFETIME := 5.0
+const ENEMY_BEAM_DURATION := 0.18
+const ENEMY_BEAM_MAX_RANGE_TILES := 8.0
+const ENEMY_DAMAGE_FLASH_DURATION := 0.10
+const ENEMY_DEATH_CLEANUP_DELAY := 0.55
+const ENEMY_ANIMATION_MAX_FRAMES := 16
+
+# Phase 11 generic status-effect runtime. Individual effect duration, tick
+# cadence, damage, stacking, tint, and movement/damage multipliers live in
+# StatusEffect resources; these values are cross-effect runtime safeguards.
+const STATUS_MIN_MOVEMENT_MULTIPLIER := 0.25
+const STATUS_TICK_FLASH_DURATION := 0.12
+
+# Phase 12 collectibles. Biome-specific type weights remain in BiomeData;
+# these constants tune shared placement density and pickup presentation.
+const COLLECTIBLE_COLLISION_LAYER := 1 << 3
+const COLLECTIBLE_MAX_PER_CHUNK := 5
+const COLLECTIBLE_BASE_SPAWN_CHANCE := 0.42
+const COLLECTIBLE_MAX_SPAWN_CHANCE := 0.80
+const COLLECTIBLE_DIFFICULTY_VALUE_BONUS := 1.25
+const COLLECTIBLE_VERTICAL_OFFSET := 34.0
+const COLLECTIBLE_DROP_SPACING := 24.0
+const COLLECTIBLE_DROP_LIFT := 28.0
+const COLLECTIBLE_BOB_PIXELS := 4.0
+const COLLECTIBLE_BOB_SPEED := 3.4
+const COLLECTIBLE_SPIN_SPEED := 2.1
+const COLLECTIBLE_TILT_RADIANS := 0.10
+
 # Phase 8 automatic weapon combat. Weapon-specific damage, cadence, aim,
 # target count, speed, and unlock cost live in WeaponData resources; these are
 # shared simulation/runtime limits that apply to every weapon projectile.

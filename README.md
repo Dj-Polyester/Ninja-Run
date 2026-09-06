@@ -1,6 +1,6 @@
 # Ninja Run
 
-Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 9 (abilities)** are implemented in this branch.
+Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 12 (collectibles)** are implemented in this branch.
 
 ## Requirements
 
@@ -24,7 +24,7 @@ Desktop controls:
 
 The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, and the camera follows horizontal progress with look-ahead. Falling below the kill plane, losing all health, or failing to make horizontal progress for `GAME_OVER_NUMBER_OF_SECS` starts the Phase 4 revival countdown. A revival potion returns the player to the most recent safe checkpoint with restored health, cleared statuses, and brief invulnerability; otherwise the countdown ends in final game-over. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
 
-## Phase 1–9 architecture
+## Phase 1–12 architecture
 
 ```text
 scenes/
@@ -38,6 +38,12 @@ scenes/
     spike_hazard.tscn
   combat/
     weapon_projectile.tscn
+  enemies/
+    enemy.tscn
+    enemy_projectile.tscn
+    enemy_beam.tscn
+  items/
+    collectible_pickup.tscn
   player/
     player.tscn
 src/
@@ -45,12 +51,19 @@ src/
     game_config.gd
     game_state.gd
     player_profile.gd
+    rng_service.gd
     run_state.gd
     save_manager.gd
   data/
     ability_catalog.gd
     ability_data.gd
     biome_data.gd
+    collectible_catalog.gd
+    collectible_data.gd
+    enemy_catalog.gd
+    enemy_data.gd
+    status_effect.gd
+    status_effect_catalog.gd
     stat_catalog.gd
     stat_data.gd
     weapon_catalog.gd
@@ -77,10 +90,21 @@ src/
       weapon_controller.gd
       weapon_inventory_service.gd
       weapon_projectile.gd
+    enemies/
+      enemy.gd
+      enemy_health_component.gd
+      enemy_spawner.gd
+      enemy_projectile.gd
+      enemy_beam.gd
     hazards/
       desert_hazard.gd
       falling_tile.gd
       spike_hazard.gd
+    items/
+      collectible_pickup.gd
+      collectible_spawner.gd
+    status/
+      status_effect_controller.gd
     level/
       level.gd
       safe_checkpoint.gd
@@ -113,6 +137,17 @@ data/
     desert.tres
     astro.tres
     fort.tres
+  collectibles/
+    bronze_coin.tres
+    silver_coin.tres
+    gold_coin.tres
+    gem_blue.tres
+    gem_green.tres
+    gem_yellow.tres
+  enemies/
+    39 EnemyData resources covering every supplied enemy character set
+  status_effects/
+    reusable StatusEffect resources referenced by themed enemies and hazards
   stats/
     maximum_health.tres
     defense_multiplier.tres
@@ -128,15 +163,16 @@ data/
     throwing_blade.tres
 tests/
   fixtures/
+    enemy_target_dummy.gd
     melee_dummy_enemy.gd
   test_runner.gd
 ```
 
-Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `StatData` resources define upgradeable stat ranges/costs/locks, `StatCatalog` resolves those resources and derives values from persisted levels, and `StatUpgradeService` owns the atomic upgrade transaction. `AbilityData` resources define the ability catalog and upgrade bounds, `AbilityInventoryService` owns unlock/equip/upgrade validation (including the four-slot cap and Jump/Reverse Gravity incompatibility), and the player's `AbilityController` composes independent runtime ability objects rather than embedding every mechanic in `player.gd`. `WorldSpeed` is a project autoload that exposes explicit subsystem multipliers for slow-time effects without touching `Engine.time_scale`. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common damage API expected from players and future enemies, and `AutomaticMeleeController` owns proximity filtering, nearest-target selection, attack cooldown, and shared melee damage dispatch. Phase 8 keeps ranged combat similarly data-driven: `WeaponData` describes each weapon, `WeaponCatalog` resolves definitions, `WeaponInventoryService` owns atomic purchase/equip transactions, `WeaponController` owns on-screen target selection/cooldowns/trajectory construction, and `WeaponProjectile` owns movement and shared projectile damage dispatch. `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status/attack-animation feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
+Responsibilities are deliberately separated: `GameConfig` owns source tuning values, `PlayerProfile` owns the persistent profile schema/defaults/sanitization rules, `RunState` owns transient per-run state, `GameState` coordinates their live dictionaries and emits change signals, and `SaveManager` owns versioned disk persistence. `StatData` resources define upgradeable stat ranges/costs/locks, `StatCatalog` resolves those resources and derives values from persisted levels, and `StatUpgradeService` owns the atomic upgrade transaction. `AbilityData` resources define the ability catalog and upgrade bounds, `AbilityInventoryService` owns unlock/equip/upgrade validation (including the four-slot cap and Jump/Reverse Gravity incompatibility), and the player's `AbilityController` composes independent runtime ability objects rather than embedding every mechanic in `player.gd`. `WorldSpeed` is a project autoload that exposes explicit subsystem multipliers for slow-time effects without touching `Engine.time_scale`. `DamageInfo` carries normalized damage metadata, `DamageableContract` defines the common player/enemy damage API, and `AutomaticMeleeController` owns proximity filtering, nearest-target selection, attack cooldown, and shared melee damage dispatch. Phase 8 keeps ranged player combat similarly data-driven through `WeaponData`, `WeaponCatalog`, `WeaponController`, and `WeaponProjectile`. Phase 10 adds the corresponding enemy layer: `EnemyData` describes stats/AI/ranged style/status/drop metadata, `EnemyCatalog` resolves all supplied enemy definitions, `EnemySpawner` turns deterministic streamed chunks into bounded biome-valid spawns, `EnemyHealthComponent` owns health arithmetic, and one reusable `Enemy` scene implements stationary/patrol movement plus melee/shoot/hybrid behavior. Enemy projectile and beam scenes separate gameplay collision/raycast logic from particle/line presentation. Phase 11 moves temporary combat effects out of player/enemy bespoke timers: `StatusEffect` resources define duration, tick cadence, stack policy, periodic damage, movement/damage multipliers and presentation metadata; `StatusEffectCatalog` resolves canonical resources (and normalizes legacy dictionary payloads at boundaries); reusable `StatusEffectController` nodes own active instances for both the player and enemies and invoke `on_apply`, `on_tick`, and `on_remove` hooks. Phase 12 adds `CollectibleData`/`CollectibleCatalog`, a generic `CollectiblePickup`, deterministic `CollectibleSpawner`, and the injectable `RngService`. The spawner consumes biome collectible weights plus generated platform difficulty, guarantees bonus slots on risky optional routes, listens to enemy death signals for per-enemy drop tables, and cleans every uncollected pickup with its streamed chunk. Pickups award `GameState` profile gold directly, so currency remains persistent without polluting transient run state. `SafeCheckpoint` owns checkpoint data, player code owns movement/health/status/attack-animation feedback, and `level.gd` owns stuck/revival/game-over orchestration. `BiomeSequence` owns encounter selection, `BiomeMechanics` derives deterministic encounter-specific modifiers, `ProceduralLayoutGenerator` owns deterministic geometry specs, `TerrainTileSetFactory` owns the atlas/physics definition, and `WorldStreamer` owns bounded terrain plus runtime-hazard lifetime. Biome presentation, enemy-pool identifiers, generation weights, collectible weights, and hazard selection live in `BiomeData` resources rather than branching through `level.gd`.
 
 ## Configuration
 
-The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–9 actively use the following values:
+The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–12 actively use the following values:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
@@ -147,6 +183,26 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `ENEMY_COLLISION_MASK` | 4 (physics layer 3) | Enemy body/hurtbox layer queried by automatic melee |
 | `MELEE_RANGE_TILES` | 1.25 tiles | Radius of the player melee proximity detector |
 | `MELEE_ATTACK_INTERVAL` | 0.55 s | Minimum time between automatic melee hits |
+| `ENEMY_MIN_PLATFORM_WIDTH` | 4 tiles | Minimum mandatory platform width eligible for an enemy spawn |
+| `ENEMY_SPAWN_START_TILE` | 12 tiles | Earliest procedural tile where enemies may spawn |
+| `ENEMY_MAX_PER_CHUNK` | 2 | Hard bound on generated enemies per streamed chunk |
+| `ENEMY_ADDITIONAL_SPAWN_CHANCE` | 0.42 | Probability of adding a second enemy to an eligible chunk |
+| `ENEMY_INITIAL_SHOOT_DELAY` | 0.45 s | Maximum initial ranged delay before an enemy can shoot |
+| `ENEMY_PROJECTILE_COLLISION_RADIUS` | 8 px | Enemy projectile gameplay hitbox radius |
+| `ENEMY_PROJECTILE_LIFETIME` | 5 s | Bounded enemy projectile lifetime |
+| `ENEMY_BEAM_DURATION` | 0.18 s | Visual lifetime of a beam attack after its ray resolves damage |
+| `ENEMY_BEAM_MAX_RANGE_TILES` | 8 tiles | Maximum gameplay ray length for beam enemies |
+| `ENEMY_DAMAGE_FLASH_DURATION` | 0.10 s | Red damage-feedback duration for enemies |
+| `ENEMY_DEATH_CLEANUP_DELAY` | 0.55 s | Delay before a defeated enemy scene is released |
+| `ENEMY_ANIMATION_MAX_FRAMES` | 16 | Runtime cap on loaded frames per enemy animation |
+| `STATUS_MIN_MOVEMENT_MULTIPLIER` | 0.25 | Safety floor after combining active status movement multipliers |
+| `STATUS_TICK_FLASH_DURATION` | 0.12 s | Red blink duration for periodic damage statuses such as Blood Loss |
+| `COLLECTIBLE_COLLISION_LAYER` | 8 (physics layer 4) | Pickup overlap layer, kept separate from player/enemy combat layers |
+| `COLLECTIBLE_MAX_PER_CHUNK` | 5 | Hard bound on procedurally placed collectibles per streamed chunk |
+| `COLLECTIBLE_BASE_SPAWN_CHANCE` | 0.42 | Baseline placement chance on low-risk platform slots |
+| `COLLECTIBLE_MAX_SPAWN_CHANCE` | 0.80 | Placement chance approached by high-risk mandatory platforms |
+| `COLLECTIBLE_DIFFICULTY_VALUE_BONUS` | 1.25 | Strength of high-value collectible weighting on difficult platforms |
+| `COLLECTIBLE_VERTICAL_OFFSET` | 34 px | Height above terrain used by procedural pickups |
 | `NUM_EQUIPPABLE_WEAPONS` | 3 | Maximum number of simultaneously equipped weapons |
 | `NUM_EQUIPABLE_ABILITIES` | 4 | Maximum number of simultaneously equipped abilities |
 | `MAX_GLIDE_DURATION` | 2.0 s | Maximum continuous Glide/Hang duration per landing cycle |
@@ -273,6 +329,28 @@ Phase 9 adds a common runtime ability interface and keeps each mechanic in a ded
 
 Dash, Explode, Slow Down Time, and Invisibility use the shared `COOLDOWN_PERIOD`. Movement/passive abilities that need immediate continuous input do not consume that action cooldown.
 
+## Enemies
+
+Phase 10 uses one reusable enemy scene for the supplied enemy character families. `EnemyData` resources select biome, minimum encounter, level-scaled health/damage, stationary versus patrol movement, melee/shoot/hybrid attack modes, ranged style, cadence/ranges, animation folders, one optional themed `StatusEffect` resource, and the Phase 12 collectible drop table. `EnemyCatalog` and the biome pools restrict definitions to their intended environments, while `EnemySpawner` derives deterministic per-chunk spawn choices from the run seed and removes every enemy when its streamed chunk is retired. Higher `minimum_encounter` values introduce stronger variants only on later biome encounters.
+
+Projectiles use `Area2D` gameplay hitboxes and beams resolve with ray queries; particles/lines are presentation only. Both paths dispatch the shared `DamageInfo` contract, so melee, ranged attacks, biome hazards, and status effects reach player/enemy health through the same damage boundary. Enemy health bars follow the level-scaled health component and are updated independently of sprite animation.
+
+## Status effects
+
+Phase 11 represents temporary effects as data rather than dedicated timers in `player.gd` or `enemy.gd`. A `StatusEffect` resource defines `duration`, `tick_interval`, `stack_policy`, `max_stacks`, optional tick damage, movement and damage-taken multipliers, tint priority, flame presentation, and periodic red-blink presentation. Its `on_apply`, `on_tick`, and `on_remove` hooks call a small target-facing contract. `StatusEffectController` owns active instances, remaining time and stack counts, and is reused unchanged by both the player and generic enemy scene.
+
+The catalog contains the required generic **Freeze**, **Burn**, **Blood Loss**, **Poison**, and **Slow** effects plus the themed statuses referenced by Phase 10 enemies. Freeze-family effects provide ice-blue tinting and movement reduction; Burn-family effects request the player's flame `GPUParticles2D`; Blood Loss, Poison, and other periodic wounds execute deterministic tick damage, with Blood Loss producing the required red blink. Damage-amplifying effects compose with the player's persistent defense multiplier rather than replacing it. Revival clears the controller atomically, so no stale DOT or movement modifier survives checkpoint restoration.
+
+Stack behavior is explicit per resource: `REFRESH` restarts duration, `EXTEND` adds duration, `STACK` increments up to `max_stacks` and refreshes duration, and `IGNORE` rejects reapplication while active. `DamageInfo` normalizes incoming status values through `StatusEffectCatalog`; this preserves compatibility with older dictionary-shaped hazard/test payloads without letting gameplay code continue to depend on dictionary keys. Enemy resources now reference actual `.tres` status resources directly, and Desert heat likewise uses the canonical Burn resource.
+
+## Collectibles
+
+Phase 12 defines six data-driven collectibles using the supplied art: Bronze Coin (1 gold), Silver Coin (3), Gold Coin (8), Blue Gem (20), Green Gem (30), and Yellow Gem (45). The lowest-value gem is therefore worth more than the highest-value coin. `CollectiblePickup` is one reusable `Area2D` scene for every type; it only reacts to the player physics layer, awards gold through `GameState.add_gold()`, emits its collection event once, and immediately retires itself so a pickup cannot be collected twice. The level HUD listens to profile changes and displays the live persistent gold total.
+
+`CollectibleSpawner` listens to the same streamed chunk lifecycle as enemies. It reads each biome's `collectible_weights`, derives placement difficulty from geometry archetype/elevation, and increases the relative weight of premium coins/gems as difficulty rises. Mandatory platform slots use a bounded difficulty-scaled spawn chance, while the generator's `bonus_spawn_tiles` on risky optional routes are guaranteed reward slots. Every chunk is capped by `COLLECTIBLE_MAX_PER_CHUNK`, tracked by chunk id, and cleaned with that chunk so uncollected rewards cannot accumulate without bound.
+
+Enemy drops use `EnemyData.drop_table` entries containing `collectible_id`, `probability`, `min_count`, and `max_count`. Default enemy data provides common coin drops plus rarer gem drops; individual enemy resources can override the table without changing enemy behavior code. `RngService` wraps a seeded `RandomNumberGenerator` and is injectable into spawn/drop calculations, making both probability outcomes and replay tests deterministic. Runtime enemy-drop seeds combine the run seed, streamed chunk, enemy id/level, and death position so an identical generated encounter reproduces the same rewards.
+
 ## Health, stuck detection, revival, and game-over
 
 `level.gd` tracks actual X-position progress rather than velocity. Moving forward by at least `STUCK_PROGRESS_THRESHOLD` resets the stuck timer; remaining below that progress threshold for `GAME_OVER_NUMBER_OF_SECS` enters the same death/revival path as zero health or falling below the kill plane. The detector does not advance while the run is halted for revival/game-over, and normal SceneTree pause semantics also suspend it.
@@ -297,7 +375,7 @@ Each biome resource assigns weights to the seven Phase 2 geometry archetypes:
 - `STACKED_PLATFORMS`
 - `GAPS`
 
-Mandatory platform transitions are constrained by the same `SPEED`, effective jump height, `GRAVITY`, and tile-size movement envelope used by the player. In Snow, both the player and generator derive the same encounter-specific jump modifier from the run seed, so generation remains conservative even when Snow reduces jump height. Layout generation clamps height changes and computes the maximum reachable horizontal gap for the destination elevation. Optional stacked/flying routes are marked separately and expose `bonus_spawn_tiles` metadata for later collectible placement without making those routes mandatory.
+Mandatory platform transitions are constrained by the same `SPEED`, effective jump height, `GRAVITY`, and tile-size movement envelope used by the player. In Snow, both the player and generator derive the same encounter-specific jump modifier from the run seed, so generation remains conservative even when Snow reduces jump height. Layout generation clamps height changes and computes the maximum reachable horizontal gap for the destination elevation. Optional stacked/flying routes are marked separately and expose `bonus_spawn_tiles` metadata consumed by the Phase 12 collectible spawner without making those routes mandatory.
 
 Static terrain is painted into a `TileMapLayer`. `TerrainTileSetFactory` builds six terrain definitions and collision polygons from the supplied `assets/Spritesheets/spritesheet-tiles-double.png` atlas, whose 128×128 cells use a one-pixel separation. The biome families currently map to grass, dirt/tundra, snow, sand/desert, purple/astro, and stone/fort atlas regions. Astro terrain cells are deliberately omitted from the static layer and instantiated as independent `FallingTile` scenes instead; their explicit coordinate/support registry is also cleaned with streamed chunks.
 
@@ -310,7 +388,7 @@ Static terrain is painted into a `TileMapLayer`. `TerrainTileSetFactory` builds 
 - **Astro** represents its generated terrain cells with reusable `FallingTile` `CharacterBody2D` scenes instead of static TileMap cells, so every Astro block falls when the player steps on it. Contact starts a warning delay, then the block falls. Explicit support links notify registered blocks above when support disappears, making chain reactions deterministic and unit-testable.
 - **Fort** procedurally places `SpikeHazard` scenes using the bundled spike art. The trap cycles through `RETRACTED → RISING → EXPOSED → LOWERING`, and the damage hitbox is enabled only during `EXPOSED`.
 
-Each `BiomeData` resource now carries its terrain-set identifier, background color, enemy-pool identifiers, layout weights, hazard type/chance, collectible weights, and optional particle reference. Enemy and collectible systems consume these fields in their later implementation phases; Phase 3 establishes the data contract without prematurely implementing those later systems.
+Each `BiomeData` resource carries its terrain-set identifier, background color, enemy-pool identifiers, layout weights, hazard type/chance, collectible weights, and optional particle reference. Enemy spawning consumes the biome pools, while Phase 12 now consumes the collectible weights directly for procedural reward selection.
 
 ## Tests
 
@@ -320,7 +398,7 @@ Run the headless test suite with:
 godot --headless --path . tests/test_runner.tscn
 ```
 
-Phase 1–9 test inventory:
+Phase 1–12 test inventory:
 
 - `test_config_values_are_valid`
 - `test_game_state_reset_is_seeded`
@@ -427,12 +505,46 @@ Phase 1–9 test inventory:
 - `test_explode_damage_and_destructible_terrain`
 - `test_slow_down_uses_world_multipliers`
 - `test_invisibility_detectability_and_duration`
+- `test_enemy_biome_restriction`
+- `test_enemy_level_scaling`
+- `test_enemy_patrol`
+- `test_stationary_enemy`
+- `test_enemy_melee_vicinity`
+- `test_enemy_shooting_vicinity`
+- `test_enemy_fire_interval`
+- `test_enemy_projectile_damage_and_status`
+- `test_enemy_death`
+- `test_enemy_health_bar_updates`
+- `test_enemy_spawner_is_seeded`
+- `test_streamed_enemy_cleanup`
+- `test_status_effect_resources_are_valid`
+- `test_status_effect_dictionary_compatibility`
+- `test_freeze`
+- `test_burn`
+- `test_blood_loss`
+- `test_poison`
+- `test_slow`
+- `test_status_refresh_policy`
+- `test_status_stack_policy`
+- `test_status_expiration`
+- `test_status_damage_multiplier`
+- `test_enemy_uses_generic_status_controller`
+- `test_collectible_definitions_are_valid`
+- `test_gem_value_exceeds_coin`
+- `test_pickup_increases_gold`
+- `test_collectible_spawn_is_seeded`
+- `test_collectible_difficulty_biases_value`
+- `test_enemy_drop_tables_are_valid`
+- `test_enemy_drop_probability_and_count`
+- `test_enemy_death_spawns_drops`
+- `test_streamed_collectible_cleanup`
+- `test_level_collectible_architecture`
 
-Physics-sensitive tests instantiate the real player, projectile, and hazard scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile. Phase 6 tests verify every stat definition, increasing/decreasing value derivation, fixed upgrade cost, transactional failure behavior, upper/lower clamps, ability-gated stats, persisted-level sanitization, runtime player health/defense integration, and upgraded starting run health. Phase 7 tests instantiate real `Area2D`/physics overlaps and verify detector configuration, nearest valid-target selection, contract filtering, upgraded melee damage, `MELEE` `DamageInfo`, cooldown repeat timing, attack animation selection, and dead-state suppression. Phase 8 tests verify resource validity and supplied assets, Shooting-gated purchases, atomic gold handling, the equipment cap, target counts, all four aim modes, deterministic random aim, ballistic reachability math, automatic on-screen firing/cooldowns, off-screen suppression, real projectile collision damage, and homing steering. Phase 9 tests verify every ability resource, equipment caps/conflicts, all Jump levels and landing reset, Climb wall-jump budgets, Glide duration, Reverse Gravity support semantics, unlimited Fly jumps, exact travelled Dash distance/cooldown, explosion radius plus protected/destructible terrain, explicit slow-time subsystem multipliers without `Engine.time_scale`, and Invisibility's gameplay detectability/expiry.
+Physics-sensitive tests instantiate the real player, projectile, hazard, enemy, and pickup scenes under the headless Godot physics loop rather than testing duplicate movement formulas outside the engine. The generator smoke test also walks many seeded chunks and checks every mandatory transition, biome boundary, and deterministic replay rather than validating only a few hand-picked layouts. Phase 3 tests additionally verify Snow's shared player/generator modifier, Desert damage/burn, Astro warning/fall/support propagation, Fort damage gating, hazard spawning, and streamed hazard cleanup. Phase 4 tests verify the shared damage contract/payload, defense application, zero-health countdown, progress-based stuck detection, checkpoint advancement, potion consumption, checkpoint restoration, health/status restoration, world halt/resume, no-potion final game-over, and stuck-detection suspension during revival. Phase 5 tests verify the full persistent profile schema, profile/run separation, progression round trips, missing/corrupted/unsupported saves, and backward-compatible loading of the earlier additive version-1 profile. Phase 6 tests verify every stat definition, increasing/decreasing value derivation, fixed upgrade cost, transactional failure behavior, upper/lower clamps, ability-gated stats, persisted-level sanitization, runtime player health/defense integration, and upgraded starting run health. Phase 7 tests instantiate real `Area2D`/physics overlaps and verify detector configuration, nearest valid-target selection, contract filtering, upgraded melee damage, `MELEE` `DamageInfo`, cooldown repeat timing, attack animation selection, and dead-state suppression. Phase 8 tests verify resource validity and supplied assets, Shooting-gated purchases, atomic gold handling, the equipment cap, target counts, all four aim modes, deterministic random aim, ballistic reachability math, automatic on-screen firing/cooldowns, off-screen suppression, real projectile collision damage, and homing steering. Phase 9 tests verify every ability resource, equipment caps/conflicts, all Jump levels and landing reset, Climb wall-jump budgets, Glide duration, Reverse Gravity support semantics, unlimited Fly jumps, exact travelled Dash distance/cooldown, explosion radius plus protected/destructible terrain, explicit slow-time subsystem multipliers without `Engine.time_scale`, and Invisibility's gameplay detectability/expiry. Phase 10 tests verify biome-constrained enemy catalogs, encounter/level scaling, patrol/stationary behavior, melee/shoot ranges and cadence, projectile status dispatch, death/health bars, deterministic spawning, and streamed cleanup. Phase 11 tests verify canonical resource validity, boundary normalization of legacy payloads, Freeze movement/tint, Burn particles, Blood Loss DOT/blink, Poison ticks, Slow movement, refresh/stack policies, expiration cleanup, and damage-multiplier composition with defense. Phase 12 tests verify collectible resource validity/value ordering, persistent gold pickup behavior, deterministic weighted placement, increased premium weighting on risky platforms, valid `[0, 1]` enemy drop probabilities, deterministic probability/count handling, death-signal drop integration, streamed pickup cleanup, and the level/HUD collectible architecture.
 
 ## Save data
 
-`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 9 does not change the persistence schema: it activates the `unlocked_abilities`, `equipped_abilities`, and `ability_levels` fields added in Phase 5, while Phase 8 continues to use the weapon fields and melee continues to consume the Phase 6 stat model. Older Phase 4 version-1 saves that contain only numeric maximum-health/defense fields are still migrated to the nearest valid stat levels, while current saves derive numeric compatibility fields from the persisted levels.
+`SaveManager` uses `user://save.json` with `save_version = 1`. Phase 12 does not change the persistence schema because collectible rewards increase the existing persistent `gold` field. Phase 9 activates the `unlocked_abilities`, `equipped_abilities`, and `ability_levels` fields added in Phase 5, while Phase 8 continues to use the weapon fields and melee continues to consume the Phase 6 stat model. Older Phase 4 version-1 saves that contain only numeric maximum-health/defense fields are still migrated to the nearest valid stat levels, while current saves derive numeric compatibility fields from the persisted levels.
 
 Persistent `PlayerProfile` data now includes:
 
@@ -449,9 +561,9 @@ Transient `RunState` is intentionally not written to the profile save. It owns c
 
 Save loading validates the root type and `save_version`, sanitizes collection/scalar types, clamps non-negative progression values, removes invalid equipped entries, enforces configured equipment limits during deserialization, and restores a safe default profile when the file is missing, malformed, or uses an unsupported version.
 
-## Scope after Phase 9
+## Scope after Phase 12
 
-The following requested systems are intentionally not claimed as implemented yet: the enemy framework/spawning, collectible spawning/drop tables, character shop, the Stats/menu UI, the rest of the full menu set, and mobile gesture controls. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation, health/revival loop, persistence/stat transaction model, automatic melee, the Phase 8 data-driven weapon/projectile framework, and the Phase 9 composable ability framework now in place.
+The following requested systems are intentionally not claimed as implemented yet: character selection/shop data, the Stats/menu UI, the rest of the full menu set, mobile gesture controls, and the final expanded integration/procedural smoke suite. They remain later phases from `task.md` and should build on the deterministic biome/chunk/hazard foundation, health/revival loop, persistence/stat transaction model, automatic melee, the data-driven weapon/ability frameworks, the generic enemy/status framework, and the Phase 12 collectible/drop layer now in place.
 
 ## Assets
 

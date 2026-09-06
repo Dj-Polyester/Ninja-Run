@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"barbarian_warrior"
+display_name = "Barbarian Warrior"
+biome_id = 0
+movement_mode = 1
+attack_modes = 1
+base_health = 58
+health_per_level = 15
+base_damage = 12
+damage_per_level = 3
+move_speed_tiles = 1.5
+patrol_range_tiles = 2.5
+melee_range_tiles = 0.9
+melee_interval = 0.8
+animation_root = "res://assets/Enemies/archer-barbarian-mage/Barbarian Warrior/PNG/PNG Sequences"

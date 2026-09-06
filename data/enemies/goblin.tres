@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"goblin"
+display_name = "Goblin"
+biome_id = 0
+movement_mode = 1
+attack_modes = 1
+base_health = 38
+health_per_level = 11
+base_damage = 9
+damage_per_level = 2
+move_speed_tiles = 1.9
+patrol_range_tiles = 2.6
+melee_range_tiles = 0.8
+melee_interval = 0.65
+animation_root = "res://assets/Enemies/orc-ogre-and-goblin/Goblin/PNG/PNG Sequences"

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/scorch.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"desert_nomad_2"
+display_name = "Desert Nomad II"
+biome_id = 3
+movement_mode = 0
+attack_modes = 2
+base_health = 56
+health_per_level = 15
+base_damage = 12
+damage_per_level = 2.8
+vicinity_tiles = 6.0
+shooting_interval = 1.55
+projectile_speed_tiles = 7.0
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/desert-nomad/Desert_Nomad_2/PNG/PNG Sequences"

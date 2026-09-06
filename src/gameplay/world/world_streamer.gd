@@ -87,6 +87,9 @@ func snow_jump_modifier_for_tile(tile_x: int) -> float:
 	var biome := biome_for_tile(tile_x)
 	return BiomeMechanics.snow_jump_modifier(run_seed, tile_x, biome)
 
+func surface_position_for_tile(coords: Vector2i) -> Vector2:
+	return _surface_position_for_tile(coords)
+
 func next_platform_spec() -> Dictionary:
 	# Compatibility helper for Phase 1 callers/tests. It now derives a single
 	# conservative transition without mutating streamed terrain.

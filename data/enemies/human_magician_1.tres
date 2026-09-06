@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/void_mark.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"human_magician_1"
+display_name = "Human Magician I"
+biome_id = 4
+movement_mode = 0
+attack_modes = 2
+base_health = 55
+health_per_level = 15
+base_damage = 12
+damage_per_level = 3
+vicinity_tiles = 6.2
+shooting_interval = 1.45
+projectile_speed_tiles = 7.2
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/human-magician/Human Magician_1/PNG/PNG Sequences"

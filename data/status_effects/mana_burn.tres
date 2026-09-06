@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StatusEffect" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/status_effect.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"mana_burn"
+display_name = "Mana Burn"
+duration = 1.6
+tick_interval = 0.8
+tick_damage = 3.0
+tint = Color(0.82, 0.46, 0.96, 1)
+visual_priority = 41
+blink_red_on_tick = true

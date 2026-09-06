@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/sear.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"minotaur_3"
+display_name = "Minotaur III"
+biome_id = 3
+minimum_encounter = 3
+movement_mode = 0
+attack_modes = 3
+base_health = 125
+health_per_level = 30
+base_damage = 23
+damage_per_level = 5
+vicinity_tiles = 5.2
+shooting_interval = 1.8
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/minotaur/Minotaur_3/PNG/PNG Sequences"
+sprite_scale = 0.19

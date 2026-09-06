@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = &"archer_guy"
+display_name = "Archer Guy"
+biome_id = 0
+movement_mode = 0
+attack_modes = 2
+base_health = 42
+health_per_level = 12
+base_damage = 8
+damage_per_level = 2
+vicinity_tiles = 6.0
+shooting_interval = 1.45
+projectile_speed_tiles = 7.5
+animation_root = "res://assets/Enemies/archer-barbarian-mage/Archer Guy/PNG/PNG Sequences"
+shoot_animation_folder = "Shooting"

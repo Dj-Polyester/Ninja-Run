@@ -1,0 +1,21 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/enemies/enemy_beam.gd" id="1_beam"]
+
+[node name="EnemyBeam" type="Node2D"]
+script = ExtResource("1_beam")
+
+[node name="RayCast2D" type="RayCast2D" parent="."]
+target_position = Vector2(-320, 0)
+collision_mask = 3
+
+[node name="Line2D" type="Line2D" parent="."]
+width = 4.0
+default_color = Color(0.75, 0.9, 1, 0.9)
+points = PackedVector2Array(0, 0, -320, 0)
+
+[node name="ImpactParticles" type="GPUParticles2D" parent="."]
+amount = 12
+lifetime = 0.22
+one_shot = true
+emitting = false

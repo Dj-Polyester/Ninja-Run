@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="EnemyData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1"]
+[ext_resource type="Resource" path="res://data/status_effects/freeze.tres" id="2_status"]
+
+[resource]
+script = ExtResource("1")
+id = &"frost_knight_1"
+display_name = "Frost Knight I"
+biome_id = 2
+movement_mode = 1
+attack_modes = 1
+base_health = 58
+health_per_level = 16
+base_damage = 12
+damage_per_level = 3
+move_speed_tiles = 1.45
+status_effect = ExtResource("2_status")
+animation_root = "res://assets/Enemies/frost-knight/Frost_Knight_1/PNG/PNG Sequences"
