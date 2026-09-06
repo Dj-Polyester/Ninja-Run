@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/biome_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = 5
+display_name = "Fort"
+terrain_set = &"fort"
+background_color = Color(0.25, 0.25, 0.28, 1)
+enemy_pool = Array[StringName]([&"death_knight", &"skeleton_warrior", &"evil_warrior", &"orc"])
+terrain_top_atlas = Vector2i(15, 15)
+terrain_center_atlas = Vector2i(12, 15)
+terrain_left_atlas = Vector2i(5, 16)
+terrain_middle_atlas = Vector2i(6, 16)
+terrain_right_atlas = Vector2i(9, 16)
+layout_weights = {"flat": 1.0, "flying_platforms": 0.5, "mountain": 1.0, "cave": 2.5, "stairs": 3.0, "stacked_platforms": 2.0, "gaps": 1.0}
+hazard_type = 4
+hazard_spawn_chance = 0.32
+collectible_weights = {"bronze_coin": 0.4, "silver_coin": 0.3, "gold_coin": 0.2, "gem": 0.1}

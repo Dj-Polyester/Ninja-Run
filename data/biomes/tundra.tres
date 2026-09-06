@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/biome_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = 1
+display_name = "Tundra"
+terrain_set = &"tundra"
+background_color = Color(0.42, 0.52, 0.57, 1)
+enemy_pool = Array[StringName]([&"skeleton_hunter", &"ogre", &"golem"])
+terrain_top_atlas = Vector2i(1, 8)
+terrain_center_atlas = Vector2i(16, 7)
+terrain_left_atlas = Vector2i(9, 8)
+terrain_middle_atlas = Vector2i(10, 8)
+terrain_right_atlas = Vector2i(13, 8)
+layout_weights = {"flat": 2.0, "flying_platforms": 1.0, "mountain": 2.0, "cave": 2.0, "stairs": 1.5, "stacked_platforms": 1.0, "gaps": 1.0}
+hazard_type = 0
+hazard_spawn_chance = 0.0
+collectible_weights = {"bronze_coin": 0.6, "silver_coin": 0.25, "gold_coin": 0.1, "gem": 0.05}

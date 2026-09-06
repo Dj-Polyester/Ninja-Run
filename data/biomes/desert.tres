@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/biome_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = 3
+display_name = "Desert"
+terrain_set = &"desert"
+background_color = Color(0.88, 0.66, 0.34, 1)
+enemy_pool = Array[StringName]([&"desert_nomad", &"minotaur", &"desert_mage"])
+terrain_top_atlas = Vector2i(13, 12)
+terrain_center_atlas = Vector2i(10, 12)
+terrain_left_atlas = Vector2i(3, 13)
+terrain_middle_atlas = Vector2i(4, 13)
+terrain_right_atlas = Vector2i(7, 13)
+layout_weights = {"flat": 2.0, "flying_platforms": 1.0, "mountain": 1.0, "cave": 1.0, "stairs": 1.0, "stacked_platforms": 1.0, "gaps": 3.0}
+hazard_type = 2
+hazard_spawn_chance = 0.28
+collectible_weights = {"bronze_coin": 0.45, "silver_coin": 0.28, "gold_coin": 0.17, "gem": 0.1}
+particle_effect = "res://assets/Particles/flame3/png/flame_00.png"

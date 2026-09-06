@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/biome_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = 4
+display_name = "Astro"
+terrain_set = &"astro"
+background_color = Color(0.18, 0.10, 0.32, 1)
+enemy_pool = Array[StringName]([&"human_magician", &"reaper", &"ghoul"])
+terrain_top_atlas = Vector2i(3, 11)
+terrain_center_atlas = Vector2i(0, 11)
+terrain_left_atlas = Vector2i(11, 11)
+terrain_middle_atlas = Vector2i(12, 11)
+terrain_right_atlas = Vector2i(15, 11)
+layout_weights = {"flat": 1.0, "flying_platforms": 3.0, "mountain": 1.0, "cave": 0.5, "stairs": 1.0, "stacked_platforms": 2.5, "gaps": 2.5}
+hazard_type = 3
+hazard_spawn_chance = 1.0
+collectible_weights = {"bronze_coin": 0.35, "silver_coin": 0.3, "gold_coin": 0.2, "gem": 0.15}

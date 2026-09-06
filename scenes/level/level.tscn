@@ -1,0 +1,108 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/level/level.gd" id="1_level"]
+[ext_resource type="Script" path="res://src/gameplay/world/world_streamer.gd" id="2_streamer"]
+[ext_resource type="PackedScene" path="res://scenes/player/player.tscn" id="3_player"]
+
+[node name="Level" type="Node2D"]
+process_physics_priority = 1
+script = ExtResource("1_level")
+
+[node name="BackgroundLayer" type="CanvasLayer" parent="."]
+layer = -10
+
+[node name="Background" type="ColorRect" parent="BackgroundLayer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.13, 0.20, 0.30, 1)
+
+[node name="WorldStreamer" type="Node2D" parent="."]
+script = ExtResource("2_streamer")
+
+[node name="EnemyContainer" type="Node2D" parent="."]
+
+[node name="ProjectileContainer" type="Node2D" parent="."]
+
+[node name="PickupContainer" type="Node2D" parent="."]
+
+[node name="Effects" type="Node2D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+position = Vector2(128, 400)
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(384, 360)
+position_smoothing_enabled = true
+position_smoothing_speed = 7.0
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="MarginContainer" type="MarginContainer" parent="HUD"]
+offset_left = 20.0
+offset_top = 18.0
+offset_right = 340.0
+offset_bottom = 150.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HUD/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="HealthBar" type="ProgressBar" parent="HUD/MarginContainer/VBoxContainer"]
+custom_minimum_size = Vector2(300, 24)
+layout_mode = 2
+show_percentage = false
+
+[node name="HealthLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Health: 100 / 100"
+
+[node name="DistanceLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Distance: 0 tiles"
+
+[node name="BiomeLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "Biome: Grass"
+
+[node name="ControlsLabel" type="Label" parent="HUD/MarginContainer/VBoxContainer"]
+layout_mode = 2
+text = "↑ Jump    ↓ Roll"
+
+[node name="GameOverPanel" type="PanelContainer" parent="HUD"]
+offset_left = 470.0
+offset_top = 245.0
+offset_right = 810.0
+offset_bottom = 475.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HUD/GameOverPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="Title" type="Label" parent="HUD/GameOverPanel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "GAME OVER"
+horizontal_alignment = 1
+
+[node name="Reason" type="Label" parent="HUD/GameOverPanel/VBoxContainer"]
+layout_mode = 2
+text = "You fell from the run."
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="HUD/GameOverPanel/VBoxContainer"]
+custom_minimum_size = Vector2(260, 48)
+layout_mode = 2
+text = "RESTART"
+
+[node name="MenuButton" type="Button" parent="HUD/GameOverPanel/VBoxContainer"]
+custom_minimum_size = Vector2(260, 44)
+layout_mode = 2
+text = "MAIN MENU"
+
+[connection signal="pressed" from="HUD/GameOverPanel/VBoxContainer/RestartButton" to="." method="_on_restart_pressed"]
+[connection signal="pressed" from="HUD/GameOverPanel/VBoxContainer/MenuButton" to="." method="_on_menu_pressed"]

@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/biome_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = 2
+display_name = "Snow"
+terrain_set = &"snow"
+background_color = Color(0.70, 0.82, 0.90, 1)
+enemy_pool = Array[StringName]([&"frost_knight", &"ice_golem", &"death_knight"])
+terrain_top_atlas = Vector2i(5, 14)
+terrain_center_atlas = Vector2i(2, 14)
+terrain_left_atlas = Vector2i(13, 14)
+terrain_middle_atlas = Vector2i(14, 14)
+terrain_right_atlas = Vector2i(17, 14)
+layout_weights = {"flat": 1.5, "flying_platforms": 2.5, "mountain": 2.0, "cave": 1.0, "stairs": 1.5, "stacked_platforms": 1.5, "gaps": 2.0}
+hazard_type = 1
+hazard_spawn_chance = 0.0
+collectible_weights = {"bronze_coin": 0.5, "silver_coin": 0.3, "gold_coin": 0.12, "gem": 0.08}
+snow_jump_modifier_min = -0.5
+snow_jump_modifier_max = 0.5

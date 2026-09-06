@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BiomeData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/biome_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+id = 0
+display_name = "Grass"
+terrain_set = &"grass"
+background_color = Color(0.35, 0.62, 0.72, 1)
+enemy_pool = Array[StringName]([&"archer", &"barbarian", &"goblin", &"monk"])
+terrain_top_atlas = Vector2i(11, 9)
+terrain_center_atlas = Vector2i(8, 9)
+terrain_left_atlas = Vector2i(1, 10)
+terrain_middle_atlas = Vector2i(2, 10)
+terrain_right_atlas = Vector2i(5, 10)
+layout_weights = {"flat": 3.0, "flying_platforms": 1.5, "mountain": 2.0, "cave": 0.5, "stairs": 1.5, "stacked_platforms": 1.0, "gaps": 1.0}
+hazard_type = 0
+hazard_spawn_chance = 0.0
+collectible_weights = {"bronze_coin": 0.7, "silver_coin": 0.2, "gold_coin": 0.08, "gem": 0.02}

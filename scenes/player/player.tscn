@@ -1,0 +1,31 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/player/player.gd" id="1_player"]
+
+[sub_resource type="RectangleShape2D" id="RectangleStanding"]
+size = Vector2(34, 58)
+
+[sub_resource type="RectangleShape2D" id="RectangleRolling"]
+size = Vector2(34, 30.16)
+
+[node name="Player" type="CharacterBody2D"]
+collision_layer = 1
+collision_mask = 2
+script = ExtResource("1_player")
+
+[node name="StandingCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleStanding")
+
+[node name="RollingCollision" type="CollisionShape2D" parent="."]
+position = Vector2(0, 13.92)
+shape = SubResource("RectangleRolling")
+disabled = true
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.24, 0.24)
+
+[node name="BurnParticles" type="GPUParticles2D" parent="."]
+position = Vector2(0, 8)
+amount = 8
+lifetime = 0.55
+emitting = false

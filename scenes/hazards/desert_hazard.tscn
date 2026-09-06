@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/gameplay/hazards/desert_hazard.gd" id="1"]
+
+[sub_resource type="RectangleShape2D" id="HeatShape"]
+size = Vector2(56, 16)
+
+[node name="DesertHazard" type="Area2D"]
+collision_layer = 0
+collision_mask = 1
+monitoring = true
+script = ExtResource("1")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -8)
+shape = SubResource("HeatShape")
+
+[node name="FlameParticles" type="GPUParticles2D" parent="."]
+position = Vector2(0, -12)
+amount = 12
+lifetime = 0.7
+randomness = 0.35
+emitting = true
+
+[node name="DamageTimer" type="Timer" parent="."]
+wait_time = 0.75
+one_shot = false
+
+[connection signal="body_entered" from="." to="." method="_on_body_entered"]
+[connection signal="body_exited" from="." to="." method="_on_body_exited"]
+[connection signal="timeout" from="DamageTimer" to="." method="_on_damage_timer_timeout"]
+
