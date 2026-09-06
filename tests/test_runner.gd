@@ -193,17 +193,22 @@ func test_phase1_assets_exist() -> void:
 	_expect(_png_decodes(TERRAIN_PATH), "required terrain spritesheet must decode as an image")
 	var base := "res://assets/Characters/1/Png/Character Sprite"
 	for folder in ["Fast Run", "Jump Before", "Fall", "Roll", "Dead"]:
-		var files := DirAccess.get_files_at(base.path_join(folder))
+		var animation_folder := base.path_join(folder)
+		var files := PLAYER_SCRIPT.list_character_animation_files(animation_folder)
 		var png_count := 0
 		var representative_path := ""
 		for file_name in files:
 			if file_name.to_lower().ends_with(".png"):
 				png_count += 1
 				if representative_path.is_empty():
-					representative_path = base.path_join(folder).path_join(file_name)
+					representative_path = animation_folder.path_join(file_name)
 		_expect(png_count > 0, "character animation folder '%s' must contain PNG frames" % folder)
 		if not representative_path.is_empty():
 			_expect(_png_decodes(representative_path), "character animation '%s' must decode as an image" % folder)
+			var texture := PLAYER_SCRIPT.load_character_texture(representative_path)
+			_expect(texture != null, "character animation '%s' must load as a runtime texture without relying on import cache" % folder)
+			if texture != null:
+				_expect(texture.get_width() > 0 and texture.get_height() > 0, "character animation '%s' runtime texture must have non-zero dimensions" % folder)
 
 func test_level_scene_has_phase1_architecture() -> void:
 	var level = LEVEL_SCENE.instantiate()

@@ -380,14 +380,41 @@ func _add_animation(frames: SpriteFrames, animation_name: StringName, folder: St
 	frames.add_animation(animation_name)
 	frames.set_animation_speed(animation_name, fps)
 	frames.set_animation_loop(animation_name, looped)
-	var files := DirAccess.get_files_at(folder)
-	files.sort()
+	var files := list_character_animation_files(folder)
 	for file_name in files:
 		if not file_name.to_lower().ends_with(".png"):
 			continue
-		var texture := load(folder.path_join(file_name)) as Texture2D
+		var texture := load_character_texture(folder.path_join(file_name))
 		if texture != null:
 			frames.add_frame(animation_name, texture)
+	if frames.get_frame_count(animation_name) == 0:
+		push_error("Character animation '%s' has no loadable frames in %s" % [animation_name, folder])
+
+static func list_character_animation_files(folder: String) -> PackedStringArray:
+	# ResourceLoader is export-aware: it returns the original resource names
+	# even when imported files have been remapped into a PCK. DirAccess is kept
+	# as a source-checkout fallback for environments that have not imported the
+	# bundled asset library yet.
+	var files := ResourceLoader.list_directory(folder)
+	if files.is_empty():
+		files = DirAccess.get_files_at(folder)
+	files.sort()
+	return files
+
+static func load_character_texture(path: String) -> Texture2D:
+	# A source checkout can contain valid .png.import metadata while its
+	# .godot/imported cache is still empty. Prefer the physical PNG when it is
+	# available so ResourceLoader does not follow a stale remap and fail before
+	# the fallback can run. Exported builds do not expose that physical source
+	# path, so they naturally take the ResourceLoader/PCK branch below.
+	var image := Image.new()
+	var absolute_path := ProjectSettings.globalize_path(path)
+	if FileAccess.file_exists(absolute_path):
+		if image.load(absolute_path) == OK and not image.is_empty():
+			return ImageTexture.create_from_image(image)
+	if ResourceLoader.exists(path):
+		return ResourceLoader.load(path) as Texture2D
+	return null
 
 func _add_headless_animation(frames: SpriteFrames, animation_name: StringName) -> void:
 	frames.add_animation(animation_name)
