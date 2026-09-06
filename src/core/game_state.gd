@@ -7,6 +7,8 @@ const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 const STAT_UPGRADE_SERVICE_SCRIPT := preload("res://src/gameplay/progression/stat_upgrade_service.gd")
 const WEAPON_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/combat/weapon_inventory_service.gd")
 const ABILITY_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/abilities/ability_inventory_service.gd")
+const CHARACTER_CATALOG_SCRIPT := preload("res://src/data/character_catalog.gd")
+const CHARACTER_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/progression/character_inventory_service.gd")
 
 signal profile_changed
 signal run_changed
@@ -77,6 +79,30 @@ func add_gold(amount: int) -> int:
 	profile["gold"] = gold_count() + amount
 	profile_changed.emit()
 	return int(profile.gold)
+
+func selected_character_id() -> int:
+	return int(profile.get("selected_character", PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID))
+
+func selected_character_data():
+	var character = CHARACTER_CATALOG_SCRIPT.get_by_id(selected_character_id())
+	if character == null:
+		character = CHARACTER_CATALOG_SCRIPT.get_by_id(PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID)
+	return character
+
+func is_character_unlocked(character_id: int) -> bool:
+	return CHARACTER_INVENTORY_SERVICE_SCRIPT.is_unlocked(profile, character_id)
+
+func unlock_character(character_id: int) -> int:
+	var result: int = CHARACTER_INVENTORY_SERVICE_SCRIPT.unlock(profile, character_id)
+	if result == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
+
+func select_character(character_id: int) -> int:
+	var result: int = CHARACTER_INVENTORY_SERVICE_SCRIPT.select(profile, character_id)
+	if result == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS:
+		profile_changed.emit()
+	return result
 
 func stat_level(stat_id: StringName) -> int:
 	var stat = STAT_CATALOG_SCRIPT.get_by_id(stat_id)

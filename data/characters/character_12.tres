@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/character_data.gd" id="1_character"]
+
+[resource]
+script = ExtResource("1_character")
+id = 12
+display_name = "Character 12"
+animation_root = "res://assets/Characters/12/Png/Character Sprite"
+unlock_cost = 450

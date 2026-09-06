@@ -44,6 +44,9 @@ const RNG_SERVICE_SCRIPT := preload("res://src/core/rng_service.gd")
 const COLLECTIBLE_CATALOG_SCRIPT := preload("res://src/data/collectible_catalog.gd")
 const COLLECTIBLE_PICKUP_SCENE := preload("res://scenes/items/collectible_pickup.tscn")
 const COLLECTIBLE_SPAWNER_SCRIPT := preload("res://src/gameplay/items/collectible_spawner.gd")
+const CHARACTER_DATA_SCRIPT := preload("res://src/data/character_data.gd")
+const CHARACTER_CATALOG_SCRIPT := preload("res://src/data/character_catalog.gd")
+const CHARACTER_INVENTORY_SERVICE_SCRIPT := preload("res://src/gameplay/progression/character_inventory_service.gd")
 
 var failures: Array[String] = []
 var passed := 0
@@ -191,8 +194,13 @@ func _run() -> void:
 	await test_enemy_death_spawns_drops()
 	await test_streamed_collectible_cleanup()
 	test_level_collectible_architecture()
+	test_character_definitions_are_valid()
+	test_character_unlock_costs_gold_atomically()
+	test_character_selection_requires_unlock()
+	test_character_profile_sanitizes_unknown_ids()
+	await test_selected_character_drives_player_presentation()
 
-	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12 assertions: %d passed, %d failed" % [passed, failures.size()])
+	print("\nPhase 1+2+3+4+5+6+7+8+9+10+11+12+13 assertions: %d passed, %d failed" % [passed, failures.size()])
 	for failure in failures:
 		printerr("FAIL: %s" % failure)
 	await get_tree().process_frame
@@ -2580,6 +2588,101 @@ func test_level_collectible_architecture() -> void:
 	_expect(level.has_node("PickupContainer"), "level scene must own the Phase 12 pickup container")
 	_expect(level.has_node("HUD/MarginContainer/VBoxContainer/GoldLabel"), "level HUD must expose persistent gold earned from collectibles")
 	level.free()
+
+func test_character_definitions_are_valid() -> void:
+	var characters := CHARACTER_CATALOG_SCRIPT.all()
+	_expect(characters.size() == 45, "CharacterCatalog must expose all 45 supplied playable character sets")
+	var seen_ids: Dictionary = {}
+	for index in characters.size():
+		var character = characters[index]
+		_expect(character != null, "character resource %d must load" % [index + 1])
+		if character == null:
+			continue
+		_expect(character.get_script() == CHARACTER_DATA_SCRIPT, "character %d must use CharacterData" % character.id)
+		_expect(character.is_valid(), "character %d definition must resolve every required animation folder" % character.id)
+		_expect(int(character.id) == index + 1, "character resources must remain ordered by their numbered asset set")
+		_expect(not seen_ids.has(int(character.id)), "character ids must be unique")
+		seen_ids[int(character.id)] = true
+		_expect(String(character.animation_root) == "res://assets/Characters/%d/Png/Character Sprite" % character.id, "character %d must reference its matching bundled asset folder" % character.id)
+		_expect(int(character.unlock_cost) >= 0, "character unlock costs must never be negative")
+		var run_folder := String(character.animation_root).path_join("Fast Run")
+		var run_files := CHARACTER_DATA_SCRIPT.list_animation_files(run_folder)
+		var representative_texture: Texture2D
+		for file_name in run_files:
+			if file_name.to_lower().ends_with(".png"):
+				representative_texture = CHARACTER_DATA_SCRIPT.load_texture(run_folder.path_join(file_name))
+				break
+		_expect(representative_texture != null, "character %d must expose at least one decodable runtime animation texture" % character.id)
+		var frames: SpriteFrames = character.build_sprite_frames(true)
+		for animation_name in CHARACTER_DATA_SCRIPT.REQUIRED_ANIMATIONS.keys():
+			_expect(frames.has_animation(animation_name), "character %d SpriteFrames must define '%s'" % [character.id, animation_name])
+	_expect(int(characters[0].unlock_cost) == 0, "the default character must not charge an unlock cost")
+	for index in range(1, characters.size()):
+		_expect(int(characters[index].unlock_cost) > 0, "non-default character %d must have a purchasable gold cost" % characters[index].id)
+
+func test_character_unlock_costs_gold_atomically() -> void:
+	GameState.reset_profile()
+	var character = CHARACTER_CATALOG_SCRIPT.get_by_id(2)
+	_expect(character != null, "character purchase test requires character 2")
+	if character == null:
+		return
+	var cost := int(character.unlock_cost)
+	GameState.profile.gold = cost - 1
+	var before := GameState.profile.duplicate(true)
+	var insufficient := CHARACTER_INVENTORY_SERVICE_SCRIPT.unlock(GameState.profile, 2)
+	_expect(insufficient == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.NOT_ENOUGH_GOLD, "character purchase must reject insufficient gold")
+	_expect(GameState.profile == before, "failed character purchase must not partially mutate profile state")
+	GameState.profile.gold = cost + 17
+	var success := GameState.unlock_character(2)
+	_expect(success == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "character purchase must succeed when enough gold is available")
+	_expect(GameState.is_character_unlocked(2), "successful purchase must append the character to unlocked_characters")
+	_expect(GameState.gold_count() == 17, "successful purchase must deduct exactly CharacterData.unlock_cost")
+	var after_success := GameState.profile.duplicate(true)
+	var duplicate := GameState.unlock_character(2)
+	_expect(duplicate == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.ALREADY_UNLOCKED, "already unlocked characters must not be purchased twice")
+	_expect(GameState.profile == after_success, "duplicate character purchase must be atomic")
+	var unknown_before := GameState.profile.duplicate(true)
+	var unknown := GameState.unlock_character(999)
+	_expect(unknown == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.UNKNOWN_CHARACTER, "unknown character ids must be rejected")
+	_expect(GameState.profile == unknown_before, "unknown character purchase must not mutate profile state")
+
+func test_character_selection_requires_unlock() -> void:
+	GameState.reset_profile()
+	_expect(GameState.selected_character_id() == PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID, "default character must begin selected")
+	var locked := GameState.select_character(3)
+	_expect(locked == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.NOT_UNLOCKED, "locked characters cannot be selected")
+	_expect(GameState.selected_character_id() == PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID, "failed selection must preserve the previous character")
+	var character = CHARACTER_CATALOG_SCRIPT.get_by_id(3)
+	GameState.profile.gold = int(character.unlock_cost)
+	_expect(GameState.unlock_character(3) == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "selection test must unlock character 3")
+	_expect(GameState.select_character(3) == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.SUCCESS, "unlocked character must be selectable")
+	_expect(GameState.selected_character_id() == 3, "selection must persist the chosen character id in PlayerProfile")
+	_expect(GameState.selected_character_data() != null and int(GameState.selected_character_data().id) == 3, "GameState must resolve selected_character to CharacterData")
+	_expect(GameState.select_character(3) == CHARACTER_INVENTORY_SERVICE_SCRIPT.Result.ALREADY_SELECTED, "selecting the active character should be a no-op result")
+
+func test_character_profile_sanitizes_unknown_ids() -> void:
+	var raw := PLAYER_PROFILE_SCRIPT.create_default()
+	raw.unlocked_characters = [1, 7, 999, 7, -4]
+	raw.selected_character = 999
+	var sanitized := PLAYER_PROFILE_SCRIPT.sanitize(raw)
+	_expect(sanitized.unlocked_characters == [1, 7], "profile sanitation must remove duplicate/unknown character ids")
+	_expect(int(sanitized.selected_character) == PLAYER_PROFILE_SCRIPT.DEFAULT_CHARACTER_ID, "invalid selected character must fall back to the default")
+	raw.selected_character = 7
+	sanitized = PLAYER_PROFILE_SCRIPT.sanitize(raw)
+	_expect(int(sanitized.selected_character) == 7, "a known unlocked selected character must survive sanitation")
+
+func test_selected_character_drives_player_presentation() -> void:
+	GameState.reset_profile()
+	GameState.profile.unlocked_characters = [1, 12]
+	GameState.profile.selected_character = 12
+	var player = await _spawn_player(false)
+	_expect(player.character_data != null, "spawned player must resolve selected CharacterData")
+	if player.character_data != null:
+		_expect(int(player.character_data.id) == 12, "spawned player presentation must use PlayerProfile.selected_character")
+		_expect(String(player.character_data.animation_root).contains("/Characters/12/"), "selected CharacterData must point at character 12 assets")
+	for animation_name in CHARACTER_DATA_SCRIPT.REQUIRED_ANIMATIONS.keys():
+		_expect(player.sprite.sprite_frames.has_animation(animation_name), "selected player SpriteFrames must include '%s'" % animation_name)
+	await _free_node(player)
 
 func _remove_test_save(path: String) -> void:
 	var absolute_path := ProjectSettings.globalize_path(path)

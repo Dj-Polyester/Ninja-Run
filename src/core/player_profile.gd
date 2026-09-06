@@ -4,6 +4,7 @@ extends RefCounted
 const GAME_CONFIG_SCRIPT := preload("res://src/core/game_config.gd")
 const STAT_CATALOG_SCRIPT := preload("res://src/data/stat_catalog.gd")
 const ABILITY_CATALOG_SCRIPT := preload("res://src/data/ability_catalog.gd")
+const CHARACTER_CATALOG_SCRIPT := preload("res://src/data/character_catalog.gd")
 
 const CURRENT_SAVE_VERSION := 1
 const DEFAULT_CHARACTER_ID := 1
@@ -55,12 +56,16 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 	var result := create_default()
 	result["gold"] = maxi(0, _safe_int(raw.get("gold"), int(result.gold)))
 
-	var unlocked_characters := _sanitize_int_array(raw.get("unlocked_characters"), [DEFAULT_CHARACTER_ID], 1)
+	var requested_characters := _sanitize_int_array(raw.get("unlocked_characters"), [DEFAULT_CHARACTER_ID], 1)
+	var unlocked_characters: Array = []
+	for character_id in requested_characters:
+		if CHARACTER_CATALOG_SCRIPT.contains(int(character_id)):
+			unlocked_characters.append(int(character_id))
 	if not unlocked_characters.has(DEFAULT_CHARACTER_ID):
 		unlocked_characters.push_front(DEFAULT_CHARACTER_ID)
 	result["unlocked_characters"] = unlocked_characters
 	var selected_character := _safe_int(raw.get("selected_character"), DEFAULT_CHARACTER_ID)
-	if not unlocked_characters.has(selected_character):
+	if not CHARACTER_CATALOG_SCRIPT.contains(selected_character) or not unlocked_characters.has(selected_character):
 		selected_character = DEFAULT_CHARACTER_ID
 	result["selected_character"] = selected_character
 
