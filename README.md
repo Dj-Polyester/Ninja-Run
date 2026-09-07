@@ -1,6 +1,6 @@
 # Ninja Run
 
-Ninja Run is a Godot 4.7 2D endless-runner project. The repository is being implemented in phases; **Phase 1 (core playable runner)** through **Phase 15 (UI)** are implemented in this branch.
+Ninja Run is a Godot 4.7 2D endless-runner project. **Phases 1–17 are implemented on this branch**, including the complete headless regression/stress suite and this final documentation pass.
 
 ## Requirements
 
@@ -17,6 +17,8 @@ godot --path .
 
 The repository contains a large asset pack, so the editor's first import is substantially heavier than normal startup. The headless test suite below can read the required terrain PNG directly and does not require importing the complete asset library.
 
+## Controls
+
 Desktop controls:
 
 - **Up Arrow** — jump
@@ -29,11 +31,13 @@ Mobile controls:
 - **Swipe down** — roll
 - Active equipped abilities that are not already represented by the jump gesture (and are not passive) appear as touch buttons using the same dense action-slot order as desktop. The cluster defaults to the **right** side and follows the persisted `action_button_side` setting (`right` / `left`).
 
+## Gameplay
+
 The main menu provides Start Run plus Character, Stats, Abilities, Weapons, and Settings screens. Profile screens read directly from the same catalogs and `GameState` transaction APIs used by gameplay: unlocks/upgrades spend persistent gold, loadout limits and incompatibilities are enforced by services rather than widgets, and successful changes are saved immediately. The lower-left level HUD mirrors the four direct-action slots and their live cooldowns so the number-key mapping is always visible. Jump/Climb/Glide/Reverse Gravity/Fly stay on the dedicated Jump action, Shooting stays automatic, and active abilities such as Dash/Explode/Slow Down/Invisibility receive dense 1–4 mappings. Keyboard and touch both terminate at `PlayerInputRouter`; the player and `AbilityController` receive logical jump/roll/ability requests and do not branch on the physical input source.
 
 The player continuously runs to the right. Procedural terrain streams ahead, old chunks and runtime hazards are removed behind the run, and the camera follows horizontal progress with look-ahead. Falling below the kill plane, losing all health, or failing to make horizontal progress for `GAME_OVER_NUMBER_OF_SECS` starts the Phase 4 revival countdown. A revival potion returns the player to the most recent safe checkpoint with restored health, cleared statuses, and brief invulnerability; otherwise the countdown ends in final game-over. The first traversal is always **Grass → Tundra → Snow → Desert → Astro → Fort**, with each biome lasting `BIOME_INTERVAL` tiles; later biome encounters are seeded-random and never immediately repeat the previous biome. Snow temporarily varies jump height, Desert adds fire/burn zones, Astro substitutes selected terrain cells with falling blocks, and Fort adds cycling spike traps.
 
-## Phase 1–15 architecture
+## Architecture
 
 ```text
 scenes/
@@ -194,7 +198,7 @@ Responsibilities are deliberately separated: `GameConfig` owns source tuning val
 
 ## Configuration
 
-The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. Phase 1–15 actively use the following values:
+The task-defined and shared runtime `CONSTANT_CASE` tuning variables are centralized in `src/core/game_config.gd`. The table below documents every current `GameConfig` constant so project tuning does not require hunting through gameplay scripts or scenes:
 
 | Setting | Default | Meaning |
 | --- | ---: | --- |
@@ -203,8 +207,11 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `MAX_JUMP` | 3 tiles | Maximum jump height target |
 | `ROLL_DURATION` | 0.65 s | Time the shortened roll hitbox remains active |
 | `ENEMY_COLLISION_MASK` | 4 (physics layer 3) | Enemy body/hurtbox layer queried by automatic melee |
+| `PLAYER_COLLISION_LAYER` | 1 (physics layer 1) | Player body collision layer |
+| `TERRAIN_COLLISION_LAYER` | 2 (physics layer 2) | Terrain/platform collision layer |
 | `MELEE_RANGE_TILES` | 1.25 tiles | Radius of the player melee proximity detector |
 | `MELEE_ATTACK_INTERVAL` | 0.55 s | Minimum time between automatic melee hits |
+| `ENEMY_COLLISION_WIDTH` / `ENEMY_COLLISION_HEIGHT` | 36 / 56 px | Generic enemy body collision dimensions |
 | `ENEMY_MIN_PLATFORM_WIDTH` | 4 tiles | Minimum mandatory platform width eligible for an enemy spawn |
 | `ENEMY_SPAWN_START_TILE` | 12 tiles | Earliest procedural tile where enemies may spawn |
 | `ENEMY_MAX_PER_CHUNK` | 2 | Hard bound on generated enemies per streamed chunk |
@@ -225,6 +232,12 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `COLLECTIBLE_MAX_SPAWN_CHANCE` | 0.80 | Placement chance approached by high-risk mandatory platforms |
 | `COLLECTIBLE_DIFFICULTY_VALUE_BONUS` | 1.25 | Strength of high-value collectible weighting on difficult platforms |
 | `COLLECTIBLE_VERTICAL_OFFSET` | 34 px | Height above terrain used by procedural pickups |
+| `COLLECTIBLE_DROP_SPACING` | 24 px | Horizontal spacing between multiple drops from one enemy |
+| `COLLECTIBLE_DROP_LIFT` | 28 px | Vertical lift applied when placing enemy drops |
+| `COLLECTIBLE_BOB_PIXELS` | 4 px | Pickup idle bob amplitude |
+| `COLLECTIBLE_BOB_SPEED` | 3.4 | Pickup idle bob angular speed |
+| `COLLECTIBLE_SPIN_SPEED` | 2.1 | Pickup presentation spin speed |
+| `COLLECTIBLE_TILT_RADIANS` | 0.10 rad | Small presentation tilt applied while spinning |
 | `NUM_EQUIPPABLE_WEAPONS` | 3 | Maximum number of simultaneously equipped weapons |
 | `NUM_EQUIPABLE_ABILITIES` | 4 | Maximum number of simultaneously equipped abilities |
 | `MAX_GLIDE_DURATION` | 2.0 s | Maximum continuous Glide/Hang duration per landing cycle |
@@ -235,6 +248,7 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `WALL_JUMP_PUSH_DURATION` | 0.18 s | Time the wall-jump push overrides automatic running |
 | `EXPLODE_RADIUS` | 3 tiles | Enemy/terrain query radius for Explode |
 | `EXPLODE_DAMAGE` | 40 | Damage applied by Explode inside its radius |
+| `EXPLODE_EFFECT_DURATION` | 0.45 s | Lifetime of the one-shot explosion visual effect |
 | `COOLDOWN_PERIOD` | 8.0 s | Shared cooldown used by action abilities |
 | `INVISIBILITY_ALPHA` | 0.35 | Visual alpha while gameplay detectability is disabled |
 | `MOBILE_TAP_MAX_DISTANCE` | 28 px | Maximum release displacement still classified as a tap |
@@ -243,6 +257,7 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `MOBILE_SWIPE_DIRECTION_RATIO` | 1.25 | Required vertical dominance over horizontal drag for a downward swipe |
 | `MOBILE_ACTION_BUTTON_WIDTH` / `MOBILE_ACTION_BUTTON_HEIGHT` | 168 / 52 px | Touch-button minimum dimensions |
 | `MOBILE_ACTION_BUTTON_MARGIN` | 24 px | Edge margin for the left/right mobile action cluster |
+| `MOBILE_ACTION_BUTTON_CLUSTER_HEIGHT` | 300 px | Vertical layout budget reserved for the mobile action cluster |
 | `SLOW_TIME_PLAYER_SPEED_MULTIPLIER` | 0.60 | Player run-speed multiplier during Slow Down Time |
 | `SLOW_TIME_ENEMY_MOVE_MULTIPLIER` | 0.60 | Enemy movement multiplier exposed for the enemy phase |
 | `SLOW_TIME_ENEMY_FIRE_INTERVAL_MULTIPLIER` | 1.50 | Enemy firing-interval multiplier exposed for the enemy phase |
@@ -257,11 +272,20 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `BIOME_INTERVAL` | 48 tiles | Horizontal length of each biome encounter |
 | `GENERATION_DISTANCE_AHEAD` | 36 tiles | Terrain kept generated ahead |
 | `CLEANUP_DISTANCE_BEHIND` | 18 tiles | Terrain retention behind the player |
+| `START_PLATFORM_START_TILE` | -4 | Tile X where the authored safe starting platform begins |
+| `START_PLATFORM_WIDTH` | 20 tiles | Width of the authored safe starting platform |
+| `BASE_PLATFORM_HEIGHT` | 8 | Default generated platform row |
+| `PLATFORM_MIN_WIDTH` / `PLATFORM_MAX_WIDTH` | 8 / 14 tiles | Width bounds for mandatory procedural platforms |
+| `PLATFORM_MIN_GAP` / `PLATFORM_MAX_GAP` | 1 / 3 tiles | Candidate horizontal gap bounds before reachability clamping |
+| `PLATFORM_MAX_HEIGHT_STEP` | 1 tile | Maximum ordinary vertical step between adjacent mandatory platforms |
 | `CHUNK_MIN_SPAN` | 8 tiles | Minimum procedural chunk span |
 | `CHUNK_MAX_SPAN` | 16 tiles | Maximum procedural chunk span |
 | `WORLD_MIN_HEIGHT_TILE` | 6 | Highest generated mandatory platform row |
 | `WORLD_MAX_HEIGHT_TILE` | 9 | Lowest generated mandatory platform row |
 | `OPTIONAL_ROUTE_CHANCE` | 0.35 | Chance used by eligible archetypes for risky bonus routes |
+| `CAVE_CLEARANCE_TILES` | 4 tiles | Vertical clearance reserved by cave archetypes |
+| `TERRAIN_SOURCE_TILE_SIZE` | 128 px | Source atlas cell size in `spritesheet-tiles-double.png` |
+| `TERRAIN_ATLAS_SEPARATION` | 1 px | Pixel separation between source atlas cells |
 | `CAMERA_LOOK_AHEAD` | 4 tiles | Horizontal camera lead |
 | `GRAVITY` | 1800 px/s² | Player gravity |
 | `KILL_PLANE_Y` | 1050 px | Falling past this Y coordinate kills the player |
@@ -272,6 +296,8 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `COUNTDOWN_SECS` | 5.0 s | Time available to use a revival potion before final game-over |
 | `STUCK_PROGRESS_THRESHOLD` | 0.125 tiles | Minimum horizontal advance that resets the stuck timer |
 | `SAFE_CHECKPOINT_INTERVAL_TILES` | 2 tiles | Minimum forward spacing between safe checkpoint captures |
+| `PLAYER_COLLISION_WIDTH` / `PLAYER_COLLISION_HEIGHT` | 34 / 58 px | Standing player collision dimensions |
+| `ROLL_HEIGHT_RATIO` | 0.52 | Roll hitbox height as a fraction of standing height |
 | `SNOW_JUMP_MODIFIER_MIN` | -0.5 tiles | Minimum temporary Snow jump modifier |
 | `SNOW_JUMP_MODIFIER_MAX` | +0.5 tiles | Maximum temporary Snow jump modifier |
 | `DESERT_CONTACT_DAMAGE` | 8 | Initial Desert heat damage |
@@ -301,6 +327,8 @@ The task-defined `CONSTANT_CASE` tuning variables are centralized in `src/core/g
 | `SLOW_DOWN_DURATION_UPGRADE` / `SLOW_DOWN_DURATION_UPGRADE_GOLDS` | +0.5 s / 100 gold | Slow-down-duration step and fixed cost |
 
 Ability tuning remains centralized here so runtime ability scripts contain behavior rather than duplicated balance values.
+
+Per-content tuning that varies by resource is intentionally not duplicated as global constants. Enemy vicinity/shooting cadence, level scaling, status effects, and drop probabilities live in `EnemyData`; weapon damage/cadence/trajectory/aim/target count live in `WeaponData`; biome layout/hazard/collectible weights live in `BiomeData`; stat ranges/costs live in `StatData`; and ability unlock/upgrade metadata lives in `AbilityData`. This preserves the task's user-tunable values while keeping content variation data-driven.
 
 ## Stats and upgrades
 
@@ -370,6 +398,12 @@ Phase 9 adds a common runtime ability interface and keeps each mechanic in a ded
 
 Dash, Explode, Slow Down Time, and Invisibility use the shared `COOLDOWN_PERIOD`. Movement/passive abilities that need immediate continuous input do not consume that action cooldown.
 
+## Characters
+
+The bundled `assets/Characters/1` through `assets/Characters/45` directories are mapped one-to-one to **45 `CharacterData` resources** in `data/characters/`. Each resource defines a stable id, display name, animation root/SpriteFrames source, and unlock price. `CharacterCatalog` is the lookup boundary used by menus, save sanitization, and player spawning, so raw save values cannot select an unknown asset directory.
+
+Character unlocks are persistent, gold-backed transactions. Selection requires the character to be unlocked first, and `selected_character` is sanitized on load. Character choice is intentionally presentation-only: it changes the player animation set but does not add undocumented character-specific stat bonuses or penalties.
+
 ## Profile UI and level HUD
 
 Phase 15 replaces the placeholder launcher with one responsive menu shell backed by the existing catalogs and progression services:
@@ -407,6 +441,10 @@ Phase 12 defines six data-driven collectibles using the supplied art: Bronze Coi
 
 Enemy drops use `EnemyData.drop_table` entries containing `collectible_id`, `probability`, `min_count`, and `max_count`. Default enemy data provides common coin drops plus rarer gem drops; individual enemy resources can override the table without changing enemy behavior code. `RngService` wraps a seeded `RandomNumberGenerator` and is injectable into spawn/drop calculations, making both probability outcomes and replay tests deterministic. Runtime enemy-drop seeds combine the run seed, streamed chunk, enemy id/level, and death position so an identical generated encounter reproduces the same rewards.
 
+## Consumables
+
+Revival potions are persistent profile consumables and use the bundled `revival_potion.png` presentation in graphical runs. When the player enters the revival countdown, a potion can be consumed to restore health, clear lethal temporary statuses, return to the most recent safe checkpoint, grant brief revival invulnerability, and resume the same run. If no potion is used before `COUNTDOWN_SECS` expires, the run ends.
+
 ## Health, stuck detection, revival, and game-over
 
 `level.gd` tracks actual X-position progress rather than velocity. Moving forward by at least `STUCK_PROGRESS_THRESHOLD` resets the stuck timer; remaining below that progress threshold for `GAME_OVER_NUMBER_OF_SECS` enters the same death/revival path as zero health or falling below the kill plane. The detector does not advance while the run is halted for revival/game-over, and normal SceneTree pause semantics also suspend it.
@@ -435,7 +473,7 @@ Mandatory platform transitions are constrained by the same `SPEED`, effective ju
 
 Static terrain is painted into a `TileMapLayer`. `TerrainTileSetFactory` builds six terrain definitions and collision polygons from the supplied `assets/Spritesheets/spritesheet-tiles-double.png` atlas, whose 128×128 cells use a one-pixel separation. The biome families currently map to grass, dirt/tundra, snow, sand/desert, purple/astro, and stone/fort atlas regions. Astro terrain cells are deliberately omitted from the static layer and instantiated as independent `FallingTile` scenes instead; their explicit coordinate/support registry is also cleaned with streamed chunks.
 
-## Biome mechanics
+## Biomes
 
 - **Grass** is the baseline biome and adds no mandatory status or hazard mechanic.
 - **Tundra** changes presentation/data pools but intentionally keeps baseline movement so it remains mechanically distinct from Snow.
@@ -446,7 +484,7 @@ Static terrain is painted into a `TileMapLayer`. `TerrainTileSetFactory` builds 
 
 Each `BiomeData` resource carries its terrain-set identifier, background color, enemy-pool identifiers, layout weights, hazard type/chance, collectible weights, and optional particle reference. Enemy spawning consumes the biome pools, while Phase 12 now consumes the collectible weights directly for procedural reward selection.
 
-## Tests
+## Running tests
 
 Run the headless test suite with:
 
@@ -454,13 +492,20 @@ Run the headless test suite with:
 godot --headless --path . tests/test_runner.tscn
 ```
 
-Phase 1–16 test inventory:
+## Test inventory
+
+The headless runner currently contains **168 tests**. The exact function inventory is grouped by subsystem below.
+
+### Core configuration and Phase 1 scene
 
 - `test_config_values_are_valid`
 - `test_game_state_reset_is_seeded`
 - `test_input_actions_configured`
 - `test_phase1_assets_exist`
 - `test_level_scene_has_phase1_architecture`
+
+### Biomes, procedural generation, and streaming
+
 - `test_biome_data_is_valid`
 - `test_first_biomes_are_ordered`
 - `test_biome_changes_after_interval`
@@ -475,6 +520,9 @@ Phase 1–16 test inventory:
 - `test_tileset_uses_required_atlas_and_collisions`
 - `test_world_streamer_generates_ahead`
 - `test_world_streamer_cleans_behind`
+
+### Player movement, damage, and camera
+
 - `test_player_auto_run_speed`
 - `test_player_jump_limit`
 - `test_roll_changes_hitbox`
@@ -487,6 +535,9 @@ Phase 1–16 test inventory:
 - `test_fall_sets_health_zero`
 - `test_camera_tracks_x_only`
 - `test_level_advances_distance`
+
+### Game-over, stuck detection, and revival
+
 - `test_zero_health_triggers_countdown`
 - `test_stuck_player_triggers_countdown`
 - `test_safe_checkpoint_tracks_stable_progress`
@@ -494,6 +545,9 @@ Phase 1–16 test inventory:
 - `test_revive_restores_checkpoint`
 - `test_countdown_without_potion_ends_run`
 - `test_stuck_detection_is_suspended_during_revival`
+
+### Profile persistence and save compatibility
+
 - `test_profile_defaults_cover_phase5_progression`
 - `test_profile_and_run_state_are_separate`
 - `test_run_state_is_not_persisted`
@@ -502,6 +556,9 @@ Phase 1–16 test inventory:
 - `test_corrupted_save_creates_defaults`
 - `test_unsupported_save_version_creates_defaults`
 - `test_legacy_v1_profile_backfills_phase5_defaults`
+
+### Stats and upgrades
+
 - `test_stat_definitions_are_valid`
 - `test_stat_values_follow_levels`
 - `test_upgrade_costs_gold`
@@ -514,12 +571,18 @@ Phase 1–16 test inventory:
 - `test_stat_levels_sanitize_to_limits`
 - `test_runtime_player_uses_upgraded_stats`
 - `test_run_health_uses_upgraded_maximum_health`
+
+### Automatic melee
+
 - `test_melee_detector_configuration`
 - `test_automatic_melee_attacks_nearest_target`
 - `test_automatic_melee_uses_upgraded_power_and_damage_info`
 - `test_automatic_melee_respects_cooldown`
 - `test_automatic_melee_ignores_invalid_targets`
 - `test_automatic_melee_stops_when_player_is_dead`
+
+### Weapons
+
 - `test_weapon_definitions_are_valid`
 - `test_weapon_requires_shooting`
 - `test_weapon_unlock_costs_gold_atomically`
@@ -536,6 +599,9 @@ Phase 1–16 test inventory:
 - `test_weapon_ignores_offscreen_enemy`
 - `test_weapon_projectile_damage`
 - `test_homing_projectile_steers_to_target`
+
+### Biome-specific mechanics and hazards
+
 - `test_phase3_biome_metadata`
 - `test_snow_modifier_is_seeded_and_bounded`
 - `test_snow_generator_uses_effective_jump`
@@ -550,6 +616,9 @@ Phase 1–16 test inventory:
 - `test_hazard_placement_is_seeded`
 - `test_streamer_cleans_runtime_hazards`
 - `test_level_applies_biome_context`
+
+### Abilities
+
 - `test_ability_definitions_are_valid`
 - `test_ability_equipment_limit_and_conflict`
 - `test_jump_air_jump_levels`
@@ -561,6 +630,9 @@ Phase 1–16 test inventory:
 - `test_explode_damage_and_destructible_terrain`
 - `test_slow_down_uses_world_multipliers`
 - `test_invisibility_detectability_and_duration`
+
+### Enemies
+
 - `test_enemy_biome_restriction`
 - `test_enemy_level_scaling`
 - `test_enemy_patrol`
@@ -573,6 +645,9 @@ Phase 1–16 test inventory:
 - `test_enemy_health_bar_updates`
 - `test_enemy_spawner_is_seeded`
 - `test_streamed_enemy_cleanup`
+
+### Status effects
+
 - `test_status_effect_resources_are_valid`
 - `test_status_effect_dictionary_compatibility`
 - `test_freeze`
@@ -585,6 +660,9 @@ Phase 1–16 test inventory:
 - `test_status_expiration`
 - `test_status_damage_multiplier`
 - `test_enemy_uses_generic_status_controller`
+
+### Collectibles and drops
+
 - `test_collectible_definitions_are_valid`
 - `test_gem_value_exceeds_coin`
 - `test_pickup_increases_gold`
@@ -595,11 +673,17 @@ Phase 1–16 test inventory:
 - `test_enemy_death_spawns_drops`
 - `test_streamed_collectible_cleanup`
 - `test_level_collectible_architecture`
+
+### Characters
+
 - `test_character_definitions_are_valid`
 - `test_character_unlock_costs_gold_atomically`
 - `test_character_selection_requires_unlock`
 - `test_character_profile_sanitizes_unknown_ids`
 - `test_selected_character_drives_player_presentation`
+
+### Desktop and mobile input
+
 - `test_keyboard_ability_slot_routes_equipped_ability`
 - `test_touch_tap_maps_to_jump`
 - `test_touch_hold_preserves_jump_hold_semantics`
@@ -607,6 +691,9 @@ Phase 1–16 test inventory:
 - `test_mobile_action_buttons_follow_equipped_slots`
 - `test_action_button_side_setting_updates_mobile_cluster`
 - `test_level_has_phase14_input_hud`
+
+### Menus and HUD
+
 - `test_ability_unlock_costs_gold_atomically`
 - `test_phase15_main_menu_navigation`
 - `test_phase15_character_screen`
@@ -615,6 +702,9 @@ Phase 1–16 test inventory:
 - `test_phase15_weapons_screen`
 - `test_phase15_settings_screen`
 - `test_level_has_phase15_hud`
+
+### Phase 16 integration and procedural stress
+
 - `test_phase16_player_jumps_onto_generated_platform`
 - `test_phase16_roll_clears_low_obstacle`
 - `test_phase16_enemy_projectile_damages_player`
@@ -646,10 +736,12 @@ Transient `RunState` is intentionally not written to the profile save. It owns c
 
 Save loading validates the root type and `save_version`, sanitizes collection/scalar types, clamps non-negative progression values, removes invalid equipped entries, enforces configured equipment limits during deserialization, and restores a safe default profile when the file is missing, malformed, or uses an unsupported version.
 
-## Scope after Phase 16
+## Implementation status
 
-The required Main Menu, Character, Stats, Abilities, Weapons, Settings screens and expanded Level HUD are implemented. Profile actions delegate to the existing progression services and persist successful mutations immediately; weapon cards expose all task-required metadata; mobile and desktop action UI share the same logical slot/cooldown source. Phase 16 is complete: the headless regression runner now includes the dedicated integration scenarios and 100-seed/10,000-tile procedural stress coverage described above, and this README lists the complete Phase 1–16 test inventory. Phase 17 remains the final documentation pass.
+Phases 1–17 are complete. The required Main Menu, Character, Stats, Abilities, Weapons, Settings screens and expanded Level HUD are implemented; persistent transactions route through the progression services; desktop and mobile input share the same logical action boundary; procedural generation is deterministic and bounded; all six biome mechanics are active; and the headless suite includes the dedicated integration scenarios plus the 100-seed/10,000-tile-per-seed procedural stress coverage described above. This README documents the complete current configuration and all 168 test functions.
 
 ## Assets
 
-The project uses the assets already bundled under `assets/`, including the character animation sets (with their `Shoot` sequence reused for Phase 7 melee feedback), `spritesheet-tiles-double.png`, `assets/Props/Spikes.png`, the bundled flame particle frames, and Phase 8 weapon props from `Props/Weapons/Mage`, `Ranged`, `Shuriken`, and `Swords`. No additional third-party assets were introduced by the implementation. Before redistribution, use the licensing/attribution terms supplied with the original asset pack/repository; this implementation does not invent licensing claims where metadata is absent.
+The project uses the assets already bundled under `assets/`, including the 45 character animation sets (with their `Shoot` sequence reused for Phase 7 melee feedback), `spritesheet-tiles-double.png`, `assets/Props/Spikes.png`, the bundled flame particle frames, and weapon props from `Props/Weapons/Mage`, `Ranged`, `Shuriken`, and `Swords`. No additional third-party assets were introduced by the phased implementation.
+
+No `LICENSE`, `COPYING`, credits, attribution, or asset-pack README file is present in the checked-out repository or under `assets/`. Accordingly, this README does **not** infer or invent licensing terms. Before redistribution, obtain and follow the licensing/attribution terms from the original repository or original asset source.
