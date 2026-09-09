@@ -221,6 +221,9 @@ func _run() -> void:
 	await test_phase15_abilities_screen()
 	await test_phase15_weapons_screen()
 	await test_phase15_settings_screen()
+	await test_phase3_main_menu_responsive_wrapper_and_navigation()
+	await test_phase3_subscreens_reflow_without_fixed_wide_minimums()
+	await test_phase3_resolution_matrix_has_no_horizontal_overflow()
 	await test_level_has_phase15_hud()
 	await test_phase16_player_jumps_onto_generated_platform()
 	await test_phase16_roll_clears_low_obstacle()
@@ -3066,6 +3069,85 @@ func test_phase15_settings_screen() -> void:
 		_expect(left.button_pressed and not right.button_pressed, "Settings screen must reflect the persisted action-button side")
 	_expect(menu.find_child("InputReference", true, false) != null, "Settings screen must show desktop and mobile control reference")
 	GameState.set_action_button_side(PLAYER_PROFILE_SCRIPT.ACTION_BUTTON_SIDE_RIGHT)
+	await _free_node(menu)
+
+func test_phase3_main_menu_responsive_wrapper_and_navigation() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	var scroll := menu.find_child("ScreenScroll", true, false) as ScrollContainer
+	var center := menu.find_child("ScreenCenter", true, false) as CenterContainer
+	var frame := menu.find_child("Window", true, false) as PanelContainer
+	var nav := menu.find_child("ProfileNavigation", true, false) as GridContainer
+	_expect(scroll != null, "Phase 3 menu must use a root ScrollContainer")
+	_expect(center != null, "Phase 3 menu must center responsive content inside the root scroll")
+	_expect(frame != null and is_zero_approx(frame.custom_minimum_size.y), "Phase 3 menu frame height must be content-driven")
+	_expect(scroll != null and scroll.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED, "Phase 3 root scroll must not mask horizontal overflow with horizontal scrolling")
+	_expect(scroll != null and scroll.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO, "Phase 3 root scroll must allow vertical scrolling when content is taller than the viewport")
+	menu.call("_update_responsive_layout", 600.0)
+	_expect(frame != null and is_equal_approx(frame.custom_minimum_size.x, 552.0), "Phase 3 menu width must clamp to viewport width minus 24px margins")
+	_expect(nav != null and nav.columns == 1, "Phase 3 main navigation must collapse to one column below 700px")
+	menu.call("_update_responsive_layout", 1280.0)
+	_expect(frame != null and is_equal_approx(frame.custom_minimum_size.x, 720.0), "Phase 3 main menu must cap its content width at 720px on wide screens")
+	_expect(nav != null and nav.columns == 2, "Phase 3 main navigation must use two columns at 700px and above")
+	await _free_node(menu)
+
+func test_phase3_subscreens_reflow_without_fixed_wide_minimums() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+
+	menu.show_screen(&"stats")
+	await get_tree().process_frame
+	menu.call("_update_responsive_layout", 600.0)
+	var stat_row := menu.find_child("Stat_maximum_health", true, false) as PanelContainer
+	var stat_layout := stat_row.find_child("StatLayout", true, false) as GridContainer if stat_row != null else null
+	_expect(stat_row != null and is_zero_approx(stat_row.custom_minimum_size.x), "Phase 3 stat rows must not force the old 980px width")
+	_expect(stat_layout != null and stat_layout.columns == 1, "Phase 3 stat rows must stack details and actions on narrow screens")
+
+	menu.show_screen(&"abilities")
+	await get_tree().process_frame
+	menu.call("_update_responsive_layout", 800.0)
+	var abilities_grid := menu.find_child("AbilitiesGrid", true, false) as GridContainer
+	_expect(abilities_grid != null and abilities_grid.columns == 1, "Phase 3 abilities must reflow to one column at 800px")
+	if abilities_grid != null and abilities_grid.get_child_count() > 0:
+		var ability_card := abilities_grid.get_child(0) as PanelContainer
+		_expect(ability_card != null and is_zero_approx(ability_card.custom_minimum_size.x), "Phase 3 ability cards must not force the old 515px width")
+
+	menu.show_screen(&"weapons")
+	await get_tree().process_frame
+	menu.call("_update_responsive_layout", 800.0)
+	var weapon_card := menu.find_child("Weapon_shuriken", true, false) as PanelContainer
+	var weapon_layout := weapon_card.find_child("WeaponLayout", true, false) as GridContainer if weapon_card != null else null
+	_expect(weapon_card != null and is_zero_approx(weapon_card.custom_minimum_size.x), "Phase 3 weapon cards must not force the old 1010px width")
+	_expect(weapon_layout != null and weapon_layout.columns == 1, "Phase 3 weapon cards must stack on narrow screens")
+
+	menu.show_screen(&"character")
+	await get_tree().process_frame
+	menu.call("_update_responsive_layout", 800.0)
+	var character_grid := menu.find_child("CharacterGrid", true, false) as GridContainer
+	_expect(character_grid != null and character_grid.columns == 3, "Phase 3 character cards must reduce columns at 800px")
+	await _free_node(menu)
+
+func test_phase3_resolution_matrix_has_no_horizontal_overflow() -> void:
+	GameState.reset_profile()
+	var menu = MAIN_MENU_SCENE.instantiate()
+	add_child(menu)
+	await get_tree().process_frame
+	var widths := [800.0, 1024.0, 1280.0, 1366.0, 1920.0, 2560.0]
+	var screens: Array[StringName] = [&"main", &"character", &"stats", &"abilities", &"weapons", &"settings"]
+	for screen_id in screens:
+		menu.show_screen(screen_id)
+		await get_tree().process_frame
+		for width_value in widths:
+			var viewport_width: float = float(width_value)
+			menu.call("_update_responsive_layout", viewport_width)
+			await get_tree().process_frame
+			var frame := menu.find_child("Window", true, false) as PanelContainer
+			var available_width: float = viewport_width - 48.0
+			_expect(frame != null and frame.get_combined_minimum_size().x <= available_width + 0.5, "Phase 3 %s screen must fit horizontally at %.0fpx" % [String(screen_id), viewport_width])
 	await _free_node(menu)
 
 func test_level_has_phase15_hud() -> void:

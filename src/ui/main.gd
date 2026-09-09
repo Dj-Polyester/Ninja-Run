@@ -29,14 +29,36 @@ const SCREEN_ABILITIES := &"abilities"
 const SCREEN_WEAPONS := &"weapons"
 const SCREEN_SETTINGS := &"settings"
 
+const SCREEN_MARGIN := 24
+const NAV_BREAKPOINT := 700.0
+const HEADER_BREAKPOINT := 700.0
+const CHARACTER_GRID_BREAKPOINT_2 := 480.0
+const CHARACTER_GRID_BREAKPOINT_3 := 700.0
+const CHARACTER_GRID_BREAKPOINT_4 := 900.0
+const CHARACTER_GRID_BREAKPOINT_5 := 1150.0
+const ABILITY_GRID_BREAKPOINT := 1100.0
+const WEAPON_LAYOUT_BREAKPOINT := 1100.0
+
 @onready var screen_host: Control = $ScreenHost
 @onready var ui_backdrop: TextureRect = $UIBackdrop
 
 var current_screen: StringName = SCREEN_MAIN
 var notice_text := ""
+var _responsive_frame: PanelContainer
+var _responsive_max_width := 0.0
+var _responsive_header: GridContainer
+var _nav_grid: GridContainer
+var _character_grid: GridContainer
+var _abilities_grid: GridContainer
+var _settings_choices: GridContainer
+var _stat_layouts: Array[GridContainer] = []
+var _weapon_layouts: Array[GridContainer] = []
 
 func _ready() -> void:
 	ui_backdrop.texture = _load_runtime_texture(UI_WINDOW_WIDE_PATH)
+	var viewport := get_viewport()
+	if viewport != null and not viewport.size_changed.is_connected(_update_responsive_layout):
+		viewport.size_changed.connect(_update_responsive_layout)
 	show_screen(SCREEN_MAIN)
 
 func show_screen(screen_id: StringName, notice: String = "") -> void:
@@ -57,9 +79,10 @@ func show_screen(screen_id: StringName, notice: String = "") -> void:
 		_:
 			current_screen = SCREEN_MAIN
 			_build_main_screen()
+	_update_responsive_layout()
 
 func _build_main_screen() -> void:
-	var column := _begin_screen("NINJA RUN", "Endless runner profile & loadout", Vector2(720, 650), false)
+	var column := _begin_screen("NINJA RUN", "Endless runner profile & loadout", 720.0, false)
 	var selected = GameState.selected_character_data()
 	var selected_name: String = selected.display_name if selected != null else "Ninja"
 	var summary := Label.new()
@@ -75,23 +98,23 @@ func _build_main_screen() -> void:
 	start_button.pressed.connect(_on_start_pressed)
 	column.add_child(start_button)
 
-	var nav_grid := GridContainer.new()
-	nav_grid.name = "ProfileNavigation"
-	nav_grid.columns = 2
-	nav_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nav_grid.add_theme_constant_override("h_separation", 14)
-	nav_grid.add_theme_constant_override("v_separation", 14)
-	column.add_child(nav_grid)
-	_add_navigation_button(nav_grid, "CHARACTERS", "CharacterButton", _load_runtime_texture(UI_PROFILE_ICON_PATH), SCREEN_CHARACTER)
-	_add_navigation_button(nav_grid, "STATS", "StatsButton", _load_runtime_texture(UI_STATS_ICON_PATH), SCREEN_STATS)
-	_add_navigation_button(nav_grid, "ABILITIES", "AbilitiesButton", _load_runtime_texture(UI_MAGIC_ICON_PATH), SCREEN_ABILITIES)
-	_add_navigation_button(nav_grid, "WEAPONS", "WeaponsButton", _load_runtime_texture(UI_SHOP_ICON_PATH), SCREEN_WEAPONS)
-	_add_navigation_button(nav_grid, "SETTINGS", "SettingsButton", _load_runtime_texture(UI_SETTINGS_ICON_PATH), SCREEN_SETTINGS)
+	_nav_grid = GridContainer.new()
+	_nav_grid.name = "ProfileNavigation"
+	_nav_grid.columns = 2
+	_nav_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_nav_grid.add_theme_constant_override("h_separation", 14)
+	_nav_grid.add_theme_constant_override("v_separation", 14)
+	column.add_child(_nav_grid)
+	_add_navigation_button(_nav_grid, "CHARACTERS", "CharacterButton", _load_runtime_texture(UI_PROFILE_ICON_PATH), SCREEN_CHARACTER)
+	_add_navigation_button(_nav_grid, "STATS", "StatsButton", _load_runtime_texture(UI_STATS_ICON_PATH), SCREEN_STATS)
+	_add_navigation_button(_nav_grid, "ABILITIES", "AbilitiesButton", _load_runtime_texture(UI_MAGIC_ICON_PATH), SCREEN_ABILITIES)
+	_add_navigation_button(_nav_grid, "WEAPONS", "WeaponsButton", _load_runtime_texture(UI_SHOP_ICON_PATH), SCREEN_WEAPONS)
+	_add_navigation_button(_nav_grid, "SETTINGS", "SettingsButton", _load_runtime_texture(UI_SETTINGS_ICON_PATH), SCREEN_SETTINGS)
 
 	var quit_button := _make_button("QUIT", _load_runtime_texture(UI_CLOSE_ICON_PATH), 46)
 	quit_button.name = "QuitButton"
 	quit_button.pressed.connect(_on_quit_pressed)
-	nav_grid.add_child(quit_button)
+	_nav_grid.add_child(quit_button)
 
 	var controls := Label.new()
 	controls.name = "ControlsSummary"
@@ -102,27 +125,22 @@ func _build_main_screen() -> void:
 	_focus_named_button("StartButton")
 
 func _build_character_screen() -> void:
-	var column := _begin_screen("CHARACTERS", "Unlock a character with gold, then choose the runner used in every run.", Vector2(1160, 680))
-	var scroll := ScrollContainer.new()
-	scroll.name = "CharacterScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(scroll)
-	var grid := GridContainer.new()
-	grid.name = "CharacterGrid"
-	grid.columns = 5
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
-	scroll.add_child(grid)
+	var column := _begin_screen("CHARACTERS", "Unlock a character with gold, then choose the runner used in every run.", 1160.0)
+	_character_grid = GridContainer.new()
+	_character_grid.name = "CharacterGrid"
+	_character_grid.columns = 5
+	_character_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_character_grid.add_theme_constant_override("h_separation", 10)
+	_character_grid.add_theme_constant_override("v_separation", 10)
+	column.add_child(_character_grid)
 
 	for character in CHARACTER_CATALOG_SCRIPT.all():
-		grid.add_child(_build_character_card(character))
+		_character_grid.add_child(_build_character_card(character))
 
 func _build_character_card(character) -> Control:
 	var card := PanelContainer.new()
 	card.name = "Character_%02d" % int(character.id)
-	card.custom_minimum_size = Vector2(202, 228)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _card_style())
 	var margin := _margin_container(10)
 	card.add_child(margin)
@@ -168,34 +186,34 @@ func _build_character_card(character) -> Control:
 	return card
 
 func _build_stats_screen() -> void:
-	var column := _begin_screen("STATS", "Spend gold on persistent upgrades. Ability-gated stats unlock automatically with their ability.", Vector2(1080, 680))
-	var scroll := ScrollContainer.new()
-	scroll.name = "StatsScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(scroll)
+	var column := _begin_screen("STATS", "Spend gold on persistent upgrades. Ability-gated stats unlock automatically with their ability.", 1080.0)
 	var list := VBoxContainer.new()
 	list.name = "StatsList"
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 9)
-	scroll.add_child(list)
+	column.add_child(list)
 	for stat in STAT_CATALOG_SCRIPT.all():
 		list.add_child(_build_stat_row(stat))
 
 func _build_stat_row(stat) -> Control:
 	var row := PanelContainer.new()
 	row.name = "Stat_%s" % String(stat.id)
-	row.custom_minimum_size = Vector2(980, 88)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_stylebox_override("panel", _card_style())
 	var margin := _margin_container(12)
 	row.add_child(margin)
-	var horizontal := HBoxContainer.new()
-	horizontal.add_theme_constant_override("separation", 18)
-	margin.add_child(horizontal)
+	var layout := GridContainer.new()
+	layout.name = "StatLayout"
+	layout.columns = 2
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("h_separation", 18)
+	layout.add_theme_constant_override("v_separation", 10)
+	margin.add_child(layout)
+	_stat_layouts.append(layout)
 
 	var details := VBoxContainer.new()
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	horizontal.add_child(details)
+	layout.add_child(details)
 	var title := Label.new()
 	title.text = stat.display_name
 	title.add_theme_font_size_override("font_size", 18)
@@ -221,38 +239,32 @@ func _build_stat_row(stat) -> Control:
 
 	var button := _make_button("LOCKED" if not unlocked else ("MAX" if level >= stat.max_level() else "UPGRADE — %d" % stat.upgrade_golds), _load_runtime_texture(UI_STATS_ICON_PATH), 46)
 	button.name = "UpgradeButton"
-	button.custom_minimum_size.x = 210
 	button.disabled = not unlocked or level >= stat.max_level()
 	button.pressed.connect(_on_stat_upgrade.bind(stat.id))
-	horizontal.add_child(button)
+	layout.add_child(button)
 	return row
 
 func _build_abilities_screen() -> void:
-	var column := _begin_screen("ABILITIES", "Unlock, equip, and upgrade abilities. At most %d may be equipped; Jump and Reverse Gravity conflict." % GameConfig.NUM_EQUIPABLE_ABILITIES, Vector2(1120, 680))
+	var column := _begin_screen("ABILITIES", "Unlock, equip, and upgrade abilities. At most %d may be equipped; Jump and Reverse Gravity conflict." % GameConfig.NUM_EQUIPABLE_ABILITIES, 1120.0)
 	var equipment := Label.new()
 	equipment.name = "AbilityEquipmentSummary"
 	equipment.text = "Equipped: %s" % _ability_equipment_summary()
 	equipment.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(equipment)
-	var scroll := ScrollContainer.new()
-	scroll.name = "AbilitiesScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(scroll)
-	var grid := GridContainer.new()
-	grid.name = "AbilitiesGrid"
-	grid.columns = 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 12)
-	scroll.add_child(grid)
+	_abilities_grid = GridContainer.new()
+	_abilities_grid.name = "AbilitiesGrid"
+	_abilities_grid.columns = 2
+	_abilities_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_abilities_grid.add_theme_constant_override("h_separation", 12)
+	_abilities_grid.add_theme_constant_override("v_separation", 12)
+	column.add_child(_abilities_grid)
 	for ability in ABILITY_CATALOG_SCRIPT.ORDERED:
-		grid.add_child(_build_ability_card(ability))
+		_abilities_grid.add_child(_build_ability_card(ability))
 
 func _build_ability_card(ability) -> Control:
 	var card := PanelContainer.new()
 	card.name = "Ability_%s" % String(ability.id)
-	card.custom_minimum_size = Vector2(515, 184)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _card_style())
 	var margin := _margin_container(12)
 	card.add_child(margin)
@@ -286,6 +298,7 @@ func _build_ability_card(ability) -> Control:
 	var metadata := Label.new()
 	metadata.name = "MetadataLabel"
 	metadata.text = "Level %d / %d   •   Cooldown: %s   •   Price: %d gold" % [level, ability.max_level, ("%.1fs" % GameConfig.COOLDOWN_PERIOD) if ability.has_cooldown else "None", ability.unlock_cost]
+	metadata.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(metadata)
 
 	var actions := HBoxContainer.new()
@@ -310,36 +323,37 @@ func _build_ability_card(ability) -> Control:
 	return card
 
 func _build_weapons_screen() -> void:
-	var column := _begin_screen("WEAPONS", "Weapons fire automatically when enemies are on-screen. At most %d may be equipped." % GameConfig.NUM_EQUIPPABLE_WEAPONS, Vector2(1120, 680))
+	var column := _begin_screen("WEAPONS", "Weapons fire automatically when enemies are on-screen. At most %d may be equipped." % GameConfig.NUM_EQUIPPABLE_WEAPONS, 1120.0)
 	var requirement := Label.new()
 	requirement.name = "ShootingRequirement"
 	requirement.text = "Shooting ability unlocked — weapon shop active." if GameState.shooting_unlocked() else "LOCKED: Unlock the Shooting ability before buying or equipping weapons."
 	requirement.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	requirement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	requirement.add_theme_color_override("font_color", Color(0.62, 0.95, 0.68) if GameState.shooting_unlocked() else Color(1.0, 0.62, 0.48))
 	column.add_child(requirement)
-	var scroll := ScrollContainer.new()
-	scroll.name = "WeaponsScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.name = "WeaponsList"
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 10)
-	scroll.add_child(list)
+	column.add_child(list)
 	for weapon in WEAPON_CATALOG_SCRIPT.all():
 		list.add_child(_build_weapon_card(weapon))
 
 func _build_weapon_card(weapon) -> Control:
 	var card := PanelContainer.new()
 	card.name = "Weapon_%s" % String(weapon.id)
-	card.custom_minimum_size = Vector2(1010, 132)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _card_style())
 	var margin := _margin_container(10)
 	card.add_child(margin)
-	var horizontal := HBoxContainer.new()
-	horizontal.add_theme_constant_override("separation", 14)
-	margin.add_child(horizontal)
+	var layout := GridContainer.new()
+	layout.name = "WeaponLayout"
+	layout.columns = 4
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("h_separation", 14)
+	layout.add_theme_constant_override("v_separation", 10)
+	margin.add_child(layout)
+	_weapon_layouts.append(layout)
 
 	var slot := TextureRect.new()
 	slot.name = "WeaponSlot"
@@ -347,18 +361,18 @@ func _build_weapon_card(weapon) -> Control:
 	slot.custom_minimum_size = Vector2(92, 92)
 	slot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	slot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	horizontal.add_child(slot)
+	layout.add_child(slot)
 	var weapon_texture := TextureRect.new()
 	weapon_texture.name = "WeaponTexture"
 	weapon_texture.texture = _load_runtime_texture(weapon.texture_path)
 	weapon_texture.custom_minimum_size = Vector2(82, 82)
 	weapon_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	weapon_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	horizontal.add_child(weapon_texture)
+	layout.add_child(weapon_texture)
 
 	var details := VBoxContainer.new()
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	horizontal.add_child(details)
+	layout.add_child(details)
 	var title := Label.new()
 	title.text = weapon.display_name
 	title.add_theme_font_size_override("font_size", 19)
@@ -377,8 +391,8 @@ func _build_weapon_card(weapon) -> Control:
 	var equipped_raw = GameState.profile.get("equipped_weapons", [])
 	var equipped: bool = equipped_raw is Array and equipped_raw.has(String(weapon.id))
 	var action_column := VBoxContainer.new()
-	action_column.custom_minimum_size.x = 220
-	horizontal.add_child(action_column)
+	action_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.add_child(action_column)
 	var state := Label.new()
 	state.name = "StateLabel"
 	state.text = "EQUIPPED" if equipped else ("UNLOCKED" if unlocked else "LOCKED")
@@ -398,7 +412,7 @@ func _build_weapon_card(weapon) -> Control:
 	return card
 
 func _build_settings_screen() -> void:
-	var column := _begin_screen("SETTINGS", "Input presentation settings are stored in the persistent profile.", Vector2(850, 620))
+	var column := _begin_screen("SETTINGS", "Input presentation settings are stored in the persistent profile.", 850.0)
 	var section := PanelContainer.new()
 	section.name = "ActionButtonSideSetting"
 	section.add_theme_stylebox_override("panel", _card_style())
@@ -416,59 +430,86 @@ func _build_settings_screen() -> void:
 	description.text = "Choose which bottom corner contains direct-action ability buttons. Tap-to-jump and swipe-down-to-roll remain full-screen gestures."
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_child(description)
-	var choices := HBoxContainer.new()
-	choices.add_theme_constant_override("separation", 12)
-	body.add_child(choices)
+	_settings_choices = GridContainer.new()
+	_settings_choices.name = "ActionButtonSideChoices"
+	_settings_choices.columns = 2
+	_settings_choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_settings_choices.add_theme_constant_override("h_separation", 12)
+	_settings_choices.add_theme_constant_override("v_separation", 10)
+	body.add_child(_settings_choices)
 	var current_side := GameState.action_button_side()
 	var left := _make_button("BOTTOM LEFT", null, 52)
 	left.name = "BottomLeftButton"
 	left.toggle_mode = true
 	left.button_pressed = current_side == PlayerProfile.ACTION_BUTTON_SIDE_LEFT
 	left.pressed.connect(_on_action_button_side_pressed.bind(PlayerProfile.ACTION_BUTTON_SIDE_LEFT))
-	choices.add_child(left)
+	_settings_choices.add_child(left)
 	var right := _make_button("BOTTOM RIGHT", null, 52)
 	right.name = "BottomRightButton"
 	right.toggle_mode = true
 	right.button_pressed = current_side == PlayerProfile.ACTION_BUTTON_SIDE_RIGHT
 	right.pressed.connect(_on_action_button_side_pressed.bind(PlayerProfile.ACTION_BUTTON_SIDE_RIGHT))
-	choices.add_child(right)
+	_settings_choices.add_child(right)
 
 	var controls := Label.new()
 	controls.name = "InputReference"
 	controls.text = "DESKTOP\n↑ Jump   •   ↓ Roll   •   1–4 mapped abilities\n\nMOBILE\nTap Jump   •   Swipe Down Roll   •   Other equipped actions use the selected corner"
 	controls.add_theme_font_size_override("font_size", 17)
+	controls.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(controls)
 
-func _begin_screen(title_text: String, subtitle_text: String, minimum_size: Vector2, show_back := true) -> VBoxContainer:
+func _begin_screen(title_text: String, subtitle_text: String, max_width: float, show_back := true) -> VBoxContainer:
+	_responsive_max_width = max_width
+
+	var outer_margin := MarginContainer.new()
+	outer_margin.name = "%sScreen" % String(current_screen).capitalize().replace(" ", "")
+	outer_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["margin_left", "margin_top", "margin_right", "margin_bottom"]:
+		outer_margin.add_theme_constant_override(side, SCREEN_MARGIN)
+	screen_host.add_child(outer_margin)
+
+	var scroll := ScrollContainer.new()
+	scroll.name = "ScreenScroll"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer_margin.add_child(scroll)
+
 	var center := CenterContainer.new()
-	center.name = "%sScreen" % String(current_screen).capitalize().replace(" ", "")
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	screen_host.add_child(center)
-	var frame := PanelContainer.new()
-	frame.name = "Window"
-	frame.custom_minimum_size = minimum_size
-	frame.add_theme_stylebox_override("panel", _window_style())
-	center.add_child(frame)
+	center.name = "ScreenCenter"
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(center)
+
+	_responsive_frame = PanelContainer.new()
+	_responsive_frame.name = "Window"
+	_responsive_frame.custom_minimum_size.y = 0.0
+	_responsive_frame.add_theme_stylebox_override("panel", _window_style())
+	center.add_child(_responsive_frame)
 	var margin := _margin_container(26)
-	frame.add_child(margin)
+	_responsive_frame.add_child(margin)
 	var column := VBoxContainer.new()
 	column.name = "Content"
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 10)
 	margin.add_child(column)
 
-	var header := HBoxContainer.new()
-	header.name = "Header"
-	header.add_theme_constant_override("separation", 12)
-	column.add_child(header)
+	_responsive_header = GridContainer.new()
+	_responsive_header.name = "Header"
+	_responsive_header.columns = 3 if show_back else 1
+	_responsive_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_responsive_header.add_theme_constant_override("h_separation", 12)
+	_responsive_header.add_theme_constant_override("v_separation", 8)
+	column.add_child(_responsive_header)
 	if show_back:
 		var back := _make_button("BACK", _load_runtime_texture(UI_HOME_ICON_PATH), 44)
 		back.name = "BackButton"
-		back.custom_minimum_size.x = 120
 		back.pressed.connect(_on_back_pressed)
-		header.add_child(back)
+		_responsive_header.add_child(back)
 	var titles := VBoxContainer.new()
 	titles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(titles)
+	_responsive_header.add_child(titles)
 	var title := Label.new()
 	title.name = "ScreenTitle"
 	title.text = title_text
@@ -482,7 +523,7 @@ func _begin_screen(title_text: String, subtitle_text: String, minimum_size: Vect
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	titles.add_child(subtitle)
 	if show_back:
-		header.add_child(_gold_badge())
+		_responsive_header.add_child(_gold_badge())
 
 	if not notice_text.is_empty():
 		var notice := Label.new()
@@ -493,6 +534,44 @@ func _begin_screen(title_text: String, subtitle_text: String, minimum_size: Vect
 		notice.add_theme_color_override("font_color", Color(1.0, 0.86, 0.48))
 		column.add_child(notice)
 	return column
+
+func _update_responsive_layout(width_override: float = -1.0) -> void:
+	var viewport_width := width_override
+	if viewport_width < 0.0:
+		viewport_width = get_viewport_rect().size.x
+	if viewport_width <= 0.0:
+		return
+
+	if is_instance_valid(_responsive_frame):
+		_responsive_frame.custom_minimum_size.x = minf(_responsive_max_width, maxf(0.0, viewport_width - float(SCREEN_MARGIN * 2)))
+		_responsive_frame.custom_minimum_size.y = 0.0
+	if is_instance_valid(_responsive_header):
+		_responsive_header.columns = 1 if viewport_width < HEADER_BREAKPOINT else (1 if current_screen == SCREEN_MAIN else 3)
+	if is_instance_valid(_nav_grid):
+		_nav_grid.columns = 1 if viewport_width < NAV_BREAKPOINT else 2
+	if is_instance_valid(_character_grid):
+		_character_grid.columns = _character_columns_for_width(viewport_width)
+	if is_instance_valid(_abilities_grid):
+		_abilities_grid.columns = 1 if viewport_width < ABILITY_GRID_BREAKPOINT else 2
+	if is_instance_valid(_settings_choices):
+		_settings_choices.columns = 1 if viewport_width < NAV_BREAKPOINT else 2
+	for layout in _stat_layouts:
+		if is_instance_valid(layout):
+			layout.columns = 1 if viewport_width < NAV_BREAKPOINT else 2
+	for layout in _weapon_layouts:
+		if is_instance_valid(layout):
+			layout.columns = 1 if viewport_width < WEAPON_LAYOUT_BREAKPOINT else 4
+
+func _character_columns_for_width(viewport_width: float) -> int:
+	if viewport_width >= CHARACTER_GRID_BREAKPOINT_5:
+		return 5
+	if viewport_width >= CHARACTER_GRID_BREAKPOINT_4:
+		return 4
+	if viewport_width >= CHARACTER_GRID_BREAKPOINT_3:
+		return 3
+	if viewport_width >= CHARACTER_GRID_BREAKPOINT_2:
+		return 2
+	return 1
 
 func _gold_badge() -> Control:
 	var badge := HBoxContainer.new()
@@ -604,6 +683,14 @@ func _add_weapon_field(grid: GridContainer, node_name: String, heading: String, 
 	grid.add_child(label)
 
 func _clear_screen_host() -> void:
+	_responsive_frame = null
+	_responsive_header = null
+	_nav_grid = null
+	_character_grid = null
+	_abilities_grid = null
+	_settings_choices = null
+	_stat_layouts.clear()
+	_weapon_layouts.clear()
 	for child in screen_host.get_children():
 		screen_host.remove_child(child)
 		child.queue_free()
