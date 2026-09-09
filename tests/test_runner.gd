@@ -192,6 +192,7 @@ func _run() -> void:
 	await test_status_damage_multiplier()
 	await test_enemy_uses_generic_status_controller()
 	test_collectible_definitions_are_valid()
+	test_biome_collectible_weights_exclude_gems()
 	test_gem_value_exceeds_coin()
 	await test_pickup_increases_gold()
 	test_collectible_spawn_is_seeded()
@@ -2509,7 +2510,18 @@ func test_collectible_definitions_are_valid() -> void:
 		_expect(not ids.has(id_string), "collectible ids must be unique: %s" % id_string)
 		ids[id_string] = true
 		_expect(FileAccess.file_exists(collectible.texture_path), "collectible '%s' must reference a supplied asset" % id_string)
-		_expect(collectible.spawnable and collectible.droppable, "Phase 12 collectible definitions must be eligible for procedural placement and data-driven drops")
+		if collectible.is_gem():
+			_expect(not collectible.spawnable, "gem '%s' must never be eligible for procedural placement" % id_string)
+			_expect(collectible.droppable, "gem '%s' must remain eligible for enemy drops" % id_string)
+		else:
+			_expect(collectible.spawnable and collectible.droppable, "coin '%s' must remain eligible for procedural placement and data-driven drops" % id_string)
+
+func test_biome_collectible_weights_exclude_gems() -> void:
+	for biome in BiomeCatalog.ORDERED:
+		_expect(not biome.collectible_weights.has(&"gem") and not biome.collectible_weights.has("gem"), "%s biome must not expose a procedural gem weight" % biome.display_name)
+		for raw_key in biome.collectible_weights.keys():
+			var collectible = COLLECTIBLE_CATALOG_SCRIPT.get_by_id(StringName(String(raw_key)))
+			_expect(collectible != null and collectible.spawnable and not collectible.is_gem(), "%s biome procedural pool must contain only spawnable non-gem collectibles" % biome.display_name)
 
 func test_gem_value_exceeds_coin() -> void:
 	_expect(COLLECTIBLE_CATALOG_SCRIPT.minimum_gem_value() > COLLECTIBLE_CATALOG_SCRIPT.maximum_coin_value(), "every gem gold value must exceed every coin gold value")
@@ -2551,6 +2563,7 @@ func test_collectible_spawn_is_seeded() -> void:
 	for spawn_spec in first:
 		var collectible = COLLECTIBLE_CATALOG_SCRIPT.get_by_id(StringName(spawn_spec.collectible_id))
 		_expect(collectible != null and collectible.spawnable, "procedural collectible ids must resolve to spawnable CollectibleData")
+		_expect(collectible != null and not collectible.is_gem(), "procedural collectible specs must never contain gems")
 		if bool(spawn_spec.bonus):
 			found_bonus = true
 			_expect(is_equal_approx(float(spawn_spec.difficulty), 1.0), "risky optional-route collectible slots must carry maximum placement difficulty")
@@ -2559,11 +2572,11 @@ func test_collectible_spawn_is_seeded() -> void:
 
 func test_collectible_difficulty_biases_value() -> void:
 	var spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
-	var equal_weights := {&"bronze_coin": 1.0, &"gold_coin": 1.0, &"gem": 1.0}
+	var equal_weights := {&"bronze_coin": 1.0, &"gold_coin": 1.0}
 	var easy: Dictionary = spawner.adjusted_spawn_weights(equal_weights, 0.0)
 	var risky: Dictionary = spawner.adjusted_spawn_weights(equal_weights, 1.0)
-	var easy_premium_ratio := (float(easy[&"gold_coin"]) + float(easy[&"gem"])) / float(easy[&"bronze_coin"])
-	var risky_premium_ratio := (float(risky[&"gold_coin"]) + float(risky[&"gem"])) / float(risky[&"bronze_coin"])
+	var easy_premium_ratio := float(easy[&"gold_coin"]) / float(easy[&"bronze_coin"])
+	var risky_premium_ratio := float(risky[&"gold_coin"]) / float(risky[&"bronze_coin"])
 	_expect(risky_premium_ratio > easy_premium_ratio, "higher platform difficulty must increase the relative weight of high-value collectibles")
 	var flat_spec := {"archetype": ProceduralLayoutGenerator.Archetype.FLAT}
 	var gap_spec := {"archetype": ProceduralLayoutGenerator.Archetype.GAPS}
@@ -2611,15 +2624,22 @@ func test_enemy_death_spawns_drops() -> void:
 	holder.add_child(enemy)
 	await get_tree().process_frame
 	var guaranteed_data: EnemyData = ENEMY_CATALOG_SCRIPT.get_by_id(&"barbarian_warrior").duplicate(true)
-	var guaranteed_drop_table: Array[Dictionary] = [{"collectible_id": &"gold_coin", "probability": 1.0, "min_count": 1, "max_count": 1}]
+	var guaranteed_drop_table: Array[Dictionary] = [
+		{"collectible_id": &"gem_blue", "probability": 1.0, "min_count": 1, "max_count": 1},
+		{"collectible_id": &"gem_green", "probability": 1.0, "min_count": 1, "max_count": 1},
+		{"collectible_id": &"gem_yellow", "probability": 1.0, "min_count": 1, "max_count": 1},
+	]
 	guaranteed_data.drop_table = guaranteed_drop_table
 	enemy.configure(guaranteed_data, 1, target)
 	collectible_spawner._on_enemy_spawned(enemy, 64)
 	enemy.die()
-	_expect(pickup_container.get_child_count() == 1, "generic Enemy.died signal must spawn its configured collectible drop")
-	if pickup_container.get_child_count() == 1:
-		var pickup = pickup_container.get_child(0)
-		_expect(pickup.data != null and pickup.data.id == &"gold_coin", "enemy death pickup must resolve the EnemyData drop-table collectible")
+	_expect(pickup_container.get_child_count() == 3, "generic Enemy.died signal must spawn all guaranteed configured gem drops")
+	var dropped_ids: Array[StringName] = []
+	for pickup in pickup_container.get_children():
+		if pickup.data != null:
+			dropped_ids.append(pickup.data.id)
+		_expect(pickup.spawn_source == &"enemy_drop", "enemy death pickups must retain enemy_drop source telemetry")
+	_expect(dropped_ids.has(&"gem_blue") and dropped_ids.has(&"gem_green") and dropped_ids.has(&"gem_yellow"), "Blue, Green, and Yellow gems must all remain available through the enemy drop pipeline")
 	await _free_node(holder)
 	await _free_node(target)
 
@@ -2631,7 +2651,10 @@ func test_streamed_collectible_cleanup() -> void:
 	var spawner = COLLECTIBLE_SPAWNER_SCRIPT.new()
 	holder.add_child(spawner)
 	spawner.pickup_container = pickup_container
-	spawner._spawn_pickup(COLLECTIBLE_CATALOG_SCRIPT.BRONZE_COIN, Vector2.ZERO, 72, &"procedural")
+	var rejected_gem = spawner._spawn_pickup(COLLECTIBLE_CATALOG_SCRIPT.GEM_BLUE, Vector2.ZERO, 72, &"procedural")
+	_expect(rejected_gem == null and pickup_container.get_child_count() == 0, "CollectibleSpawner must reject a non-spawnable gem even if procedural code requests it directly")
+	var procedural_coin = spawner._spawn_pickup(COLLECTIBLE_CATALOG_SCRIPT.BRONZE_COIN, Vector2.ZERO, 72, &"procedural")
+	_expect(procedural_coin != null and procedural_coin.spawn_source == &"procedural", "procedural pickups must retain procedural source telemetry")
 	_expect(pickup_container.get_child_count() == 1 and spawner.pickups_by_chunk.has(72), "CollectibleSpawner must track pickups by streamed chunk")
 	spawner._on_chunk_removed({"start_tile": 72})
 	await get_tree().process_frame

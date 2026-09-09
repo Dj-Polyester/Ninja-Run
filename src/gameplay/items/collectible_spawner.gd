@@ -137,10 +137,18 @@ func _on_enemy_died(enemy: Enemy, chunk_start_tile: int) -> void:
 		_spawn_pickup(collectible, enemy.global_position + offset, chunk_start_tile, &"enemy_drop")
 
 func _spawn_pickup(collectible: CollectibleData, global_spawn: Vector2, chunk_key: int, source: StringName) -> Node:
+	if collectible == null:
+		return null
+	if source == &"procedural" and not collectible.spawnable:
+		return null
+	if source == &"enemy_drop" and not collectible.droppable:
+		return null
+	if OS.is_debug_build() and collectible.is_gem():
+		assert(source == &"enemy_drop", "Gem collectibles may only spawn from enemy drops.")
 	var pickup := PICKUP_SCENE.instantiate() as CollectiblePickup
 	pickup_container.add_child(pickup)
 	pickup.global_position = global_spawn
-	pickup.configure(collectible)
+	pickup.configure(collectible, source)
 	var tracked: Array = pickups_by_chunk.get(chunk_key, [])
 	tracked.append(pickup)
 	pickups_by_chunk[chunk_key] = tracked

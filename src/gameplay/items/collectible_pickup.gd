@@ -4,6 +4,7 @@ extends Area2D
 signal collected(collectible_id: StringName, gold_value: int)
 
 var data: CollectibleData
+var spawn_source: StringName = &"unknown"
 var already_collected := false
 var base_y := 0.0
 var elapsed := 0.0
@@ -19,8 +20,9 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	base_y = position.y
 
-func configure(collectible_data: CollectibleData) -> void:
+func configure(collectible_data: CollectibleData, source: StringName = &"unknown") -> void:
 	data = collectible_data
+	spawn_source = source
 	base_y = position.y
 	_update_visual()
 

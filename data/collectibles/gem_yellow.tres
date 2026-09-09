@@ -9,5 +9,5 @@ display_name = "Yellow Gem"
 kind = 1
 texture_path = "res://assets/Collectibles/droppable/gem_yellow.png"
 gold_value = 45
-spawnable = true
+spawnable = false
 droppable = true

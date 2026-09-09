@@ -17,5 +17,5 @@ terrain_right_atlas = Vector2i(7, 13)
 layout_weights = {"flat": 2.0, "flying_platforms": 1.0, "mountain": 1.0, "cave": 1.0, "stairs": 1.0, "stacked_platforms": 1.0, "gaps": 3.0}
 hazard_type = 2
 hazard_spawn_chance = 0.28
-collectible_weights = {"bronze_coin": 0.45, "silver_coin": 0.28, "gold_coin": 0.17, "gem": 0.1}
+collectible_weights = {"bronze_coin": 0.45, "silver_coin": 0.28, "gold_coin": 0.17}
 particle_effect = "res://assets/Particles/flame3/png/flame_00.png"

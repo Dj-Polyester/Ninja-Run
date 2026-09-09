@@ -17,4 +17,4 @@ terrain_right_atlas = Vector2i(5, 10)
 layout_weights = {"flat": 3.0, "flying_platforms": 1.5, "mountain": 2.0, "cave": 0.5, "stairs": 1.5, "stacked_platforms": 1.0, "gaps": 1.0}
 hazard_type = 0
 hazard_spawn_chance = 0.0
-collectible_weights = {"bronze_coin": 0.7, "silver_coin": 0.2, "gold_coin": 0.08, "gem": 0.02}
+collectible_weights = {"bronze_coin": 0.7, "silver_coin": 0.2, "gold_coin": 0.08}
