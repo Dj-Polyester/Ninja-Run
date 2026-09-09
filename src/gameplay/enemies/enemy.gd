@@ -334,50 +334,109 @@ func _build_animations() -> void:
 	sprite.scale = Vector2.ONE * data.sprite_scale
 	var frames := SpriteFrames.new()
 	frames.remove_animation(&"default")
-	if DisplayServer.get_name() == "headless":
-		for animation_name in [&"idle", &"walk", &"melee", &"shoot", &"hurt", &"dead"]:
-			frames.add_animation(animation_name)
-			frames.set_animation_loop(animation_name, animation_name in [&"idle", &"walk"])
+	if not _validate_animation_root():
 		sprite.sprite_frames = frames
 		return
-	_add_animation(frames, &"idle", data.idle_animation_folder, 10.0, true)
-	_add_animation(frames, &"walk", data.walk_animation_folder, 12.0, true)
-	_add_animation(frames, &"melee", data.melee_animation_folder, 14.0, false)
-	_add_animation(frames, &"shoot", data.shoot_animation_folder, 14.0, false)
-	_add_animation(frames, &"hurt", data.hurt_animation_folder, 14.0, false)
-	_add_animation(frames, &"dead", data.death_animation_folder, 12.0, false)
+	_add_animation(frames, &"idle", data.idle_animation_folder, 10.0, true, true)
+	_add_animation(frames, &"walk", data.walk_animation_folder, 12.0, true, true)
+	_add_animation(frames, &"melee", data.melee_animation_folder, 14.0, false, data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.MELEE))
+	_add_animation(frames, &"shoot", data.shoot_animation_folder, 14.0, false, data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.SHOOT))
+	_add_animation(frames, &"hurt", data.hurt_animation_folder, 14.0, false, true)
+	_add_animation(frames, &"dead", data.death_animation_folder, 12.0, false, true)
+	_apply_animation_fallbacks(frames)
 	sprite.sprite_frames = frames
 
-func _add_animation(frames: SpriteFrames, animation_name: StringName, folder_name: String, fps: float, looped: bool) -> void:
+func _validate_animation_root() -> bool:
+	var enemy_id := _enemy_id_for_log()
+	var root := String(data.animation_root)
+	if root.is_empty():
+		push_error("Enemy animation root missing enemy_id: %s" % enemy_id)
+		return false
+	if not root.begins_with("res://"):
+		push_error("Enemy animation root must use res:// enemy_id: %s root: %s" % [enemy_id, root])
+		return false
+	if ResourceLoader.list_directory(root).is_empty():
+		push_error("Enemy animation root inaccessible or empty enemy_id: %s root: %s" % [enemy_id, root])
+		return false
+	return true
+
+func _add_animation(frames: SpriteFrames, animation_name: StringName, folder_name: String, fps: float, looped: bool, required: bool) -> int:
 	frames.add_animation(animation_name)
 	frames.set_animation_speed(animation_name, fps)
 	frames.set_animation_loop(animation_name, looped)
-	if folder_name.is_empty() or data.animation_root.is_empty():
-		return
-	var folder: String = String(data.animation_root).path_join(folder_name)
-	var files := ResourceLoader.list_directory(folder)
-	if files.is_empty():
-		files = DirAccess.get_files_at(folder)
-	files.sort()
-	var loaded := 0
+	var folder := ""
+	if not folder_name.is_empty():
+		folder = String(data.animation_root).path_join(folder_name)
+	var loaded_frames := _load_animation_frames(frames, animation_name, folder)
+	if loaded_frames == 0:
+		var message := "Enemy animation load failed enemy_id: %s animation: %s folder: %s" % [_enemy_id_for_log(), String(animation_name), folder if not folder.is_empty() else "<empty>"]
+		if required:
+			push_error(message)
+		else:
+			push_warning(message)
+	return loaded_frames
+
+func _load_animation_frames(frames: SpriteFrames, animation_name: StringName, folder_path: String) -> int:
+	if folder_path.is_empty():
+		return 0
+	var files: Array[String] = []
+	for file_name in ResourceLoader.list_directory(folder_path):
+		files.append(String(file_name))
+	files.sort_custom(_natural_file_less)
+	var loaded_frames := 0
 	for file_name in files:
 		if not file_name.to_lower().ends_with(".png"):
 			continue
-		var texture := _load_texture(folder.path_join(file_name))
-		if texture != null:
-			frames.add_frame(animation_name, texture)
-			loaded += 1
-		if loaded >= GameConfig.ENEMY_ANIMATION_MAX_FRAMES:
+		var texture := ResourceLoader.load(folder_path.path_join(file_name)) as Texture2D
+		if texture == null:
+			push_warning("Enemy animation texture load failed enemy_id: %s animation: %s path: %s" % [_enemy_id_for_log(), String(animation_name), folder_path.path_join(file_name)])
+			continue
+		frames.add_frame(animation_name, texture)
+		loaded_frames += 1
+		if loaded_frames >= GameConfig.ENEMY_ANIMATION_MAX_FRAMES:
 			break
+	return loaded_frames
 
-func _load_texture(path: String) -> Texture2D:
-	var image := Image.new()
-	var absolute_path := ProjectSettings.globalize_path(path)
-	if FileAccess.file_exists(absolute_path) and image.load(absolute_path) == OK and not image.is_empty():
-		return ImageTexture.create_from_image(image)
-	if ResourceLoader.exists(path):
-		return ResourceLoader.load(path) as Texture2D
-	return null
+func _natural_file_less(left: String, right: String) -> bool:
+	return left.naturalnocasecmp_to(right) < 0
+
+func _apply_animation_fallbacks(frames: SpriteFrames) -> void:
+	if frames.get_frame_count(&"idle") == 0:
+		var idle_source := _first_animation_with_frames(frames, [&"walk", &"hurt", &"dead", &"melee", &"shoot"])
+		if not idle_source.is_empty():
+			_copy_animation_frames(frames, idle_source, &"idle")
+			push_warning("Enemy idle animation fallback enemy_id: %s source: %s" % [_enemy_id_for_log(), String(idle_source)])
+		else:
+			push_error("Enemy has no usable animation frames enemy_id: %s root: %s" % [_enemy_id_for_log(), String(data.animation_root)])
+			return
+
+	for animation_name in [&"walk", &"melee", &"shoot", &"hurt", &"dead"]:
+		if frames.get_frame_count(animation_name) > 0:
+			continue
+		_copy_animation_frames(frames, &"idle", animation_name)
+		push_warning("Enemy animation fallback enemy_id: %s animation: %s source: idle" % [_enemy_id_for_log(), String(animation_name)])
+
+func _first_animation_with_frames(frames: SpriteFrames, animation_names: Array) -> StringName:
+	for animation_name in animation_names:
+		if frames.has_animation(animation_name) and frames.get_frame_count(animation_name) > 0:
+			return animation_name
+	return &""
+
+func _copy_animation_frames(frames: SpriteFrames, source_animation: StringName, target_animation: StringName) -> void:
+	if not frames.has_animation(source_animation) or not frames.has_animation(target_animation):
+		return
+	for frame_index in range(frames.get_frame_count(source_animation)):
+		frames.add_frame(
+			target_animation,
+			frames.get_frame_texture(source_animation, frame_index),
+			frames.get_frame_duration(source_animation, frame_index)
+		)
+
+func _enemy_id_for_log() -> String:
+	if data == null:
+		return "<unknown>"
+	var enemy_id := String(data.id)
+	return enemy_id if not enemy_id.is_empty() else "<unknown>"
 
 func _play_animation(animation_name: StringName) -> void:
 	if sprite == null or sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(animation_name):

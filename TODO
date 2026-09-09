@@ -45,6 +45,7 @@ Extra:
     ☐ invisible
     ☐ transform to tapped enemy
 Enemy:
+☐ Migrate runtime enemy animation folder scanning to authored SpriteFrames resources on EnemyData (separate refactor/PR)
 Collectibles:
 ✔ Spawned @done(26-08-02 08:40)
 ✔ Moving @done(26-08-02 08:40)

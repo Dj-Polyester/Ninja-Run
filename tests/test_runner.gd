@@ -168,6 +168,7 @@ func _run() -> void:
 	await test_slow_down_uses_world_multipliers()
 	await test_invisibility_detectability_and_duration()
 	test_enemy_biome_restriction()
+	await test_enemy_animation_resource_loading()
 	test_enemy_level_scaling()
 	await test_enemy_patrol()
 	await test_stationary_enemy()
@@ -2062,6 +2063,13 @@ func test_enemy_biome_restriction() -> void:
 			has_patrol = has_patrol or data.movement_mode == ENEMY_DATA_SCRIPT.MovementMode.PATROL
 			var melee: bool = data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.MELEE)
 			var shoot: bool = data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.SHOOT)
+			_expect(_directory_has_png(animation_root.path_join(data.walk_animation_folder)), "enemy '%s' walk animation must resolve to supplied PNG frames" % id_string)
+			_expect(_directory_has_png(animation_root.path_join(data.hurt_animation_folder)), "enemy '%s' hurt animation must resolve to supplied PNG frames" % id_string)
+			_expect(_directory_has_png(animation_root.path_join(data.death_animation_folder)), "enemy '%s' death animation must resolve to supplied PNG frames" % id_string)
+			if melee:
+				_expect(_directory_has_png(animation_root.path_join(data.melee_animation_folder)), "melee enemy '%s' attack animation must resolve to supplied PNG frames" % id_string)
+			if shoot:
+				_expect(_directory_has_png(animation_root.path_join(data.shoot_animation_folder)), "ranged enemy '%s' attack animation must resolve to supplied PNG frames" % id_string)
 			has_melee_only = has_melee_only or (melee and not shoot)
 			has_shoot_only = has_shoot_only or (shoot and not melee)
 			has_both = has_both or (melee and shoot)
@@ -2082,6 +2090,36 @@ func test_enemy_biome_restriction() -> void:
 	var level = LEVEL_SCENE.instantiate()
 	_expect(level.has_node("EnemySpawner"), "level scene must own a reusable EnemySpawner")
 	level.free()
+
+func test_enemy_animation_resource_loading() -> void:
+	var representative_ids: Array[StringName] = [&"archer_guy", &"goblin", &"frost_knight_1"]
+	var target = _spawn_enemy_target(Vector2(1600.0, 0.0))
+	for enemy_id in representative_ids:
+		var data = ENEMY_CATALOG_SCRIPT.get_by_id(enemy_id)
+		_expect(data != null, "enemy animation loader test requires '%s' data" % String(enemy_id))
+		if data == null:
+			continue
+		var enemy = ENEMY_SCENE.instantiate()
+		add_child(enemy)
+		await get_tree().process_frame
+		enemy.configure(data, 1, target)
+		var frames: SpriteFrames = enemy.sprite.sprite_frames
+		_expect(frames != null, "enemy '%s' must build SpriteFrames" % String(enemy_id))
+		if frames != null:
+			for animation_name in [&"idle", &"walk", &"hurt", &"dead"]:
+				_expect(frames.has_animation(animation_name) and frames.get_frame_count(animation_name) > 0, "enemy '%s' required '%s' animation must load Texture2D frames" % [String(enemy_id), String(animation_name)])
+			if data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.MELEE):
+				_expect(frames.get_frame_count(&"melee") > 0, "melee enemy '%s' must load its attack animation" % String(enemy_id))
+			if data.has_attack(ENEMY_DATA_SCRIPT.AttackMode.SHOOT):
+				_expect(frames.get_frame_count(&"shoot") > 0, "ranged enemy '%s' must load its attack animation" % String(enemy_id))
+			if frames.get_frame_count(&"idle") > 0:
+				var idle_texture := frames.get_frame_texture(&"idle", 0)
+				_expect(idle_texture is Texture2D and String(idle_texture.resource_path).begins_with("res://"), "enemy '%s' frames must come from Godot's resource pipeline" % String(enemy_id))
+		var numeric_names: Array[String] = ["Idle_10.png", "Idle_2.png", "Idle_1.png"]
+		numeric_names.sort_custom(enemy._natural_file_less)
+		_expect(numeric_names == ["Idle_1.png", "Idle_2.png", "Idle_10.png"], "enemy animation filenames must use deterministic natural numeric ordering")
+		await _free_node(enemy)
+	await _free_node(target)
 
 func test_enemy_level_scaling() -> void:
 	var data = ENEMY_CATALOG_SCRIPT.get_by_id(&"death_knight")

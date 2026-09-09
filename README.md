@@ -494,7 +494,7 @@ godot --headless --path . tests/test_runner.tscn
 
 ## Test inventory
 
-The headless runner currently contains **168 tests**. The exact function inventory is grouped by subsystem below.
+The headless runner currently contains **170 tests**. The exact function inventory is grouped by subsystem below.
 
 ### Core configuration and Phase 1 scene
 
@@ -634,6 +634,7 @@ The headless runner currently contains **168 tests**. The exact function invento
 ### Enemies
 
 - `test_enemy_biome_restriction`
+- `test_enemy_animation_resource_loading`
 - `test_enemy_level_scaling`
 - `test_enemy_patrol`
 - `test_stationary_enemy`
