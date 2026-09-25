@@ -1,0 +1,14 @@
+[agents]
+enabled = true
+
+# Maximum agents that may run concurrently.
+# Start conservative to avoid wasting quota.
+max_concurrent_threads_per_session = 4
+
+# If Codex creates a generic subagent rather than one of our
+# explicitly configured specialists, use the balanced model.
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "medium"
+
+# Allow the parent agent to interrupt/re-direct running subagents.
+interrupt_message = true
