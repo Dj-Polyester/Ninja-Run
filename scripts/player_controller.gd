@@ -6,6 +6,9 @@ signal melee_proximity(target: Node2D)
 
 const AbilityCooldownRuntime = preload("res://scripts/abilities/ability_cooldown_state.gd")
 
+const PLAYER_VISUAL_SCALE := Vector2(0.32, 0.32)
+const PLAYER_VISUAL_OFFSET := Vector2(0.0, -13.0)
+
 var rolling := false
 var roll_until := 0.0
 var simulation_time := 0.0
@@ -41,7 +44,6 @@ var reverse_gravity_toggles := 0
 func _ready() -> void:
 	$MeleeArea.collision_mask = 1 | GameConfig.ENEMY_COLLISION_LAYER
 	apply_character_frames("res://assets/Characters/1/Png/Character Sprite/sprite_frames.tres")
-	$AnimatedSprite2D.scale = Vector2(0.10, 0.10)
 
 func apply_character_frames(sprite_frames_path: String) -> bool:
 	if sprite_frames_path.is_empty() or not ResourceLoader.exists(sprite_frames_path, "SpriteFrames"):
@@ -50,6 +52,8 @@ func apply_character_frames(sprite_frames_path: String) -> bool:
 	if frames == null:
 		return false
 	$AnimatedSprite2D.sprite_frames = frames
+	$AnimatedSprite2D.scale = PLAYER_VISUAL_SCALE
+	$AnimatedSprite2D.position = PLAYER_VISUAL_OFFSET
 	if frames.has_animation(&"idle"):
 		$AnimatedSprite2D.play(&"idle")
 	elif not frames.get_animation_names().is_empty():

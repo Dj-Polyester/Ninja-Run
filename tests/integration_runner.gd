@@ -2,6 +2,7 @@ extends SceneTree
 ## M2 fail-closed real-scene physics and lifecycle integration suite.
 
 const Director = preload("res://scripts/models/run_director.gd")
+const PlayerControllerRuntime = preload("res://scripts/player_controller.gd")
 const AstroCoordinator = preload("res://scripts/terrain/astro_fall_coordinator.gd")
 const AstroBlock = preload("res://scripts/terrain/astro_fall_block.gd")
 const TerrainPaletteRuntime = preload("res://scripts/terrain/terrain_palette.gd")
@@ -1439,18 +1440,30 @@ func test_m4a1_controller_behavior_channels_and_pause() -> String:
 	var patrol_x := patrol.global_position.x
 	patrol.update_runtime(0.1, 0.0, true, true, true, true, 1.0)
 	var patrol_ok := not is_equal_approx(patrol.global_position.x, patrol_x) and patrol_events == [&"ranged"]
+	var right_facing_ok := patrol._sprite != null and not patrol._sprite.flip_h
+	var projectile_origin := patrol.global_position + Vector2(0, -16)
+	var right_limit := minf(GameConfig.RUN_ORIGIN_X + float(patrol.descriptor.support_x_end - 1) * GameConfig.TILE_SIZE, patrol.patrol_origin + GameConfig.ENEMY_PATROL_RADIUS)
+	patrol.global_position.x = right_limit
+	patrol.update_runtime(0.1, 0.2, true, true, true, true, 1.0)
+	var left_facing_ok := patrol.patrol_direction < 0.0 and patrol._sprite != null and patrol._sprite.flip_h
+	var visual_only_flip_ok := patrol.scale == Vector2.ONE and patrol._health_bar != null and patrol._health_bar.scale == Vector2.ONE
+	for patrol_child in patrol.get_children():
+		if patrol_child is CollisionShape2D:
+			visual_only_flip_ok = visual_only_flip_ok and (patrol_child as CollisionShape2D).scale == Vector2.ONE
 	var combined := _m4_runtime_enemy(level, by_id[&"example_combined"], 3, Vector2(56, 0))
 	var combined_events: Array[StringName] = []
 	combined.melee_attack.connect(func(_enemy) -> void: combined_events.append(&"melee"))
 	combined.ranged_attack.connect(func(_enemy, _kind) -> void: combined_events.append(&"ranged"))
 	combined.update_runtime(0.1, 0.0, true, true, true, true, 1.0)
 	var combined_ok := combined_events.has(&"melee") and combined_events.has(&"ranged")
-	var particle_runtime_ok := false
+	var projectile_runtime_ok := false
+	var no_firing_particles := true
 	var beam_runtime_ok := false
 	for child in level.get_children():
-		if child is GPUParticles2D:
-			var particle := child as GPUParticles2D
-			particle_runtime_ok = particle.process_material != null and particle.texture != null and particle.one_shot
+		if child is EnemyProjectileRuntime:
+			projectile_runtime_ok = (child as EnemyProjectileRuntime).global_position.is_equal_approx(projectile_origin)
+		elif child is GPUParticles2D:
+			no_firing_particles = false
 		elif child is Line2D:
 			beam_runtime_ok = (child as Line2D).points.size() == 2
 	var death_events: Array[bool] = []
@@ -1464,7 +1477,7 @@ func test_m4a1_controller_behavior_channels_and_pause() -> String:
 	var pause_ok := is_equal_approx(patrol.global_position.x, paused_x) and patrol_events.size() == paused_events
 	catalog.free()
 	await _dispose(level)
-	return "" if stationary_ok and patrol_ok and combined_ok and particle_runtime_ok and beam_runtime_ok and death_ok and pause_ok else "stationary=%s patrol=%s combined=%s particle=%s beam=%s death=%s pause=%s events=%s/%s/%s" % [stationary_ok, patrol_ok, combined_ok, particle_runtime_ok, beam_runtime_ok, death_ok, pause_ok, stationary_events, patrol_events, combined_events]
+	return "" if stationary_ok and patrol_ok and right_facing_ok and left_facing_ok and visual_only_flip_ok and combined_ok and projectile_runtime_ok and no_firing_particles and beam_runtime_ok and death_ok and pause_ok else "stationary=%s patrol=%s facing=%s/%s visual_only=%s combined=%s projectile=%s no_particles=%s beam=%s death=%s pause=%s events=%s/%s/%s" % [stationary_ok, patrol_ok, right_facing_ok, left_facing_ok, visual_only_flip_ok, combined_ok, projectile_runtime_ok, no_firing_particles, beam_runtime_ok, death_ok, pause_ok, stationary_events, patrol_events, combined_events]
 
 func test_m4a1_projectile_sweep_pause_and_hit() -> String:
 	var world := Node2D.new()
@@ -2420,8 +2433,11 @@ func test_m7_profile_character_and_stats_apply_to_level() -> String:
 	var sprite := level.player.get_node("AnimatedSprite2D") as AnimatedSprite2D
 	var loaded_frames_path: String = sprite.sprite_frames.resource_path if sprite.sprite_frames != null else ""
 	var frames_ok: bool = character != null and loaded_frames_path == character.sprite_frames_path
+	var visual_size_ok: bool = sprite.scale.is_equal_approx(PlayerControllerRuntime.PLAYER_VISUAL_SCALE) and sprite.position.is_equal_approx(PlayerControllerRuntime.PLAYER_VISUAL_OFFSET)
+	var standing_collision := level.player.get_node("StandingCollision") as CollisionShape2D
+	var collider_unchanged: bool = standing_collision != null and standing_collision.shape is RectangleShape2D and (standing_collision.shape as RectangleShape2D).size.is_equal_approx(Vector2(36, 64))
 	var transient_fresh: bool = is_zero_approx(level.director.run.distance_tiles) and level.director.run.earned_gold == 0
 	await _dispose(level)
 	session.replace_profile(previous_profile)
 	session.autosave_enabled = previous_autosave
-	return "" if stats_ok and frames_ok and transient_fresh else "M7 run-start stats=%s frames=%s transient=%s path=%s." % [stats_ok, frames_ok, transient_fresh, loaded_frames_path]
+	return "" if stats_ok and frames_ok and visual_size_ok and collider_unchanged and transient_fresh else "M7 run-start stats=%s frames=%s visual=%s collider=%s transient=%s path=%s scale=%s offset=%s." % [stats_ok, frames_ok, visual_size_ok, collider_unchanged, transient_fresh, loaded_frames_path, sprite.scale, sprite.position]

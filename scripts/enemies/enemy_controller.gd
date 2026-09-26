@@ -82,6 +82,7 @@ func _install_lazy_sprite() -> void:
 		_sprite.position = Vector2(0, -20)
 		_sprite.play(&"Idle")
 		add_child(_sprite)
+		_update_visual_facing(patrol_direction)
 
 func update_runtime(delta: float, simulation_time: float, visible_to_camera: bool, target_in_camera: bool, line_of_sight: bool, target_visible: bool, interval_multiplier: float) -> void:
 	if dead or retired or definition == null or director == null:
@@ -115,9 +116,17 @@ func _update_movement(_delta: float) -> void:
 		patrol_direction = -1.0
 	elif patrol_direction < 0.0 and global_position.x <= left_limit:
 		patrol_direction = 1.0
+	_update_visual_facing(patrol_direction)
 	velocity = Vector2(patrol_direction * definition.movement_speed, 0.0)
 	move_and_slide()
 	global_position.x = clampf(global_position.x, left_limit, right_limit)
+
+func _update_visual_facing(direction: float) -> void:
+	if _sprite == null or definition == null or definition.movement_type != Definition.MOVEMENT_PATROL or is_zero_approx(direction):
+		return
+	# Enemy art faces right by default; mirror only the visual node so health bars,
+	# collision shapes, and attack/projectile coordinates remain unchanged.
+	_sprite.flip_h = direction < 0.0
 
 func _hit_envelope() -> DamageStatus.HitEnvelope:
 	var scaled_damage := definition.contact_damage * (1.0 + 0.10 * float(maxi(0, descriptor.tier - 1)))
@@ -140,24 +149,6 @@ func _emit_ranged(target_position: Vector2) -> void:
 		hit_requested.emit(_hit_envelope())
 		beam.call_deferred("queue_free")
 		return
-	var particles := GPUParticles2D.new()
-	particles.position = global_position
-	particles.amount = 8
-	particles.lifetime = 0.25
-	particles.one_shot = true
-	particles.explosiveness = 0.85
-	var particle_material := ParticleProcessMaterial.new()
-	var particle_direction := (target_position - global_position).normalized()
-	particle_material.direction = Vector3(particle_direction.x, particle_direction.y, 0.0)
-	particle_material.spread = 12.0
-	particle_material.initial_velocity_min = 180.0
-	particle_material.initial_velocity_max = 260.0
-	particle_material.gravity = Vector3.ZERO
-	particles.process_material = particle_material
-	particles.texture = load("res://assets/Particles/flame10/images/light.png") as Texture2D
-	particles.finished.connect(Callable(particles, "queue_free"), CONNECT_ONE_SHOT)
-	attack_parent.add_child(particles)
-	particles.emitting = true
 	var projectile := Projectile.new()
 	attack_parent.add_child(projectile)
 	var projectile_hit := _hit_envelope()
